@@ -93,7 +93,7 @@ int main()
 {
   dense_hash_map&lt;const char*, int, hash&lt;const char*&gt;, eqstr&gt; months;
   
-  months.set_deleted_key(NULL);
+  months.set_empty_key(NULL);
   months[&quot;january&quot;] = 31;
   months[&quot;february&quot;] = 28;
   months[&quot;march&quot;] = 31;

@@ -19,3 +19,14 @@ Mon May  2 07:04:46 2005  Google Inc. <opensource@google.com>
 	  support it, but for now it's just in experimental/, for playing
 	  around with. (csilvers)
 	* Change default namespace from std to google. (csilvers)
+
+Thu Nov  3 20:12:31 2005  Google Inc. <opensource@google.com>
+
+	* sparsehash: version 0.3 release
+	* Quiet compiler warnings on some compilers. (csilvers)
+	* Some documentation fixes: example code for dense_hash_map. (csilvers)
+	* Fix a bug where swap() wasn't swapping delete_key(). (csilvers)
+	* set_deleted_key() and set_empty_key() now take a key only,
+	  allowing hash-map values to be forward-declared. (csilvers)
+	* support for std::insert_iterator (and std::inserter). (csilvers)
+

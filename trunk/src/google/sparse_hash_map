@@ -78,6 +78,8 @@
 #include <google/sparsehash/config.h>
 #include <stdio.h>                   // for FILE * in read()/write()
 #include <algorithm>                 // for the default template args
+#include <functional>                // for equal_to
+#include <memory>                    // for alloc<>
 #include <google/sparsehash/hash_fun.h>
 #include <google/sparsehash/sparsehashtable.h>
 
@@ -230,6 +232,8 @@ class sparse_hash_map {
   template <class InputIterator>
   void insert(InputIterator f, InputIterator l)      { rep.insert(f, l); }
   void insert(const_iterator f, const_iterator l)    { rep.insert(f, l); }
+  // required for std::insert_iterator; the passed-in iterator is ignored
+  iterator insert(iterator, const value_type& obj)   { return insert(obj).first; }
 
 
   // Deletion routines
@@ -237,7 +241,7 @@ class sparse_hash_map {
   // value to identify deleted buckets.  You can change the key as
   // time goes on, or get rid of it entirely to be insert-only.
   void set_deleted_key(const key_type& key)   {
-    rep.set_deleted_key(value_type(key, data_type()));  // rep wants a value
+    rep.set_deleted_key(key);
   }
   void clear_deleted_key()                    { rep.clear_deleted_key(); }
 

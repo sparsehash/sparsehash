@@ -82,7 +82,8 @@
 #include <google/sparsehash/config.h>
 #include <stdio.h>                    // for FILE * in read()/write()
 #include <algorithm>                  // for the default template args
-#include <functional>                 // for the default template args(?)
+#include <functional>                // for equal_to
+#include <memory>                    // for alloc<>
 #include <google/sparsehash/hash_fun.h>
 #include <google/sparsehash/sparsehashtable.h>
 
@@ -182,6 +183,8 @@ class sparse_hash_set {
   template <class InputIterator>
   void insert(InputIterator f, InputIterator l)      { rep.insert(f, l); }
   void insert(const_iterator f, const_iterator l)    { rep.insert(f, l); }
+  // required for std::insert_iterator; the passed-in iterator is ignored
+  iterator insert(iterator, const value_type& obj)   { return insert(obj).first; }
 
 
   // Deletion routines
