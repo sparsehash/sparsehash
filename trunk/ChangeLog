@@ -1,4 +1,4 @@
-Fri Jan 14 16:53:32 2005  El Goog <opensource@google.com>
+Fri Jan 14 16:53:32 2005  Google Inc. <opensource@google.com>
 
 	* sparsehash: initial release:
 	  The sparsehash package contains several hash-map implementations,
@@ -7,3 +7,15 @@ Fri Jan 14 16:53:32 2005  El Goog <opensource@google.com>
 	  space overhead: 1-2 bits per entry.  dense_hash_map is typically
 	  faster than the default SGI STL implementation.  This package
 	  also includes hash-set analogues of these classes.
+
+Mon May  2 07:04:46 2005  Google Inc. <opensource@google.com>
+
+	* sparsehash: version 0.2 release
+	* Preliminary support for msvc++ compilation. (csilvers)
+	* Documentation fixes -- some example code was incomplete! (csilvers)
+	* Minimize size of config.h to avoid other-package conflicts (csilvers)
+	* Contribute a C-based version of sparsehash that served as the
+	  inspiration for this code.  One day, I hope to clean it up and
+	  support it, but for now it's just in experimental/, for playing
+	  around with. (csilvers)
+	* Change default namespace from std to google. (csilvers)

@@ -146,7 +146,9 @@ time_hash_map_SOURCES = \
    $(googleinclude_HEADERS)
 
 
-EXTRA_DIST = packages/rpm.sh packages/rpm/rpm.spec packages/deb.sh packages/deb
+EXTRA_DIST = packages/rpm.sh packages/rpm/rpm.spec packages/deb.sh packages/deb \
+             src/config.h.include
+
 
 DISTCLEANFILES = $(configure_generated_h_files)
 subdir = .
@@ -517,7 +519,7 @@ distcleancheck_listfiles = find . -type f -print
 distdir: $(DISTFILES)
 	$(am__remove_distdir)
 	mkdir $(distdir)
-	$(mkinstalldirs) $(distdir)/./src/google/sparsehash $(distdir)/doc $(distdir)/packages $(distdir)/packages/rpm $(distdir)/src/google $(distdir)/src/google/sparsehash
+	$(mkinstalldirs) $(distdir)/./src/google/sparsehash $(distdir)/doc $(distdir)/packages $(distdir)/packages/rpm $(distdir)/src $(distdir)/src/google $(distdir)/src/google/sparsehash
 	@list='$(DISTFILES)'; for file in $$list; do \
 	  if test -f $$file || test -d $$file; then d=.; else d=$(srcdir); fi; \
 	  dir=`echo "$$file" | sed -e 's,/[^/]*$$,,'`; \

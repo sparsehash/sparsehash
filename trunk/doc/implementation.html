@@ -21,7 +21,7 @@ Programming</i>, Vol 3, Hashing.
 <p>For specificity, consider the declaration </p>
 
 <pre>
-   sparsetable<Foo> t(100);           // a sparse array with 100 elements
+   sparsetable&lt;Foo&gt; t(100);        // a sparse array with 100 elements
 </pre>
 
 <p>A sparsetable is a random container that implements a sparse array,
@@ -238,7 +238,7 @@ long string of erase()s could well trigger a hashtable shrink.</p>
 <h3><tt>delete()</tt></h3>
 
 <p>delete() is tricky in an internal-probing scheme.  The obvious
-implemention of just "unassigning" the relevant table entry doesn't
+implementation of just "unassigning" the relevant table entry doesn't
 work.  Consider the following scenario:</p>
 
 <pre>
@@ -295,7 +295,7 @@ HREF="performance.html">performance numbers</A>.</p>
 <hr>
 <h2><tt>sparse_hash_map</tt></h2>
 
-<p>sparse_hash_map is implemented identially to sparse_hash_set.  The
+<p>sparse_hash_map is implemented identically to sparse_hash_set.  The
 only difference is instead of storing just Foo in each table entry,
 the data structure stores pair&lt;Foo, Value&gt;.</p>
 
@@ -325,7 +325,7 @@ value that should be used for unassigned entries.  Like
 set_deleted_key(), set_empty_key() requires a value that will not be
 used by the client for any legitimate purpose.  Unlike
 set_deleted_key(), set_empty_key() is always required, no matter what
-hashtable entries the client wishes to perform.</p>
+hashtable operations the client wishes to perform.</p>
 
 <p>Since this implementation uses C arrays rather than an equivalent C++
 data structure like vectors, data in it must have a Plain Old Data

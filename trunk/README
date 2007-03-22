@@ -19,10 +19,16 @@ followed by make.  To install these header files on your system, run
 USING
 -----
 See the html files in the doc directory for small example programs
-that use these classes.  To get started, just
+that use these classes.  It's enough to just include the header file:
+
    #include <google/sparse_hash_map> // or sparse_hash_set, dense_hash_map, ...
+   std::sparse_hash_set<int, int> number_mapper;
+
 and use the class the way you would other hash-map implementations.
 (Though see "API" below for caveats.)
+
+By default (you can change it via a flag to ./configure), these hash
+implementations are defined in the std namespace.
 
 API
 ---
@@ -138,8 +144,8 @@ a simple find() call:
    sparse_hash_map: 117 ns
    SGI map:         113 ns
 
-See PERFORMANCE for more detailed charts on resource usage and
-performance data.
+See doc/performance.html for more detailed charts on resource usage
+and performance data.
 
 ---
-27 January 2005
+16 March 2005

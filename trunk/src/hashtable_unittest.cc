@@ -44,7 +44,9 @@
 #include <google/sparsehash/config.h>
 #include <stdio.h>
 #include <sys/stat.h>          // for stat()
+#ifdef HAVE_UNISTD_H
 #include <unistd.h>            // for unlink()
+#endif
 #include <string.h>
 #include <time.h>              // for silly random-number-seed generator
 #include <math.h>              // for sqrt()
