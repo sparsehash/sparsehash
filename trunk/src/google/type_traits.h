@@ -139,9 +139,13 @@ template <class T, class U> struct has_trivial_assign<std::pair<T, U> >
 template <class A, int N> struct has_trivial_assign<A[N]>
   : has_trivial_assign<A> { };
 
+// Specified by TR1 [4.7.4] Pointer modifications.
 template<typename T> struct remove_pointer { typedef T type; };
 template<typename T> struct remove_pointer<T*> { typedef T type; };
-template<typename T> struct remove_pointer<const T*> { typedef T type; };
+template<typename T> struct remove_pointer<T* const> { typedef T type; };
+template<typename T> struct remove_pointer<T* volatile> { typedef T type; };
+template<typename T> struct remove_pointer<T* const volatile> {
+  typedef T type; };
 
 _END_GOOGLE_NAMESPACE_
 

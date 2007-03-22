@@ -51,3 +51,14 @@ Sat Oct 21 13:47:47 2006  Google Inc. <opensource@google.com>
 	* Get rid of UNDERSTANDS_ITERATOR_TAGS; everyone understands (csilvers)
 	* Test that empty-key and deleted-key differ (rbayardo)
 	* Fix example docs: strcmp needs to test for NULL (csilvers)
+
+Tue Mar 20 17:29:34 2007  Google Inc. <opensource@google.com>
+
+	* sparsehash: version 0.6 release
+	* Some improvement to type-traits (jyasskin)
+	* Better timing results when google-perftools is installed (sanjay)
+	* Updates and fixes to html documentation and README (csilvers)
+	* A bit more careful about #includes (csilvers)
+	* Fix for typo that broken compilation on some systems (csilvers)
+	* USER VISIBLE: New clear_no_resize() method added to dense_hash_map
+          (uszkoreit)

@@ -84,11 +84,15 @@
 #endif
 #endif
 
-#if !defined HAVE_U_INT16_T && defined HAVE_UINT16_T
-typedef uint16_t u_int16_t        // true on solaris, possibly other C99 libc's
-#endif
-#if !defined HAVE_U_INT16_T && defined HAVE___UINT16
-typedef __uint16 u_int16_t        // true on vc++7
+#ifndef HAVE_U_INT16_T
+# if defined HAVE_UINT16_T
+    typedef uint16_t u_int16_t;    // true on solaris, possibly other C99 libc's
+# elif defined HAVE___UINT16
+    typedef __uint16 u_int16_t;    // true on vc++7
+# else
+#   warn Cannot find a 16-bit integer type.  Hoping for the best with "short"...
+    typedef unsigned short int u_int16_t;
+# endif
 #endif
 
 _START_GOOGLE_NAMESPACE_

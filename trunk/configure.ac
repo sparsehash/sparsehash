@@ -8,7 +8,7 @@
 # make sure we're interpreted by some minimal autoconf
 AC_PREREQ(2.57)
 
-AC_INIT(sparsehash, 0.5, opensource@google.com)
+AC_INIT(sparsehash, 0.6, opensource@google.com)
 # The argument here is just something that should be in the current directory
 # (for sanity checking)
 AC_CONFIG_SRCDIR(README)
@@ -27,8 +27,17 @@ AC_CHECK_TYPES([uint16_t])     # defined in C99 systems
 AC_CHECK_TYPES([u_int16_t])    # defined in BSD-derived systems, and gnu
 AC_CHECK_TYPES([__uint16])     # defined in some windows systems (vc7)
 AC_CHECK_TYPES([long long])    # probably defined everywhere, but...
+
 # These are 'only' needed for unittests
 AC_CHECK_HEADERS(sys/resource.h unistd.h sys/time.h sys/utsname.h)
+# If you have google-perftools installed, we can do a bit more testing.
+# We not only want to set HAVE_MALLOC_EXTENSION_H, we also want to set
+# a variable to let the Makefile to know to link in tcmalloc.
+AC_LANG([C++])
+AC_CHECK_HEADERS(google/malloc_extension.h,
+                 tcmalloc=-ltcmalloc,
+                 tcmalloc=)
+AC_SUBST(tcmalloc)
 
 # Writes the header files for hash_map, hash_set, and hash_fun into .
 # This also tells us what namespace hash code lives in.

@@ -153,6 +153,38 @@ static void set_empty_key(dense_hash_map<K,V,H,C> *ht, K val) {
   ht->set_empty_key(val);
 }
 
+template <class T, class H, class I, class C, class A>
+static bool clear_no_resize(sparse_hashtable<T,T,H,I,C,A> *ht) {
+  return false;
+}
+
+template <class T, class H, class C>
+static bool clear_no_resize(sparse_hash_set<T,H,C> *ht) {
+  return false;
+}
+
+template <class K, class V, class H, class C>
+static bool clear_no_resize(sparse_hash_map<K,V,H,C> *ht) {
+  return false;
+}
+
+template <class T, class H, class I, class C, class A>
+static bool clear_no_resize(dense_hashtable<T,T,H,I,C,A> *ht) {
+  ht->clear_no_resize();
+  return true;
+}
+
+template <class T, class H, class C>
+static bool clear_no_resize(dense_hash_set<T,H,C> *ht) {
+  ht->clear_no_resize();
+  return true;
+}
+
+template <class K, class V, class H, class C>
+static bool clear_no_resize(dense_hash_map<K,V,H,C> *ht) {
+  ht->clear_no_resize();
+  return true;
+}
 
 template <class T, class H, class I, class C, class A>
 static void insert(dense_hashtable<T,T,H,I,C,A> *ht, T val) {
@@ -314,6 +346,14 @@ static void free_item(pair<char*const,int> *val) {
   free(val->first);
 }
 
+static int get_int_item(int int_item) {
+  return int_item;
+}
+
+static int get_int_item(pair<int, int> val) {
+  return val.first;
+}
+
 static const string& getstrkey(const string& str) { return str; }
 
 static const string& getstrkey(const pair<const string, int> &p) {
@@ -323,8 +363,10 @@ static const string& getstrkey(const pair<const string, int> &p) {
 // Performs tests where the hashtable's value type is assumed to be int.
 template <class htint>
 void test_int() {
+  htint x;
   htint y(1000);
   htint z(64);
+  set_empty_key(&x, 0xefefef);
   set_empty_key(&y, 0xefefef);
   set_empty_key(&z, 0xefefef);
 
@@ -346,6 +388,33 @@ void test_int() {
   insert_iterator<htint> insert_iter(z, z.begin());
   for ( int i = 32; i < 64; ++i )
     iterator_insert(&z, i, &insert_iter);
+
+  // only perform the following CHECKs for
+  // dense{hashtable, _hash_set, _hash_map}
+  if (clear_no_resize(&x)) {
+    // make sure x has to increase its number of buckets
+    int empty_bucket_count = x.bucket_count();
+    int last_element = 0;
+    while (x.bucket_count() == empty_bucket_count) {
+      insert(&x, last_element);
+      ++last_element;
+    }
+    // if clear_no_resize is supported (i.e. htint is a
+    // dense{hashtable,_hash_set,_hash_map}), it should leave the bucket_count
+    // as is.
+    int last_bucket_count = x.bucket_count();
+    clear_no_resize(&x);
+    CHECK(last_bucket_count == x.bucket_count());
+    CHECK(x.empty());
+    LOGF << "x has " << x.bucket_count() << " buckets";
+    LOGF << "x size " << x.size();
+    // when inserting the same number of elements again, no resize should be
+    // necessary
+    for (int i = 0; i < last_element; ++i) {
+      insert(&x, i);
+      CHECK(x.bucket_count() == last_bucket_count);
+    }
+  }
 
   for ( typename htint::const_iterator it = y.begin(); it != y.end(); ++it )
     LOGF << "y: " << *it << "\n";
@@ -628,6 +697,9 @@ void test_string(bool read_write) {
       }
     }
   }
+
+  // ensure that destruction is done properly in clear_no_resize()
+  if (!clear_no_resize(&w)) w.clear();
 }
 
 // The read_write parameters specifies whether the read/write tests
