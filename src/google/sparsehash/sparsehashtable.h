@@ -109,6 +109,7 @@
 #include <assert.h>
 #include <algorithm>              // For swap(), eg
 #include <iterator>               // for facts about iterator tags
+#include <utility>                // for pair<>
 #include <google/sparsetable>     // Since that's basically what we are
 
 _START_GOOGLE_NAMESPACE_

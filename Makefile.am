@@ -28,7 +28,9 @@ dist_doc_DATA = AUTHORS COPYING ChangeLog INSTALL NEWS README TODO \
    doc/sparse_hash_set.html			\
    doc/sparsetable.html                     	\
    doc/implementation.html			\
-   doc/performance.html
+   doc/performance.html                         \
+   doc/index.html                               \
+   doc/designstyle.css
 
 ## The libraries (.so's) you want to install
 lib_LTLIBRARIES =
@@ -82,6 +84,10 @@ time_hash_map_SOURCES =				\
    src/google/sparsehash/config.h		\
    src/hash_map.h				\
    $(googleinclude_HEADERS)
+
+# If tcmalloc is installed, use it with time_hash_map; it gives us
+# heap-usage statistics for the hash_map routines, which is very nice
+time_hash_map_LDADD = @tcmalloc@
 
 ## ^^^^ END OF RULES TO MAKE THE LIBRARIES, BINARIES, AND UNITTESTS
 

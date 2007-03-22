@@ -795,6 +795,18 @@ void insert(InputIterator f, InputIterator l) </pre> <A href="#1">[2]</A>
 
 <TR>
 <TD VAlign=top>
+   <tt>void clear_no_resize()</tt>
+</TD>
+<TD VAlign=top>
+   <tt>dense_hash_map</tt>
+</TD>
+<TD VAlign=top>
+   <A HREF="#new">See below</A>.
+</TD>
+</TR>
+
+<TR>
+<TD VAlign=top>
    <tt>iterator find(const key_type&amp; k) const</tt>
 </TD>
 <TD VAlign=top>
@@ -944,6 +956,20 @@ Associative Container</A> requirements, but are specific to
    Clears the distinguished "deleted" key.  After this is called,
    calls to <tt>erase()</tt> are not valid on this object.
    <A href="#4">[4]</A>
+</TD>
+</TR>
+
+<TR>
+<TD VAlign=top>
+   <tt>void clear_no_resize()</tt>
+</TD>
+<TD VAlign=top>
+   Clears the hashtable like <tt>clear()</tt> does, but does not
+   recover the memory used for hashtable buckets.  (The memory
+   used by the <i>items</i> in the hashtable is still recovered.)
+   This can save time for applications that want to reuse a
+   <tt>dense_hash_set</tt> many times, each time with a similar number
+   of objects.
 </TD>
 </TR>
 

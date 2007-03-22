@@ -18,6 +18,9 @@
 /* Define to 1 if you have the <ext/stl_hash_fun.h> header file. */
 #undef HAVE_EXT_STL_HASH_FUN_H
 
+/* Define to 1 if you have the <google/malloc_extension.h> header file. */
+#undef HAVE_GOOGLE_MALLOC_EXTENSION_H
+
 /* Define to 1 if you have the <hash_fun.h> header file. */
 #undef HAVE_HASH_FUN_H
 

@@ -102,6 +102,7 @@
 #include <algorithm>            // For swap(), eg
 #include <iostream>             // For cerr
 #include <memory>               // For uninitialized_fill, uninitialized_copy
+#include <utility>              // for pair<>
 #include <iterator>             // for facts about iterator tags
 #include <google/type_traits.h> // for true_type, integral_constant, etc.
 
@@ -256,8 +257,8 @@ class dense_hashtable {
 
   // Minimum size we're willing to let hashtables be.
   // Must be a power of two, and at least 4.
-  // Note, however, that for a given hashtable, the minimum size is
-  // determined by the first constructor arg, and may be >HT_MIN_BUCKETS.
+  // Note, however, that for a given hashtable, the initial size is a
+  // function of the first constructor arg, and may be >HT_MIN_BUCKETS.
   static const size_t HT_MIN_BUCKETS  = 32;
 
 
@@ -626,6 +627,18 @@ class dense_hashtable {
     num_deleted = 0;
   }
 
+  // Clear the table without resizing it.
+  // Mimicks the stl_hashtable's behaviour when clear()-ing in that it
+  // does not modify the bucket count
+  void clear_no_resize() {
+    if (table) {
+      set_empty(0, num_buckets);
+    }
+    // don't consider to shrink before another erase()
+    reset_thresholds();
+    num_elements = 0;
+    num_deleted = 0;
+  }
 
   // LOOKUP ROUTINES
  private:

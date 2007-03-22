@@ -22,13 +22,13 @@ See the html files in the doc directory for small example programs
 that use these classes.  It's enough to just include the header file:
 
    #include <google/sparse_hash_map> // or sparse_hash_set, dense_hash_map, ...
-   std::sparse_hash_set<int, int> number_mapper;
+   google::sparse_hash_set<int, int> number_mapper;
 
 and use the class the way you would other hash-map implementations.
 (Though see "API" below for caveats.)
 
 By default (you can change it via a flag to ./configure), these hash
-implementations are defined in the std namespace.
+implementations are defined in the google namespace.
 
 API
 ---
@@ -54,15 +54,7 @@ hashtable implementations, in the following major ways:
    elements into a dense_hash_map or sparse_hash_map whose key is
    equal to the deleted-key.
 
-3) Both dense_hash_map and sparse_hash_map must take "plain old
-   data" for the key and value.  For keys this is usually true: basic
-   C types and C++ types like string are both acceptable, for
-   instance.  For values, this is often true.  If it is not, consider
-   storing a pointer to the value in the hash-map, rather than the
-   value itself.  This also yields speed improvements, since the
-   hashtable will have less memory to move around when it resizes.
-
-4) These hash-map implementation support I/O.  See below.
+3) These hash-map implementation support I/O.  See below.
 
 There are also some smaller differences:
 
@@ -100,7 +92,7 @@ methods on the hashtable:
    ht.write_nopointer_data(fp);
 
 Reading in this data is equally simple:
-   sparse_hash_map<...> ht;
+   google::sparse_hash_map<...> ht;
    ht.read_metadata(fp);
    ht.read_nopointer_data(fp);
 
@@ -116,7 +108,7 @@ In addition to the hash-map and hash-set classes, this package also
 provides sparsetable.h, an array implementation that uses space
 proportional to the number of elements in the array, rather than the
 maximum element index.  It uses very little space overhead: 1 bit per
-entry.  See sparsetable.html for the API.
+entry.  See doc/sparsetable.html for the API.
 
 RESOURCE USAGE
 --------------
@@ -149,3 +141,4 @@ and performance data.
 
 ---
 16 March 2005
+(Last updated: 20 March 2007)

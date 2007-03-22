@@ -167,10 +167,40 @@ static void stamp_run(int iters) {
   printf("Current time (GMT): %s", asctime(gmtime(&now)));
 }
 
-static void report(char const* title, double t, int iters) {
-  printf("%-20s %8.02f ns\n",
-         title,
-         (t * 1000000000.0 / iters));
+// If you have google-perftools (http://code.google.com/p/google-perftools), 
+// then you can figure out how much memory these implementations use
+// as well.
+#ifdef HAVE_GOOGLE_MALLOC_EXTENSION_H
+#include <google/malloc_extension.h>
+
+static size_t CurrentMemoryUsage() {
+  size_t result;
+  if (MallocExtension::instance()->GetNumericProperty(
+          "generic.current_allocated_bytes",
+          &result)) {
+    return result;
+  } else {
+    return 0;
+  }
+}
+
+#else  /* not HAVE_GOOGLE_MALLOC_EXTENSION_H */
+static size_t CurrentMemoryUsage() { return 0; }
+
+#endif
+
+static void report(char const* title, double t,
+                   int iters,
+                   size_t heap_growth) {
+  // Construct heap growth report text if applicable
+  char heap[100];
+  if (heap_growth > 0) {
+    snprintf(heap, sizeof(heap), "%8.1f MB", heap_growth / 1048576.0);
+  } else {
+    heap[0] = '\0';
+  }
+  
+  printf("%-20s %8.1f ns %s\n", title, (t * 1000000000.0 / iters), heap);
 }
 
 template<class MapType>
@@ -179,13 +209,14 @@ static void time_map_grow(int iters) {
   Rusage t;
 
   SET_EMPTY_KEY(set, -2);
+  const size_t start = CurrentMemoryUsage();
   t.Reset();
   for (int i = 0; i < iters; i++) {
     set[i] = i+1;
   }
   double ut = t.UserTime();
-
-  report("map_grow", ut, iters);
+  const size_t finish = CurrentMemoryUsage();
+  report("map_grow", ut, iters, finish - start);
 }
 
 template<class MapType>
@@ -194,14 +225,15 @@ static void time_map_grow_predicted(int iters) {
   Rusage t;
 
   SET_EMPTY_KEY(set, -2);
+  const size_t start = CurrentMemoryUsage();
   RESIZE(set, iters);
   t.Reset();
   for (int i = 0; i < iters; i++) {
     set[i] = i+1;
   }
   double ut = t.UserTime();
-
-  report("map_predict/grow", ut, iters);
+  const size_t finish = CurrentMemoryUsage();
+  report("map_predict/grow", ut, iters, finish - start);
 }
 
 template<class MapType>
@@ -221,7 +253,7 @@ static void time_map_replace(int iters) {
   }
   double ut = t.UserTime();
 
-  report("map_replace", ut, iters);
+  report("map_replace", ut, iters, 0);
 }
 
 template<class MapType>
@@ -243,7 +275,25 @@ static void time_map_fetch(int iters) {
   }
   double ut = t.UserTime();
 
-  report("map_fetch", ut, iters);
+  report("map_fetch", ut, iters, 0);
+}
+
+template<class MapType>
+static void time_map_fetch_empty(int iters) {
+  MapType set;
+  Rusage t;
+  int r;
+  int i;
+
+  SET_EMPTY_KEY(set, -2);
+  r = 1;
+  t.Reset();
+  for (i = 0; i < iters; i++) {
+    r ^= (set.find(i) != set.end());
+  }
+  double ut = t.UserTime();
+
+  report("map_fetch_empty", ut, iters, 0);
 }
 
 template<class MapType>
@@ -264,16 +314,18 @@ static void time_map_remove(int iters) {
   }
   double ut = t.UserTime();
 
-  report("map_remove", ut, iters);
+  report("map_remove", ut, iters, 0);
 }
 
 template<class MapType>
-static void measure_map(int iters) {
-  time_map_grow<MapType>(iters);
-  time_map_grow_predicted<MapType>(iters);
-  time_map_replace<MapType>(iters);
-  time_map_fetch<MapType>(iters);
-  time_map_remove<MapType>(iters);
+static void measure_map(const char* label, int iters) {
+  printf("\n%s:\n", label);
+  if (1) time_map_grow<MapType>(iters);
+  if (1) time_map_grow_predicted<MapType>(iters);
+  if (1) time_map_replace<MapType>(iters);
+  if (1) time_map_fetch<MapType>(iters);
+  if (1) time_map_fetch_empty<MapType>(iters);
+  if (1) time_map_remove<MapType>(iters);
 }
 
 int main(int argc, char** argv) {
@@ -289,17 +341,10 @@ int main(int argc, char** argv) {
          "                 reported are wall-clock time, not user time\n");
 #endif
 
-  printf("\nSPARSE_HASH_MAP:\n");
-  measure_map< sparse_hash_map<int, int> >(iters);
-
-  printf("\nDENSE_HASH_MAP:\n");
-  measure_map< dense_hash_map<int, int> >(iters);
-
-  printf("\nSTANDARD HASH_MAP:\n");
-  measure_map< hash_map<int, int> >(iters);
-
-  printf("\nSTANDARD MAP:\n");
-  measure_map< map<int, int> >(iters);
+  if (1) measure_map< sparse_hash_map<int, int> >("SPARSE_HASH_MAP", iters);
+  if (1) measure_map< dense_hash_map<int, int> >("DENSE_HASH_MAP", iters);
+  if (1) measure_map< hash_map<int, int> >("STANDARD HASH_MAP", iters);
+  if (1) measure_map< map<int, int> >("STANDARD MAP", iters);
 
   return 0;
 }

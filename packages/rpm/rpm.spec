@@ -47,6 +47,7 @@ rm -rf $RPM_BUILD_ROOT
 %files
 %defattr(-,root,root)
 
-%doc AUTHORS COPYING ChangeLog INSTALL NEWS README TODO doc/dense_hash_map.html doc/dense_hash_set.html doc/sparse_hash_map.html doc/sparse_hash_set.html doc/sparsetable.html doc/implementation.html doc/performance.html
+%doc AUTHORS COPYING ChangeLog INSTALL NEWS README TODO doc/dense_hash_map.html doc/dense_hash_set.html doc/sparse_hash_map.html doc/sparse_hash_set.html doc/sparsetable.html doc/implementation.html doc/performance.html doc/index.html doc/designstyle.css
+
 
 %{prefix}/include/google

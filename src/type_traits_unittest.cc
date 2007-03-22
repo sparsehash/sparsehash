@@ -103,6 +103,13 @@ template<typename A>
 struct type_equals_<A, A> : public GOOGLE_NAMESPACE::true_type {
 };
 
+// This assertion produces errors like "error: invalid use of
+// undefined type 'struct <unnamed>::AssertTypesEq<const int, int>'"
+// when it fails.
+template<typename T, typename U> struct AssertTypesEq;
+template<typename T> struct AssertTypesEq<T, T> {};
+#define COMPILE_ASSERT_TYPES_EQ(T, U) AssertTypesEq<T, U>()
+
 class TypeTraitsTest {
  public:
   static void TestIsInteger() {
@@ -261,22 +268,16 @@ class TypeTraitsTest {
 
   // Tests remove_pointer.
   static void TestRemovePointer() {
-    bool value = false;
-    // Verify that remove_pointer<int*>::type is int.
-    value = type_equals_<GOOGLE_NAMESPACE::remove_pointer<int*>::type, int>::value;
-    ASSERT_TRUE(value);
-    // Verify that remove_pointer<const int*>::type is int.
-    value = type_equals_<GOOGLE_NAMESPACE::remove_pointer<const int*>::type, int>::value;
-    ASSERT_TRUE(value);
-    // Verify that remove_pointer<int*>::type is not bool.
-    value = type_equals_<GOOGLE_NAMESPACE::remove_pointer<int*>::type, bool>::value;
-    ASSERT_FALSE(value);
+    COMPILE_ASSERT_TYPES_EQ(int, GOOGLE_NAMESPACE::remove_pointer<int>::type);
+    COMPILE_ASSERT_TYPES_EQ(int, GOOGLE_NAMESPACE::remove_pointer<int*>::type);
+    COMPILE_ASSERT_TYPES_EQ(const int, GOOGLE_NAMESPACE::remove_pointer<const int*>::type);
+    COMPILE_ASSERT_TYPES_EQ(int, GOOGLE_NAMESPACE::remove_pointer<int* const>::type);
+    COMPILE_ASSERT_TYPES_EQ(int, GOOGLE_NAMESPACE::remove_pointer<int* volatile>::type);
   }
 
 };  // end class TypeTraitsTest
 
 }   // end anonymous namespace
-
 
 
 int main(int argc, char **argv) {
