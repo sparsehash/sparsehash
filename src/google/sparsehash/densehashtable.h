@@ -42,8 +42,6 @@
 // the hashtable is insert_only until you set it again.  The empty
 // value however can't be changed.)
 //
-// This code is possibly a bit faster if the empty value is 0.
-//
 // To minimize allocation and pointer overhead, we use internal
 // probing, in which the hashtable is a single table, and collisions
 // are resolved by trying to insert again in another bucket.  The
@@ -51,11 +49,9 @@
 // (which suffers, alas, from clumping) and quadratic probing, which
 // is what we implement by default.
 //
-// Type requirements: T must be a Plain Old Data Type (POD Type), since
-// we use placement new but never call a destructor.  To ensure this,
-// you must defined a __type_traits struct for T if it is not a basic
-// type (see type_traits.h).  Also, those imposed by the requirements
-// of Random Access Container.
+// Type requirements: value_type is required to be Copy Constructible
+// and Default Constructible. It is not required to be (and commonly
+// isn't) Assignable.
 //
 // You probably shouldn't use this code directly.  Use
 // <google/dense_hash_map> or <google/dense_hash_set> instead.
@@ -102,7 +98,11 @@
 
 #include <google/sparsehash/config.h>
 #include <assert.h>
+#include <stdlib.h>             // for abort()
 #include <algorithm>            // For swap(), eg
+#include <iostream>             // For cerr
+#include <memory>               // For uninitialized_fill, uninitialized_copy
+#include <google/type_traits.h> // for true_type, integral_constant, etc.
 
 _START_GOOGLE_NAMESPACE_
 
@@ -214,7 +214,7 @@ struct dense_hashtable_const_iterator {
   const_iterator& operator++()   {
     assert(pos != end); ++pos; advance_past_empty_and_deleted(); return *this;
   }
-  const_iterator operator++(int) { iterator tmp(*this); ++*this; return tmp; }
+  const_iterator operator++(int) { const_iterator tmp(*this); ++*this; return tmp; }
 
   // Comparison.
   bool operator==(const const_iterator& it) const { return pos == it.pos; }
@@ -280,14 +280,17 @@ class dense_hashtable {
 
   // Annoyingly, we can't copy values around, because they might have
   // const components (they're probably pair<const X, Y>).  We use
-  // placement new to get around this.  Arg.
+  // explicit destructor invocation and placement new to get around
+  // this.  Arg.
  private:
-  void set_value(value_type* dst, const value_type src) {
+  void set_value(value_type* dst, const value_type& src) {
+    dst->~value_type();
     new(dst) value_type(src);
   }
 
-  void set_key(key_type* dst, const key_type src) {
-    new(dst) key_type(src);   // used for set_deleted_key(), etc
+  void destroy_buckets(size_type first, size_type last) {
+    for ( ; first != last; ++first)
+      table[first].~value_type();
   }
 
   // DELETE HELPER FUNCTIONS
@@ -306,11 +309,11 @@ class dense_hashtable {
   }
 
  public:
-  void set_deleted_key(const key_type &key) {
+  void set_deleted_key(const value_type &val) {
     // It's only safe to change what "deleted" means if we purge deleted guys
     squash_deleted();
     use_deleted = true;
-    set_key(&delkey, key);            // save the key
+    set_value(&delval, val);
   }
   void clear_deleted_key() {
     squash_deleted();
@@ -323,22 +326,23 @@ class dense_hashtable {
     // The num_deleted test is crucial for read(): after read(), the ht values
     // are garbage, and we don't want to think some of them are deleted.
     return (use_deleted && num_deleted > 0 &&
-            equals(delkey, get_key(table[bucknum])));
+            equals(get_key(delval), get_key(table[bucknum])));
   }
   bool test_deleted(const iterator &it) const {
     return (use_deleted && num_deleted > 0 &&
-            equals(delkey, get_key(*it)));
+            equals(get_key(delval), get_key(*it)));
   }
   bool test_deleted(const const_iterator &it) const {
     return (use_deleted && num_deleted > 0 &&
-            equals(delkey, get_key(*it)));
+            equals(get_key(delval), get_key(*it)));
   }
   // Set it so test_deleted is true.  true if object didn't used to be deleted
   // See below (at erase()) to explain why we allow const_iterators
   bool set_deleted(const_iterator &it) {
     assert(use_deleted);             // bad if set_deleted_key() wasn't called
     bool retval = !test_deleted(it);
-    set_key(const_cast<key_type*>(&get_key(*it)), delkey);
+    // &* converts from iterator to value-type
+    set_value(const_cast<value_type*>(&(*it)), delval);
     return retval;
   }
   // Set it so test_deleted is false.  true if object used to be deleted
@@ -359,51 +363,47 @@ class dense_hashtable {
   // True if the item at position bucknum is "empty" marker
   bool test_empty(size_type bucknum) const {
     assert(use_empty);              // we always need to know what's empty!
-    return equals(emptykey, get_key(table[bucknum]));
+    return equals(get_key(emptyval), get_key(table[bucknum]));
   }
   bool test_empty(const iterator &it) const {
     assert(use_empty);              // we always need to know what's empty!
-    return equals(emptykey, get_key(*it));
+    return equals(get_key(emptyval), get_key(*it));
   }
   bool test_empty(const const_iterator &it) const {
     assert(use_empty);              // we always need to know what's empty!
-    return equals(emptykey, get_key(*it));
+    return equals(get_key(emptyval), get_key(*it));
   }
 
  private:
   // You can either set a range empty or an individual element
   void set_empty(size_type bucknum) {
     assert(use_empty);
-    set_key(const_cast<key_type*>(&get_key(table[bucknum])), emptykey);
+    set_value(&table[bucknum], emptyval);
+  }
+  void fill_range_with_empty(value_type* table_start, value_type* table_end) {
+    // Like set_empty(range), but doesn't destroy previous contents
+    STL_NAMESPACE::uninitialized_fill(table_start, table_end, emptyval);
   }
   void set_empty(size_type buckstart, size_type buckend) {
     assert(use_empty);
-    if ( empty_is_zero )          // we can empty a lot of buckets at once
-      memset(table + buckstart, 0, (buckend-buckstart) * sizeof(*table));
-    else
-      for ( ; buckstart < buckend; buckstart++ )
-        set_empty(buckstart);
+    destroy_buckets(buckstart, buckend);
+    fill_range_with_empty(table + buckstart, table + buckend);
   }
 
  public:
-  void set_empty_key(const key_type &key) {
+  // TODO(csilvers): change all callers of this to pass in a key instead,
+  //                 and take a const key_type instead of const value_type.
+  void set_empty_key(const value_type &val) {
     // Once you set the empty key, you can't change it
     assert(!use_empty);
     use_empty = true;
-    set_key(&emptykey, key);
-    empty_is_zero = true;                    // true if key is all 0's
-    for ( size_t i = 0; i < sizeof(emptykey); ++i )
-      if ( (reinterpret_cast<const char *>(&emptykey))[i] != 0 ) {
-        empty_is_zero = false;               // won't be able to optimize :-(
-        break;
-      }
-    empty_is_zero = false;                   // empty heuristic seems to hurt
+    set_value(&emptyval, val);
 
     assert(!table);                  // must set before first use
     // num_buckets was set in constructor even though table was NULL
     table = (value_type *) malloc(num_buckets * sizeof(*table));
     assert(table);
-    set_empty(0, num_buckets);
+    fill_range_with_empty(table, table + num_buckets);
   }
 
   // FUNCTIONS CONCERNING SIZE
@@ -414,6 +414,7 @@ class dense_hashtable {
   bool empty() const          { return size() == 0; }
   size_type bucket_count() const      { return num_buckets; }
   size_type max_bucket_count() const  { return max_size(); }
+  size_type nonempty_bucket_count() const { return num_elements; }
 
  private:
   // Because of the above, size_type(-1) is never legal; use it for errors
@@ -464,16 +465,40 @@ class dense_hashtable {
     }
   }
 
+  // Increase number of buckets, assuming value_type has trivial
+  // copy constructor and assignment operator
+  void expand_array(size_t resize_to, true_type) {
+    table = (value_type *) realloc(table, resize_to * sizeof(value_type));
+    assert(table);
+    fill_range_with_empty(table + num_buckets, table + resize_to);
+  }
+
+  // Increase number of buckets, without special assumptions about value_type.
+  // TODO(austern): make this exception safe. Handle exceptions from
+  // value_type's copy constructor.
+  void expand_array(size_t resize_to, false_type) {
+    value_type* new_table =
+      (value_type *) malloc(resize_to * sizeof(value_type));
+    assert(new_table);
+    STL_NAMESPACE::uninitialized_copy(table, table + num_buckets, new_table);
+    fill_range_with_empty(new_table + num_buckets, new_table + resize_to);
+    destroy_buckets(0, num_buckets);
+    free(table);
+    table = new_table;
+  }
+
   // Used to actually do the rehashing when we grow/shrink a hashtable
   void copy_from(const dense_hashtable &ht, size_type min_buckets_wanted = 0) {
     clear();            // clear table, set num_deleted to 0
 
     // If we need to change the size of our table, do it now
     const size_type resize_to = min_size(ht.size(), min_buckets_wanted);
-    if ( resize_to > bucket_count() ) {      // we don't have enough buckets
-      table = (value_type *) realloc(table, resize_to * sizeof(*table));
-      assert(table != NULL);
-      set_empty(num_buckets, resize_to);     // empty everything between them
+    if ( resize_to > bucket_count() ) { // we don't have enough buckets
+      typedef integral_constant<bool,
+                                (has_trivial_copy<value_type>::value &&
+                                 has_trivial_assign<value_type>::value)>
+        is_simple_type;
+      expand_array(resize_to, is_simple_type());
       num_buckets = resize_to;
       reset_thresholds();
     }
@@ -520,10 +545,10 @@ class dense_hashtable {
                            const ExtractKey& ext = ExtractKey())
     : hash(hf), equals(eql), get_key(ext), num_deleted(0),
       use_deleted(false), use_empty(false),
-      empty_is_zero(false), delkey(), emptykey(),
+      delval(), emptyval(),
       table(NULL), num_buckets(min_size(0, n)), num_elements(0) {
-    // table is NULL until emptykey is set.  However, we set num_buckets
-    // here so we know how much space to allocate once emptykey is set
+    // table is NULL until emptyval is set.  However, we set num_buckets
+    // here so we know how much space to allocate once emptyval is set
     reset_thresholds();
   }
 
@@ -532,8 +557,8 @@ class dense_hashtable {
   dense_hashtable(const dense_hashtable& ht, size_type min_buckets_wanted = 0)
     : hash(ht.hash), equals(ht.equals), get_key(ht.get_key), num_deleted(0),
       use_deleted(ht.use_deleted), use_empty(ht.use_empty),
-      empty_is_zero(ht.empty_is_zero), delkey(ht.delkey), emptykey(ht.emptykey),
-      table(NULL), num_buckets(min_size(0, min_buckets_wanted)),
+      delval(ht.delval), emptyval(ht.emptyval),
+      table(NULL), num_buckets(0),
       num_elements(0) {
     reset_thresholds();
     copy_from(ht, min_buckets_wanted);   // copy_from() ignores deleted entries
@@ -547,15 +572,17 @@ class dense_hashtable {
     get_key = ht.get_key;
     use_deleted = ht.use_deleted;
     use_empty = ht.use_empty;
-    empty_is_zero = ht.empty_is_zero;
-    set_key(&delkey, ht.delkey);
-    set_key(&emptykey, ht.emptykey);
+    set_value(&delval, ht.delval);
+    set_value(&emptyval, ht.emptyval);
     copy_from(ht);                         // sets num_deleted to 0 too
     return *this;
   }
 
   ~dense_hashtable() {
-    if (table)  free(table);
+    if (table) {
+      destroy_buckets(0, num_buckets);
+      free(table);
+    }
   }
 
   // Many STL algorithms use swap instead of copy constructors
@@ -566,16 +593,15 @@ class dense_hashtable {
     STL_NAMESPACE::swap(num_deleted, ht.num_deleted);
     STL_NAMESPACE::swap(use_deleted, ht.use_deleted);
     STL_NAMESPACE::swap(use_empty, ht.use_empty);
-    STL_NAMESPACE::swap(empty_is_zero, ht.empty_is_zero);
-    { key_type tmp;     // for annoying reasons, swap() doesn't work
-      set_key(&tmp, delkey);
-      set_key(&delkey, ht.delkey);
-      set_key(&ht.delkey, tmp);
+    { value_type tmp;     // for annoying reasons, swap() doesn't work
+      set_value(&tmp, delval);
+      set_value(&delval, ht.delval);
+      set_value(&ht.delval, tmp);
     }
-    { key_type tmp;     // for annoying reasons, swap() doesn't work
-      set_key(&tmp, emptykey);
-      set_key(&emptykey, ht.emptykey);
-      set_key(&ht.emptykey, tmp);
+    { value_type tmp;     // for annoying reasons, swap() doesn't work
+      set_value(&tmp, emptyval);
+      set_value(&emptyval, ht.emptyval);
+      set_value(&ht.emptyval, tmp);
     }
     STL_NAMESPACE::swap(table, ht.table);
     STL_NAMESPACE::swap(num_buckets, ht.num_buckets);
@@ -586,11 +612,13 @@ class dense_hashtable {
 
   // It's always nice to be able to clear a table without deallocating it
   void clear() {
+    if (table)
+      destroy_buckets(0, num_buckets);
     num_buckets = min_size(0,0);          // our new size
     reset_thresholds();
     table = (value_type *) realloc(table, num_buckets * sizeof(*table));
     assert(table);
-    set_empty(0, num_buckets);
+    fill_range_with_empty(table, table + num_buckets);
     num_elements = 0;
     num_deleted = 0;
   }
@@ -774,7 +802,7 @@ class dense_hashtable {
   //
   // NOTE: These functions are currently TODO.  They've not been implemented.
   bool write_metadata(FILE *fp) {
-    squash_deleted();           // so we don't have to worry about delkey
+    squash_deleted();           // so we don't have to worry about delval
     return false;               // TODO
   }
 
@@ -787,7 +815,7 @@ class dense_hashtable {
     reset_thresholds();
     table = (value_type *) malloc(num_buckets * sizeof(*table));
     assert(table);
-    set_empty(0, num_buckets);
+    fill_range_with_empty(table, table + num_buckets);
     // TODO: read num_elements
     for ( size_type i = 0; i < num_elements; ++i ) {
       // TODO: read bucket_num
@@ -796,15 +824,16 @@ class dense_hashtable {
     return false;               // TODO
   }
 
-  // If your keys and values are simple enough, we can write them
-  // to disk for you.  "simple enough" means no pointers.
-  // However, we don't try to normalize endianness
+  // If your keys and values are simple enough, we can write them to
+  // disk for you.  "simple enough" means value_type is a POD type
+  // that contains no pointers.  However, we don't try to normalize
+  // endianness
   bool write_nopointer_data(FILE *fp) const {
     for ( const_iterator it = begin(); it != end(); ++it ) {
       // TODO: skip empty/deleted values
       if ( !fwrite(&*it, sizeof(*it), 1, fp) )  return false;
     }
-    return false;        // TODO
+    return false;
   }
 
   // When reading, we have to override the potential const-ness of *it
@@ -814,41 +843,19 @@ class dense_hashtable {
       if ( !fread(reinterpret_cast<void*>(&(*it)), sizeof(*it), 1, fp) )
         return false;
     }
-    return false;        // TODO
+    return false;
   }
 
  private:
-  // We need to enforce that our value_type is a Plain Old Data Type
-  // (so we know realloc and memmove will work).  We use traits to
-  // enforce this.  The following gives a compile-time error if
-  // is_POD_type is false (which is the default for user types).
-  //
-  // IF YOU GET AN ERROR HERE, make sure your class is a POD type,
-  // and if so tell the compiler via code similar to this:
-  // template<> struct __type_traits<classname> {
-  //   typedef __true_type    has_trivial_default_constructor;
-  //   typedef __true_type    has_trivial_copy_constructor;
-  //   typedef __true_type    has_trivial_assignment_operator;
-  //   typedef __true_type    has_trivial_destructor;
-  //   typedef __true_type    is_POD_type;
-  // };
-  //
-  // If this is part of a hash_map, you need to make sure both the
-  // Key and Value types are POD types, if they're user-defined.
-#ifdef UNDERSTANDS_TYPE_TRAITS
-  static __true_type * const enforce_pod;
-#endif
-
   // The actual data
   hasher hash;                      // required by hashed_associative_container
   key_equal equals;
   ExtractKey get_key;
   size_type num_deleted;        // how many occupied buckets are marked deleted
-  bool use_deleted;                          // false until delkey has been set
+  bool use_deleted;                          // false until delval has been set
   bool use_empty;                          // you must do this before you start
-  bool empty_is_zero;                   // can optimize this case when emptying
-  key_type delkey;                           // which key marks deleted entries
-  key_type emptykey;                          // which key marks unused entries
+  value_type delval;                         // which key marks deleted entries
+  value_type emptyval;                        // which key marks unused entries
   value_type *table;
   size_type num_buckets;
   size_type num_elements;
@@ -869,12 +876,6 @@ inline void swap(dense_hashtable<V,K,HF,ExK,EqK,A> &x,
                  dense_hashtable<V,K,HF,ExK,EqK,A> &y) {
   x.swap(y);
 }
-
-#ifdef UNDERSTANDS_TYPE_TRAITS
-template <class V, class K, class HF, class ExK, class EqK, class A>
-__true_type * const dense_hashtable<V,K,HF,ExK,EqK,A>::enforce_pod =
-static_cast<typename __type_traits<value_type>::is_POD_type *>(0);
-#endif
 
 #undef JUMP_
 

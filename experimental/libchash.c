@@ -822,7 +822,9 @@ static ulong DenseMemory(ulong cBuckets, ulong cOccupied)
 /*************************************************************************\
 | Hash()                                                                  |
 |     The hash function I use is due to Bob Jenkins (see                  |
-|     http://ourworld.compuserve.com/homepages/bob_jenkins/evahash.htm).  |
+|     http://burtleburtle.net/bob/hash/evahash.html                       |
+|     According to http://burtleburtle.net/bob/c/lookup2.c,               |
+|     his implementation is public domain.)                               |
 |     It takes 36 instructions, in 18 cycles if you're lucky.             |
 |        hashing depends on the fact the hashtable size is always a       |
 |     power of 2.  cBuckets is probably ht->cBuckets.                     |

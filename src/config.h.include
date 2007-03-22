@@ -9,6 +9,9 @@
 #undef HASH_NAMESPACE
 #undef HAVE_U_INT16_T
 #undef HAVE___UINT16
+#undef HAVE_LONG_LONG
+#undef HAVE_SYS_TYPES_H
+#undef HAVE_STDINT_H
 #undef HAVE_INTTYPES_H
 #undef HAVE_MEMCPY
 #undef HAVE_STDINT_H

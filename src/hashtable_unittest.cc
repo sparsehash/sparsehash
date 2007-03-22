@@ -105,6 +105,13 @@ struct Identity {
   const Value& operator()(const Value& v) const { return v; }
 };
 
+// Likewise, it's not standard to hash a string.  Luckily, it is a char*
+struct StrHash {
+  size_t operator()(const string& s) const {
+    return HASH_NAMESPACE::hash<const char*>()(s.c_str());
+  }
+};
+
 // Let us log the pairs that make up a hash_map
 template<class P1, class P2>
 ostream& operator<<(ostream& s, const pair<P1, P2>& p) {
@@ -119,9 +126,16 @@ struct strcmp_fnc {
   }
 };
 
+template <class T, class H, class I, class C, class A>
+static void set_empty_key(sparse_hashtable<T,T,H,I,C,A> *ht, T val) {
+}
 
-template <class SparseTable, class T>
-static void set_empty_key(SparseTable *sp, T val) {
+template <class T, class H, class C>
+static void set_empty_key(sparse_hash_set<T,H,C> *ht, T val) {
+}
+
+template <class K, class V, class H, class C>
+static void set_empty_key(sparse_hash_map<K,V,H,C> *ht, K val) {
 }
 
 template <class T, class H, class I, class C, class A>
@@ -245,6 +259,15 @@ static void write_item(FILE *fp, const pair<char*const,int> &val) {
   fwrite(val.first, strlen(val.first), 1, fp);
 }
 
+static void write_item(FILE *fp, const string &val) {
+  fwrite(val.data(), val.length(), 1, fp);   // \n serves to separate
+}
+
+// The weird 'const' declarations are desired by the compiler. Yucko.
+static void write_item(FILE *fp, const pair<const string,int> &val) {
+  fwrite(val.first.data(), val.first.length(), 1, fp);
+}
+
 static char* read_line(FILE* fp, char* line, int linesize) {
   if ( fgets(line, linesize, fp) == NULL )
     return NULL;
@@ -271,6 +294,18 @@ static void read_item(FILE *fp, pair<char*const,int> *val) {
   *p = strdup(line);
 }
 
+static void read_item(FILE *fp, const string* val) {
+  char line[1024];
+  read_line(fp, line, sizeof(line));
+  new(const_cast<string*>(val)) string(line);   // need to use placement new
+}
+
+static void read_item(FILE *fp, pair<const string,int> *val) {
+  char line[1024];
+  read_line(fp, line, sizeof(line));
+  new(const_cast<string*>(&val->first)) string(line);
+}
+
 static void free_item(char*const* val) {
   free(*val);
 }
@@ -279,13 +314,15 @@ static void free_item(pair<char*const,int> *val) {
   free(val->first);
 }
 
+static const string& getstrkey(const string& str) { return str; }
 
-// The read_write parameters specifies whether the read/write tests
-// should be performed. Note that densehashtable::write_metdata is not
-// implemented, so we only do the read/write tests for the
-// sparsehashtable varieties.
-template<class ht, class htint>
-void test(bool read_write) {
+static const string& getstrkey(const pair<const string, int> &p) {
+  return p.first;
+}
+
+// Performs tests where the hashtable's value type is assumed to be int.
+template <class htint>
+void test_int() {
   htint y(1000);
   htint z(64);
   set_empty_key(&y, 0xefefef);
@@ -356,7 +393,15 @@ void test(bool read_write) {
   y.clear();
   CHECK(y.empty());
   LOGF << "y has " << y.bucket_count() << " buckets\n";
+}
 
+// Performs tests where the hashtable's value type is assumed to be char*.
+// The read_write parameters specifies whether the read/write tests
+// should be performed. Note that densehashtable::write_metdata is not
+// implemented, so we only do the read/write tests for the
+// sparsehashtable varieties.
+template <class ht>
+void test_charptr(bool read_write) {
   ht w;
   set_empty_key(&w, (char*) NULL);
   insert(&w, const_cast<char **>(nwords),
@@ -468,11 +513,141 @@ void test(bool read_write) {
   }
 }
 
+// Perform tests where the hashtable's value type is assumed to
+// be string.
+// TODO(austern): factor out the bulk of test_charptr and test_string
+// into a common function.
+template <class ht>
+void test_string(bool read_write) {
+  ht w;
+  set_empty_key(&w, string("-*- empty key -*-"));
+  const int N = sizeof(nwords) / sizeof(*nwords);
+  string* nwords1 = new string[N];
+  for (int i = 0; i < N; ++i)
+    nwords1[i] = nwords[i];
+  insert(&w, nwords1, nwords1 + N);
+  delete[] nwords1;
+  LOGF << "w has " << w.size() << " items";
+  CHECK(w.size() == 2);
+  CHECK(w == w);
+
+  ht x;
+  set_empty_key(&x, string("-*- empty key -*-"));
+  long dict_size = 1;        // for size stats -- can't be 0 'cause of division
+
+  map<string, int> counts;
+  // Hash the dictionary
+  {
+    // automake says 'look for all data files in $srcdir.'  OK.
+    string filestr = (string(getenv("srcdir") ? getenv("srcdir") : ".") +
+                      "/src/words");
+    const char* file = filestr.c_str();
+    FILE *fp = fopen(file, "r");
+    if ( fp == NULL ) {
+      LOGF << "Can't open " << file << ", skipping dictionary hash...";
+    } else {
+      char line[1024];
+      while ( fgets(line, sizeof(line), fp) ) {
+        insert(&x, string(line));
+        counts[line] = 0;
+      }
+      LOGF << "Read " << x.size() << " words from " << file;
+      fclose(fp);
+      struct stat buf;
+      stat(file, &buf);
+      dict_size = buf.st_size;
+      LOGF << "Size of " << file << ": " << buf.st_size << " bytes";
+      for ( const char* const* word = words;
+            word < words + sizeof(words) / sizeof(*words);
+            ++word ) {
+        if (x.find(*word) == x.end()) {
+          CHECK(w.find(*word) != w.end());
+        } else {
+          CHECK(w.find(*word) == w.end());
+        }
+      }
+    }
+  }
+  CHECK(counts.size() == x.size());
+
+  // Save the hashtable.
+  if (read_write) {
+    const char* file = "/tmp/#hashtable_unittest_dicthash_str";
+    FILE *fp = fopen(file, "wb");
+    if ( fp == NULL ) {
+      // maybe we can't write to /tmp/.  Try the current directory
+      file = "#hashtable_unittest_dicthash_str";
+      fp = fopen(file, "wb");
+    }
+    if ( fp == NULL ) {
+      LOGF << "Can't open " << file << " skipping hashtable save...";
+    } else {
+      x.write_metadata(fp);        // this only writes meta-information
+      int count = 0;
+      for ( typename ht::iterator it = x.begin(); it != x.end(); ++it ) {
+        write_item(fp, *it);
+        ++count;
+      }
+      LOGF << "Wrote " << count << " words to " << file << "\n";
+      fclose(fp);
+      struct stat buf;
+      stat(file, &buf);
+      LOGF << "Size of " << file << ": " << buf.st_size << " bytes\n";
+      LOGF << STL_NAMESPACE::setprecision(3)
+           << "Hashtable overhead "
+           << (buf.st_size - dict_size) * 100.0 / dict_size
+           << "% ("
+           << (buf.st_size - dict_size) * 8.0 / count
+           << " bits/entry)\n";
+      x.clear();
+
+      // Load the hashtable
+      fp = fopen(file, "rb");
+      if ( fp == NULL ) {
+        LOGF << "Can't open " << file << " skipping hashtable reload...";
+      } else {
+        x.read_metadata(fp);      // reads metainformation
+        LOGF << "Hashtable size: " << x.size() << "\n";
+        int count = 0;
+        for ( typename ht::iterator it = x.begin(); it != x.end(); ++it ) {
+          read_item(fp, &(*it));
+          ++count;
+        }
+        LOGF << "Read " << count << " words from " << file << "\n";
+        fclose(fp);
+        unlink(file);
+        for ( const char* const* word = words;
+              word < words + sizeof(words) / sizeof(*words);
+              ++word ) {
+          if (x.find(*word) == x.end()) {
+            CHECK(w.find(*word) != w.end());
+          } else {
+            CHECK(w.find(*word) == w.end());
+          }
+        }
+      }
+    }
+  }
+}
+
+// The read_write parameters specifies whether the read/write tests
+// should be performed. Note that densehashtable::write_metdata is not
+// implemented, so we only do the read/write tests for the
+// sparsehashtable varieties.
+template<class ht, class htstr, class htint>
+void test(bool read_write) {
+  test_int<htint>();
+  test_string<htstr>(read_write);
+  test_charptr<ht>(read_write);
+}
+
 int main(int argc, char **argv) {
   // First try with the low-level hashtable interface
   LOGF << "\n\nTEST WITH DENSE_HASHTABLE\n\n";
   test<dense_hashtable<char *, char *, HASH_NAMESPACE::hash<char *>,
                        Identity<char *>, strcmp_fnc, allocator<char *> >,
+       dense_hashtable<string, string, StrHash,
+                       Identity<string>, equal_to<string>, allocator<string> >,
        dense_hashtable<int, int, HASH_NAMESPACE::hash<int>,
                        Identity<int>, equal_to<int>, allocator<int> > >(
                          false);
@@ -480,17 +655,21 @@ int main(int argc, char **argv) {
   // Now try with hash_set, which should be equivalent
   LOGF << "\n\nTEST WITH DENSE_HASH_SET\n\n";
   test<dense_hash_set<char *, HASH_NAMESPACE::hash<char *>, strcmp_fnc>,
+       dense_hash_set<string, StrHash>,
        dense_hash_set<int> >(false);
 
   // Now try with hash_map, which differs only in insert()
   LOGF << "\n\nTEST WITH DENSE_HASH_MAP\n\n";
   test<dense_hash_map<char *, int, HASH_NAMESPACE::hash<char *>, strcmp_fnc>,
-    dense_hash_map<int, int> >(false);
+       dense_hash_map<string, int, StrHash>,
+       dense_hash_map<int, int> >(false);
 
   // First try with the low-level hashtable interface
   LOGF << "\n\nTEST WITH SPARSE_HASHTABLE\n\n";
   test<sparse_hashtable<char *, char *, HASH_NAMESPACE::hash<char *>,
                        Identity<char *>, strcmp_fnc, allocator<char *> >,
+       sparse_hashtable<string, string, StrHash,
+                       Identity<string>, equal_to<string>, allocator<string> >,
        sparse_hashtable<int, int, HASH_NAMESPACE::hash<int>,
                        Identity<int>, equal_to<int>, allocator<int> > >(
                          true);
@@ -498,11 +677,13 @@ int main(int argc, char **argv) {
   // Now try with hash_set, which should be equivalent
   LOGF << "\n\nTEST WITH SPARSE_HASH_SET\n\n";
   test<sparse_hash_set<char *, HASH_NAMESPACE::hash<char *>, strcmp_fnc>,
+       sparse_hash_set<string, StrHash>,
        sparse_hash_set<int> >(true);
 
   // Now try with hash_map, which differs only in insert()
   LOGF << "\n\nTEST WITH SPARSE_HASH_MAP\n\n";
   test<sparse_hash_map<char *, int, HASH_NAMESPACE::hash<char *>, strcmp_fnc>,
+       sparse_hash_map<string, int, StrHash>,
        sparse_hash_map<int, int> >(true);
 
   LOGF << "\nAll tests pass.\n";

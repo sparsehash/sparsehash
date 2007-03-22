@@ -31,7 +31,7 @@
 // Author: Craig Silverstein
 //
 // This is just a very thin wrapper over densehashtable.h, just
-// like sgi stl's stl_hash_set is a very thin wrapper over 
+// like sgi stl's stl_hash_set is a very thin wrapper over
 // stl_hashtable.  The major thing we define is operator[], because
 // we have a concept of a data_type which stl_hashtable doesn't
 // (it only has a key and a value).
@@ -106,7 +106,6 @@ template <class Value,
           class Alloc = STL_NAMESPACE::allocator<Value> >
 class dense_hash_set {
  private:
-
   // Apparently identity is not stl-standard, so we define our own
   struct Identity {
     Value& operator()(Value& v) const { return v; }
@@ -149,7 +148,7 @@ class dense_hash_set {
                           const hasher& hf = hasher(),
                           const key_equal& eql = key_equal())
     : rep(n, hf, eql) { }
-  
+
   template <class InputIterator>
   dense_hash_set(InputIterator f, InputIterator l,
                  size_type n = 0,
@@ -179,7 +178,7 @@ class dense_hash_set {
   iterator find(const key_type& key) const           { return rep.find(key); }
 
   size_type count(const key_type& key) const         { return rep.count(key); }
-  
+
   pair<iterator, iterator> equal_range(const key_type& key) const {
     return rep.equal_range(key);
   }

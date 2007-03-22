@@ -43,14 +43,15 @@
 #include <stdlib.h>         // defines unlink() on some windows platforms(?)
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>         // for unlink()
+#include <string>
 #endif
 #include <google/sparsetable>
 
 using STL_NAMESPACE::string;
+using GOOGLE_NAMESPACE::sparsetable;
 
-// Many sparsetable operations return a size_t.  Unfortunately, there's
-// no portable way to pass a size_t to snprintf().  This macro casts these
-// things to an unsigned long, which should be big enough for a size_t.
+// Many sparsetable operations return a size_t.  Rather than have to
+// use PRIuS everywhere, we'll just cast to a "big enough" value.
 #define UL(x)    ( static_cast<unsigned long>(x) )
 
 
@@ -59,9 +60,7 @@ static char* out = outbuf;       // where to write next
 #define LEFT (outbuf + sizeof(outbuf) - out)
 
 #define TEST(cond)  out += snprintf(out, LEFT, #cond "? %s\n", \
-                                    cond ? "yes" : "no");
-
-using GOOGLE_NAMESPACE::sparsetable;
+                                    (cond) ? "yes" : "no");
 
 // replaces buf, in-place, with a version of buf that lacks \r's.
 static int strip_cr(char* buf, int len) {
@@ -73,7 +72,16 @@ static int strip_cr(char* buf, int len) {
   return w - buf;
 }
 
-int main(int argc, char **argv) {          // though we ignore the args
+inline string as_string(int n) {
+  const int N = 64;
+  char buf[N];
+  snprintf(buf, N, "%d", n);
+  return string(buf);
+}
+
+// Test sparsetable with a POD type, int.
+void test_int() {
+  out += snprintf(out, LEFT, "int test\n");
   sparsetable<int> x(7), y(70), z;
   x.set(4, 10);
   y.set(12, -12);
@@ -129,6 +137,41 @@ int main(int argc, char **argv) {          // though we ignore the args
     int *x6 = &(it[1]);
     *x6 = 66;
     out += snprintf(out, LEFT, "x[6]: %d\n", int(*(it + 1)));
+    // Let's test comparitors as well
+    TEST(it == it);
+    TEST(!(it != it));
+    TEST(!(it < it));
+    TEST(!(it > it));
+    TEST(it <= it);
+    TEST(it >= it);
+
+    sparsetable<int>::iterator it_minus_1 = it - 1;
+    TEST(!(it == it_minus_1));
+    TEST(it != it_minus_1);
+    TEST(!(it < it_minus_1));
+    TEST(it > it_minus_1);
+    TEST(!(it <= it_minus_1));
+    TEST(it >= it_minus_1);
+    TEST(!(it_minus_1 == it));
+    TEST(it_minus_1 != it);
+    TEST(it_minus_1 < it);
+    TEST(!(it_minus_1 > it));
+    TEST(it_minus_1 <= it);
+    TEST(!(it_minus_1 >= it));
+
+    sparsetable<int>::iterator it_plus_1 = it + 1;
+    TEST(!(it == it_plus_1));
+    TEST(it != it_plus_1);
+    TEST(it < it_plus_1);
+    TEST(!(it > it_plus_1));
+    TEST(it <= it_plus_1);
+    TEST(!(it >= it_plus_1));
+    TEST(!(it_plus_1 == it));
+    TEST(it_plus_1 != it);
+    TEST(!(it_plus_1 < it));
+    TEST(it_plus_1 > it);
+    TEST(!(it_plus_1 <= it));
+    TEST(it_plus_1 >= it);
   }
   {
     sparsetable<int>::const_iterator it;    // const version
@@ -147,6 +190,41 @@ int main(int argc, char **argv) {          // though we ignore the args
     out += snprintf(out, LEFT, "x[4]: %d\n", it[-1]);
     out += snprintf(out, LEFT, "x[5]: %d\n", *it);
     out += snprintf(out, LEFT, "x[6]: %d\n", *(it + 1));
+    // Let's test comparitors as well
+    TEST(it == it);
+    TEST(!(it != it));
+    TEST(!(it < it));
+    TEST(!(it > it));
+    TEST(it <= it);
+    TEST(it >= it);
+
+    sparsetable<int>::const_iterator it_minus_1 = it - 1;
+    TEST(!(it == it_minus_1));
+    TEST(it != it_minus_1);
+    TEST(!(it < it_minus_1));
+    TEST(it > it_minus_1);
+    TEST(!(it <= it_minus_1));
+    TEST(it >= it_minus_1);
+    TEST(!(it_minus_1 == it));
+    TEST(it_minus_1 != it);
+    TEST(it_minus_1 < it);
+    TEST(!(it_minus_1 > it));
+    TEST(it_minus_1 <= it);
+    TEST(!(it_minus_1 >= it));
+
+    sparsetable<int>::const_iterator it_plus_1 = it + 1;
+    TEST(!(it == it_plus_1));
+    TEST(it != it_plus_1);
+    TEST(it < it_plus_1);
+    TEST(!(it > it_plus_1));
+    TEST(it <= it_plus_1);
+    TEST(!(it >= it_plus_1));
+    TEST(!(it_plus_1 == it));
+    TEST(it_plus_1 != it);
+    TEST(!(it_plus_1 < it));
+    TEST(it_plus_1 > it);
+    TEST(!(it_plus_1 <= it));
+    TEST(it_plus_1 >= it);
   }
 
   TEST(x.begin() == x.begin() + 1 - 1);
@@ -251,7 +329,8 @@ int main(int argc, char **argv) {          // though we ignore the args
 
   // ----------------------------------------------------------------------
   // Test I/O
-  const char *file = "/tmp/#sparsetable.test";
+  string filestr = "/tmp/#sparsetable.test";
+  const char *file = filestr.c_str();
   FILE *fp = fopen(file, "wb");
   if ( fp == NULL ) {
     // maybe we can't write to /tmp/.  Try the current directory
@@ -281,7 +360,101 @@ int main(int argc, char **argv) {          // though we ignore the args
     out += snprintf(out, LEFT, "That's %lu set buckets\n", UL(y2.num_nonempty()));
   }
   unlink(file);
+}
 
+// Test sparsetable with a non-POD type, std::string
+void test_string() {
+  out += snprintf(out, LEFT, "string test\n");
+  sparsetable<string> x(7), y(70), z;
+  x.set(4, "foo");
+  y.set(12, "orange");
+  y.set(47, "grape");
+  y.set(48, "pear");
+  y.set(49, "apple");
+
+  // ----------------------------------------------------------------------
+  // Test the plain iterators
+
+  for ( sparsetable<string>::iterator it = x.begin(); it != x.end(); ++it ) {
+    out += snprintf(out, LEFT, "x[%lu]: %s\n",
+                    UL(it - x.begin()), static_cast<string>(*it).c_str());
+  }
+  for ( sparsetable<string>::iterator it = z.begin(); it != z.end(); ++it ) {
+    out += snprintf(out, LEFT, "z[%lu]: %s\n",
+                    UL(it - z.begin()), static_cast<string>(*it).c_str());
+  }
+
+  TEST(x.begin() == x.begin() + 1 - 1);
+  TEST(x.begin() < x.end());
+  TEST(z.begin() < z.end());
+  TEST(z.begin() <= z.end());
+  TEST(z.begin() == z.end());
+
+  // ----------------------------------------------------------------------
+  // Test the non-empty iterators
+    for ( sparsetable<string>::nonempty_iterator it = x.nonempty_begin(); it != x.nonempty_end(); ++it ) {
+    out += snprintf(out, LEFT, "x[??]: %s\n", it->c_str());
+  }
+  for ( sparsetable<string>::const_nonempty_iterator it = y.nonempty_begin(); it != y.nonempty_end(); ++it ) {
+    out += snprintf(out, LEFT, "y[??]: %s\n", it->c_str());
+  }
+  for ( sparsetable<string>::nonempty_iterator it = z.nonempty_begin(); it != z.nonempty_end(); ++it ) {
+    out += snprintf(out, LEFT, "z[??]: %s\n", it->c_str());
+  }
+
+  // ----------------------------------------------------------------------
+  // Test sparsetable functions
+  out += snprintf(out, LEFT, "x has %lu/%lu buckets, y %lu/%lu, z %lu/%lu\n",
+                  UL(x.num_nonempty()), UL(x.size()),
+                  UL(y.num_nonempty()), UL(y.size()),
+                  UL(z.num_nonempty()), UL(z.size()));
+
+  y.resize(48);              // should get rid of 48 and 49
+  y.resize(70);              // 48 and 49 should still be gone
+  out += snprintf(out, LEFT, "y shrank and grew: it's now %lu/%lu\n",
+                  UL(y.num_nonempty()), UL(y.size()));
+  out += snprintf(out, LEFT, "y[12] = %s, y.get(12) = %s\n",
+                  static_cast<string>(y[12]).c_str(), y.get(12).c_str());
+  y.erase(12);
+  out += snprintf(out, LEFT, "y[12] cleared.  y now %lu/%lu.  "
+                  "y[12] = %s, y.get(12) = %s\n",
+                  UL(y.num_nonempty()), UL(y.size()),
+                  static_cast<string>(y[12]).c_str(),
+                  static_cast<string>(y.get(12)).c_str());
+  swap(x, y);
+
+  y.clear();
+  TEST(y == z);
+
+  y.resize(70);
+  for ( int i = 10; i < 40; ++i )
+    y.set(i, as_string(-i));
+  y.erase(y.begin() + 15, y.begin() + 30);
+  y.erase(y.begin() + 34);
+  y.erase(12);
+  y.resize(38);
+  y.resize(10000);
+  y.set(9898, as_string(-9898));
+  for ( sparsetable<string>::const_iterator it = y.begin(); it != y.end(); ++it ) {
+    if ( y.test(it) )
+      out += snprintf(out, LEFT, "y[%lu] is set\n", UL(it - y.begin()));
+  }
+  out += snprintf(out, LEFT, "That's %lu set buckets\n", UL(y.num_nonempty()));
+
+  out += snprintf(out, LEFT, "Starting from y[32]...\n");
+  for ( sparsetable<string>::const_nonempty_iterator it = y.get_iter(32);
+        it != y.nonempty_end(); ++it )
+    out += snprintf(out, LEFT, "y[??] = %s\n", it->c_str());
+
+  out += snprintf(out, LEFT, "From y[32] down...\n");
+  for ( sparsetable<string>::nonempty_iterator it = y.get_iter(32);
+        it != y.nonempty_begin(); )
+    out += snprintf(out, LEFT, "y[??] = %s\n", (*--it).c_str());
+}
+
+int main(int argc, char **argv) {          // though we ignore the args
+  test_int();
+  test_string();
   // Finally, check to see if our output (in out) is what it's supposed to be.
   char expected[sizeof(outbuf) + 10];
   string filename = (string(getenv("srcdir") ? getenv("srcdir") : ".") +

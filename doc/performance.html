@@ -6,6 +6,8 @@
 
 <BODY>
 
+<H2>Performance Numbers</H2>
+
 <p>Here are some performance numbers from an example desktop machine,
 taken from a version of time_hash_map that was instrumented to also
 report memory allocation information (this modification is not
@@ -61,6 +63,33 @@ map_fetch                 113 ns
 map_remove                238 ns
 memory used in map_grow   236.8081 Mbytes
 </pre>
+
+
+<H2><A name="hashfn">A Note on Hash Functions</A></H2>
+
+<p>For good performance, the Google hash routines depend on a good
+hash function: one that distributes data evenly.  Many hashtable
+implementations come with sub-optimal hash functions that can degrade
+performance.  For instance, the hash function given in Knuth's _Art of
+Computer Programming_, and the default string hash function in SGI's
+STL implementation, both distribute certain data sets unevenly,
+leading to poor performance.</p>
+
+<p>As an example, in one test of the default SGI STL string hash
+function against the Hsieh hash function (see below), for a particular
+set of string keys, the Hsieh function resulted in hashtable lookups
+that were 20 times as fast as the STLPort hash function.  The string
+keys were chosen to be "hard" to hash well, so these results may not
+be typical, but they are suggestive.</p>
+
+<p>There has been much research over the years into good hash
+functions.  Here are some hash functions of note.</p>
+
+<ul>
+  <li> Bob Jenkins: <A HREF="http://burtleburtle.net/bob/hash/">http://burtleburtle.net/bob/hash/</A>
+  <li> Paul Hsieh: <A HREF="http://www.azillionmonkeys.com/qed/hash.html">http://www.azillionmonkeys.com/qed/hash.html</A>
+  <li> Fowler/Noll/Vo (FNV): <A HREF="http://www.isthe.com/chongo/tech/comp/fnv/">http://www.isthe.com/chongo/tech/comp/fnv/</A>
+</ul>
 
 </body>
 </html>

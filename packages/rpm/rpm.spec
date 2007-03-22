@@ -15,8 +15,8 @@ Packager: Google <opensource@google.com>
 Source: http://goog-sparsehash.sourceforge.net/%{NAME}-%{PACKAGE_VERSION}.tar.gz
 Distribution: Redhat 7 and above.
 Buildroot: %{_tmppath}/%{name}-root
-Docdir: %prefix/doc
 Prefix: %prefix
+Buildarch: noarch
 
 %description
 The %name package contains several hash-map implementations, similar

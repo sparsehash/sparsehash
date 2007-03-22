@@ -69,7 +69,7 @@ distinguished "empty key" -- that may not be easy for all
 applications to satisfy.</p>
 
 <p>This class is appropriate for applications that need speedy access
-to relatively small "dictionaries" stored in memory, and for
+to relatively small "dictionaries" stored in memory, or for
 applications that need these dictionaries to be persistent. <A
 HREF="#io">[implementation note]</A>)</p>
 
@@ -79,7 +79,7 @@ HREF="#io">[implementation note]</A>)</p>
 <pre>
 #include &lt;google/dense_hash_map&gt;
 
-using std::dense_hash_map;      // namespace where class lives by default
+using google::dense_hash_map;      // namespace where class lives by default
 
 struct eqstr
 {
@@ -117,9 +117,8 @@ int main()
 
 <h3>Definition</h3>
 
-Defined in the header <A
-href="dense_hash_map.h">dense_hash_map.h</A>.  This class is not
-part of the C++ standard.
+Defined in the header <A href="dense_hash_map">dense_hash_map</A>.
+This class is not part of the C++ standard.
 
 
 <h3>Template parameters</h3>
@@ -160,6 +159,9 @@ part of the C++ standard.
 <TD VAlign=top>
    The <A href="http://www.sgi.com/tech/stl/HashFunction.html">hash function</A> used by the
    hash_map.  This is also defined as <tt>dense_hash_map::hasher</tt>.  
+   <br><b>Note:</b> Hashtable performance depends heavliy on the choice of
+   hash function.  See <A HREF="performance.html#hashfn">the performance
+   page</A> for more information.
 </TD>
 <TD VAlign=top>
    <tt><A href="http://www.sgi.com/tech/stl/hash.html">hash</A>&lt;Key&gt;</tt>
@@ -229,7 +231,7 @@ None.
 
 <TR>
 <TD VAlign=top>
-   <tt>key_type</tt> <A href="#7">[7]</A>
+   <tt>key_type</tt>
 </TD>
 <TD VAlign=top>
     <A
@@ -243,7 +245,7 @@ None.
 
 <TR>
 <TD VAlign=top>
-   <tt>data_type</tt> <A href="#7">[7]</A>
+   <tt>data_type</tt>
 </TD>
 <TD VAlign=top>
     <A
@@ -753,7 +755,7 @@ void insert(InputIterator f, InputIterator l) </pre> <A href="#2">[2]</A>
    <tt>dense_hash_map</tt>
 </TD>
 <TD VAlign=top>
-   See below.
+   <A HREF="#new">See below</A>.
 </TD>
 </TR>
 
@@ -765,7 +767,7 @@ void insert(InputIterator f, InputIterator l) </pre> <A href="#2">[2]</A>
    <tt>dense_hash_map</tt>
 </TD>
 <TD VAlign=top>
-   See below.
+   <A HREF="#new">See below</A>.
 </TD>
 </TR>
 
@@ -777,7 +779,7 @@ void insert(InputIterator f, InputIterator l) </pre> <A href="#2">[2]</A>
    <tt>dense_hash_map</tt>
 </TD>
 <TD VAlign=top>
-   See below.
+   <A HREF="#new">See below</A>.
 </TD>
 </TR>
 
@@ -921,7 +923,7 @@ key_type&amp; k) </pre>
    <tt>dense_hash_map</tt>
 </TD>
 <TD VAlign=top>
-   See below.
+   <A HREF="#new">See below</A>.
 </TD>
 </TR>
 
@@ -933,7 +935,7 @@ key_type&amp; k) </pre>
    <tt>dense_hash_map</tt>
 </TD>
 <TD VAlign=top>
-   See below.
+   <A HREF="#new">See below</A>.
 </TD>
 </TR>
 
@@ -945,7 +947,7 @@ key_type&amp; k) </pre>
    <tt>dense_hash_map</tt>
 </TD>
 <TD VAlign=top>
-   See below.
+   <A HREF="#new">See below</A>.
 </TD>
 </TR>
 
@@ -957,7 +959,7 @@ key_type&amp; k) </pre>
    <tt>dense_hash_map</tt>
 </TD>
 <TD VAlign=top>
-   See below.
+   <A HREF="#new">See below</A>.
 </TD>
 </TR>
 
@@ -969,7 +971,7 @@ key_type&amp; k) </pre>
    <tt>dense_hash_map</tt>
 </TD>
 <TD VAlign=top>
-   See below.
+   <A HREF="#new">See below</A>.
 </TD>
 </TR>
 
@@ -992,7 +994,7 @@ key_type&amp; k) </pre>
 </table>
 
 
-<h3>New members</h3>
+<h3><A NAME="new">New members</A></h3>
 
 These members are not defined in the <A
 href="http://www.sgi.com/tech/stl/UniqueHashedAssociativeContainer.html">Unique
@@ -1027,7 +1029,7 @@ Associative Container</A> requirements, but are specific to
 
 <TR>
 <TD VAlign=top>
-   <tt>void clear_deleted_key()</tt> <A href="#6">[6]</A>
+   <tt>void clear_deleted_key()</tt>
 </TD>
 <TD VAlign=top>
    Clears the distinguished "deleted" key.  After this is called,
@@ -1039,9 +1041,9 @@ Associative Container</A> requirements, but are specific to
 <TR>
 <TD VAlign=top>
    <pre>
-   data_type&amp; 
-   operator[](const key_type&amp; k) <A
-   href="http://www.sgi.com/tech/stl/#3">[3]</A>
+data_type&amp; 
+operator[](const key_type&amp; k) <A
+href="http://www.sgi.com/tech/stl/#3">[3]</A>
 </pre>
 </TD>
 <TD VAlign=top>
@@ -1183,26 +1185,6 @@ wish to call <tt>erase()</tt> on the hash-map.</p>
 insertion but no hashtable entries can be deleted until
 <tt>set_deleted_key()</tt> is called again.</p>
 
-<P><A name="7">[7]</A>
-
-Both <tt>key_type</tt> and <tt>data_type</tt> must be <A
-HREF="http://c2.com/cgi/wiki?PlainOldData">plain old data</A> (see
-<A HREF="implementation.html">implementation.html</A> for why this is
-necessary).  In addition, there should
-be no data structures that point directly into parts of key or value,
-including the key or value itself (for instance, you cannot have a
-value like <tt>struct {int a = 1, *b = &a}</tt>.  This is because
-<tt>dense_hash_map</tt> uses <tt>malloc()</tt> and <tt>free()</tt> to
-allocate space for the key and value, and <tt>memmove()</tt> to
-reorganize the key and value in memory.</p>
-
-<p>Almost all common uses fit this criterion: <tt>key_type</tt> can be
-a basic C type or an STL type like <tt>string</tt>, for instance.  If
-<tt>value_type</tt> is complex, consider storing only the pointer to
-the data in the <tt>dense_hash_map</tt>.  This will speed up the
-hashtable as well, since hashtable resizes will have to manipulate
-less memory.</p>
-
 
 <h3><A NAME=io>Input/Output</A></h3>
 
@@ -1255,31 +1237,42 @@ appropriately.  You will need to do a <tt>const_cast</tt> on the
 iterator, since <tt>it-&gt;first</tt> is always <tt>const</tt>.  The
 code might look like this:</p>
 <pre>
-   for (dense_hash_map&lt;int*, int&gt;::iterator it = ht.begin();
+   for (dense_hash_map&lt;int*, ComplicatedClass&gt;::iterator it = ht.begin();
         it != ht.end(); ++it) {
+       // The key is stored in the dense_hash_map as a pointer
        const_cast&lt;int*&gt;(it-&gt;first) = new int;
        fread(const_cast&lt;int*&gt;(it-&gt;first), sizeof(int), 1, fp);
-       fread(&it-&gt;second, sizeof(int), 1, fp);
+       // The value is a complicated C++ class that takes an int to construct
+       int ctor_arg;
+       fread(&ctor_arg, sizeof(int), 1, fp);
+       new (&it-&gt;second) ComplicatedClass(ctor_arg);  // "placement new"
    }
 </pre>
 
 
 <h3><A NAME=iter>Validity of Iterators</A></h3>
 
-<p><tt>insert()</tt> invalidates all iterators, as does
-<tt>resize()</tt>.  <tt>erase()</tt> is guaranteed not to invalidate
-any iterators.</p>
+<p><tt>erase()</tt> is guaranteed not to invalidate any iterators --
+except for any iterators pointing to the item being erased, of course.
+<tt>insert()</tt> invalidates all iterators, as does
+<tt>resize()</tt>.  </p>
 
 <p>This is implemented by making <tt>erase()</tt> not resize the
 hashtable.  If you desire maximum space efficiency, you can call
 <tt>resize(0)</tt> after a string of <tt>erase()</tt> calls, to force
 the hashtable to resize to the smallest possible size.</p>
 
+<p>In addition to invalidating iterators, <tt>insert()</tt>
+and <tt>resize()</tt> invalidate all pointers into the hashtable.  If
+you want to store a pointer to an object held in a dense_hash_map,
+either do so after finishing hashtable inserts, or store the object on
+the heap and a pointer to it in the dense_hash_map.</p>
+
 
 <h3>See also</h3>
 
-<p>The following are SGI STL concepts and classes related to
-<tt>dense_hash_map</tt>.</p>
+<p>The following are SGI STL, and some Google STL, concepts and
+classes related to <tt>dense_hash_map</tt>.</p>
 
 <tt><A href="http://www.sgi.com/tech/stl/hash_map.html">hash_map</A></tt>,
 <A href="http://www.sgi.com/tech/stl/AssociativeContainer.html">Associative Container</A>,

@@ -48,7 +48,7 @@ Associative Container</A> that stores objects of type <tt>Key</tt>.
 <tt>dense_hash_set</tt> is a <A
 href="http://www.sgi.com/tech/stl/SimpleAssociativeContainer.html">Simple
 Associative Container</A>, meaning that its value type, as well as its
-key type, is <tt>key</tt>  It is also a
+key type, is <tt>key</tt>.  It is also a
 <A
 href="http://www.sgi.com/tech/stl/UniqueAssociativeContainer.html">Unique
 Associative Container</A>, meaning that no two elements have keys that
@@ -69,7 +69,7 @@ distinguished "empty key" -- that may not be easy for all
 applications to satisfy.</p>
 
 <p>This class is appropriate for applications that need speedy access
-to relatively small "dictionaries" stored in memory, and for
+to relatively small "dictionaries" stored in memory, or for
 applications that need these dictionaries to be persistent. <A
 HREF="#io">[implementation note]</A>)</p>
 
@@ -79,7 +79,7 @@ HREF="#io">[implementation note]</A>)</p>
 <pre>
 #include &lt;google/dense_hash_set&gt;
 
-using std::dense_hash_set;      // namespace where class lives by default
+using google::dense_hash_set;      // namespace where class lives by default
 
 struct eqstr
 {
@@ -119,9 +119,8 @@ int main()
 
 <h3>Definition</h3>
 
-Defined in the header <A
-href="dense_hash_set.h">dense_hash_set.h</A>.  This class is not
-part of the C++ standard.
+Defined in the header <A href="dense_hash_set">dense_hash_set</A>.
+This class is not part of the C++ standard.
 
 
 <h3>Template parameters</h3>
@@ -145,24 +144,14 @@ part of the C++ standard.
 
 <TR>
 <TD VAlign=top>
-   <tt>Data</tt>
-</TD>
-<TD VAlign=top>
-   The hash_set's data type.  This is also defined as
-   <tt>dense_hash_set::data_type</tt>.
-</TD>
-<TD VAlign=top>
-   &nbsp;
-</TD>
-</TR>
-
-<TR>
-<TD VAlign=top>
    <tt>HashFcn</tt>
 </TD>
 <TD VAlign=top>
    The <A href="http://www.sgi.com/tech/stl/HashFunction.html">hash function</A> used by the
    hash_set.  This is also defined as <tt>dense_hash_set::hasher</tt>.  
+   <br><b>Note:</b> Hashtable performance depends heavliy on the choice of
+   hash function.  See <A HREF="performance.html#hashfn">the performance
+   page</A> for more information.
 </TD>
 <TD VAlign=top>
    <tt><A href="http://www.sgi.com/tech/stl/hash.html">hash</A>&lt;Key&gt;</tt>
@@ -232,7 +221,7 @@ None.
 
 <TR>
 <TD VAlign=top>
-   <tt>value_type</tt> <A href="#5">[7]</A>
+   <tt>value_type</tt>
 </TD>
 <TD VAlign=top>
     <A
@@ -474,7 +463,7 @@ None.
 </TD>
 <TD VAlign=top>
    Increases the bucket count to at least <tt>n</tt>.
-   <A href="#2">[4]</A>
+   <A href="#2">[2]</A>
 </TD>
 </TR>
 
@@ -531,7 +520,7 @@ None.
 <TD VAlign=top>
    Creates an empty <tt>dense_hash_set</tt> that's optimized for holding
    up to <tt>n</tt> items.
-   <A href="#3">[5]</A>
+   <A href="#3">[3]</A>
 </TD>
 </TR>
 
@@ -708,37 +697,37 @@ void insert(InputIterator f, InputIterator l) </pre> <A href="#1">[2]</A>
 
 <TR>
 <TD VAlign=top>
-   <tt>void set_empty_key(const key_type& key)</tt> <A href="#6">[6]</A>
+   <tt>void set_empty_key(const key_type& key)</tt> <A href="#4">[4]</A>
 </TD>
 <TD VAlign=top>
    <tt>dense_hash_set</tt>
 </TD>
 <TD VAlign=top>
-   See below.
+   <A HREF="#new">See below</A>.
 </TD>
 </TR>
 
 <TR>
 <TD VAlign=top>
-   <tt>void set_deleted_key(const key_type& key)</tt> <A href="#6">[6]</A>
+   <tt>void set_deleted_key(const key_type& key)</tt> <A href="#4">[4]</A>
 </TD>
 <TD VAlign=top>
    <tt>dense_hash_set</tt>
 </TD>
 <TD VAlign=top>
-   See below.
+   <A HREF="#new">See below</A>.
 </TD>
 </TR>
 
 <TR>
 <TD VAlign=top>
-   <tt>void clear_deleted_key()</tt> <A href="#4">[6]</A>
+   <tt>void clear_deleted_key()</tt> <A href="#4">[4]</A>
 </TD>
 <TD VAlign=top>
    <tt>dense_hash_set</tt>
 </TD>
 <TD VAlign=top>
-   See below.
+   <A HREF="#new">See below</A>.
 </TD>
 </TR>
 
@@ -753,7 +742,7 @@ void insert(InputIterator f, InputIterator l) </pre> <A href="#1">[2]</A>
 </TD>
 <TD VAlign=top>
    Erases the element pointed to by <tt>pos</tt>.
-   <A href="#4">[6]</A>
+   <A href="#4">[4]</A>
 </TD>
 </TR>
 
@@ -768,7 +757,7 @@ void insert(InputIterator f, InputIterator l) </pre> <A href="#1">[2]</A>
 </TD>
 <TD VAlign=top>
    Erases the element whose key is <tt>k</tt>.
-   <A href="#4">[6]</A>
+   <A href="#4">[4]</A>
 </TD>
 </TR>
 
@@ -783,7 +772,7 @@ void insert(InputIterator f, InputIterator l) </pre> <A href="#1">[2]</A>
 </TD>
 <TD VAlign=top>
    Erases all elements in a range.
-   <A href="#4">[6]</A>
+   <A href="#4">[4]</A>
 </TD>
 </TR>
 
@@ -852,7 +841,7 @@ key_type&amp; k) const</pre>
    <tt>dense_hash_set</tt>
 </TD>
 <TD VAlign=top>
-   See below.
+   <A HREF="#new">See below</A>.
 </TD>
 </TR>
 
@@ -864,7 +853,7 @@ key_type&amp; k) const</pre>
    <tt>dense_hash_set</tt>
 </TD>
 <TD VAlign=top>
-   See below.
+   <A HREF="#new">See below</A>.
 </TD>
 </TR>
 
@@ -876,7 +865,7 @@ key_type&amp; k) const</pre>
    <tt>dense_hash_set</tt>
 </TD>
 <TD VAlign=top>
-   See below.
+   <A HREF="#new">See below</A>.
 </TD>
 </TR>
 
@@ -888,7 +877,7 @@ key_type&amp; k) const</pre>
    <tt>dense_hash_set</tt>
 </TD>
 <TD VAlign=top>
-   See below.
+   <A HREF="#new">See below</A>.
 </TD>
 </TR>
 
@@ -911,7 +900,7 @@ key_type&amp; k) const</pre>
 </table>
 
 
-<h3>New members</h3>
+<h3><A NAME="new">New members</A></h3>
 
 These members are not defined in the <A
 href="http://www.sgi.com/tech/stl/UniqueHashedAssociativeContainer.html">Unique
@@ -930,7 +919,7 @@ Associative Container</A> requirements, but are specific to
 <TD VAlign=top>
    Sets the distinguished "empty" key to <tt>key</tt>.  This must be
    called immediately after construct time, before calls to another
-   other <tt>dense_hash_set</tt> operation. <A href="#6">[6]</A>
+   other <tt>dense_hash_set</tt> operation. <A href="#4">[4]</A>
 </TD>
 </TR>
 
@@ -940,18 +929,18 @@ Associative Container</A> requirements, but are specific to
 </TD>
 <TD VAlign=top>
    Sets the distinguished "deleted" key to <tt>key</tt>.  This must be
-   called before any calls to <tt>erase()</tt>. <A href="#4">[6]</A>
+   called before any calls to <tt>erase()</tt>. <A href="#4">[4]</A>
 </TD>
 </TR>
 
 <TR>
 <TD VAlign=top>
-   <tt>void clear_deleted_key()</tt> <A href="#4">[6]</A>
+   <tt>void clear_deleted_key()</tt>
 </TD>
 <TD VAlign=top>
    Clears the distinguished "deleted" key.  After this is called,
    calls to <tt>erase()</tt> are not valid on this object.
-   <A href="#4">[6]</A>
+   <A href="#4">[4]</A>
 </TD>
 </TR>
 
@@ -1062,26 +1051,6 @@ wish to call <tt>erase()</tt> on the hash-set.</p>
 insertion but no hashtable entries can be deleted until
 <tt>set_deleted_key()</tt> is called again.</p>
 
-<P><A name="5">[5]</A>
-
-Both <tt>key_type</tt> and <tt>data_type</tt> must be <A
-HREF="http://c2.com/cgi/wiki?PlainOldData">plain old data</A> (see
-<A HREF="implementation.html">implementation.html</A> for why this is
-necessary).  In addition, there should
-be no data structures that point directly into parts of key or value,
-including the key or value itself (for instance, you cannot have a
-value like <tt>struct {int a = 1, *b = &a}</tt>.  This is because
-<tt>dense_hash_set</tt> uses <tt>malloc()</tt> and <tt>free()</tt> to
-allocate space for the key and value, and <tt>memmove()</tt> to
-reorganize the key and value in memory.</p>
-
-<p>Almost all common uses fit this criterion: <tt>key_type</tt> can be
-a basic C type or an STL type like <tt>string</tt>, for instance.  If
-<tt>value_type</tt> is complex, consider storing only the pointer to
-the data in the <tt>dense_hash_set</tt>.  This will speed up the
-hashtable as well, since hashtable resizes will have to manipulate
-less memory.</p>
-
 
 <h3><A NAME=io>Input/Output</A></h3>
 
@@ -1131,34 +1100,54 @@ the <tt>dense_hash_set</tt> with an <tt>iterator</tt>; this operation
 is sensical because the metadata has already been set up.  For each
 iterator item, you can read the key and value from disk, and set it
 appropriately.  You will need to do a <tt>const_cast</tt> on the
-iterator, since <tt>it-&gt;first</tt> is always <tt>const</tt>.  The
+iterator, since <tt>*it</tt> is always <tt>const</tt>.  The
 code might look like this:</p>
 <pre>
-   for (dense_hash_set&lt;int*, int&gt;::iterator it = ht.begin();
+   for (dense_hash_set&lt;int*&gt;::iterator it = ht.begin();
         it != ht.end(); ++it) {
-       const_cast&lt;int*&gt;(it-&gt;first) = new int;
-       fread(const_cast&lt;int*&gt;(it-&gt;first), sizeof(int), 1, fp);
-       fread(&it-&gt;second, sizeof(int), 1, fp);
+       const_cast&lt;int*&gt;(*it) = new int;
+       fread(const_cast&lt;int*&gt;(*it), sizeof(int), 1, fp);
+   }
+</pre>
+
+<p>Here's another example, where the item stored in the hash-set is
+a C++ object with a non-trivial constructor.  In this case, you must
+use "placement new" to construct the object at the correct memory
+location.</p>
+<pre>
+   for (dense_hash_set&lt;ComplicatedClass&gt;::iterator it = ht.begin();
+        it != ht.end(); ++it) {
+       int ctor_arg;  // ComplicatedClass takes an int as its constructor arg
+       fread(&ctor_arg, sizeof(int), 1, fp);
+       new (const_cast&lt;ComplicatedClass*&gt;(&(*it))) ComplicatedClass(ctor_arg);
    }
 </pre>
 
 
 <h3><A NAME=iter>Validity of Iterators</A></h3>
 
-<p><tt>insert()</tt> invalidates all iterators, as does
-<tt>resize()</tt>.  <tt>erase()</tt> is guaranteed not to invalidate
-any iterators.</p>
+<p><tt>erase()</tt> is guaranteed not to invalidate any iterators --
+except for any iterators pointing to the item being erased, of course.
+<tt>insert()</tt> invalidates all iterators, as does
+<tt>resize()</tt>.  </p>
 
 <p>This is implemented by making <tt>erase()</tt> not resize the
 hashtable.  If you desire maximum space efficiency, you can call
 <tt>resize(0)</tt> after a string of <tt>erase()</tt> calls, to force
 the hashtable to resize to the smallest possible size.</p>
 
+<p>In addition to invalidating iterators, <tt>insert()</tt>
+and <tt>resize()</tt> invalidate all pointers into the hashtable.  If
+you want to store a pointer to an object held in a dense_hash_set,
+either do so after finishing hashtable inserts, or store the object on
+the heap and a pointer to it in the dense_hash_set.</p>
+
+
 
 <h3>See also</h3>
 
-<p>The following are SGI STL concepts and classes related to
-<tt>dense_hash_set</tt>.</p>
+<p>The following are SGI STL, and some Google STL, concepts and
+classes related to <tt>dense_hash_set</tt>.</p>
 
 <tt><A href="http://www.sgi.com/tech/stl/hash_set.html">hash_set</A></tt>,
 <A href="http://www.sgi.com/tech/stl/AssociativeContainer.html">Associative Container</A>,
