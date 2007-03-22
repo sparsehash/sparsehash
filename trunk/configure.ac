@@ -8,7 +8,7 @@
 # make sure we're interpreted by some minimal autoconf
 AC_PREREQ(2.57)
 
-AC_INIT(sparsehash, 0.4, opensource@google.com)
+AC_INIT(sparsehash, 0.5, opensource@google.com)
 # The argument here is just something that should be in the current directory
 # (for sanity checking)
 AC_CONFIG_SRCDIR(README)
@@ -23,7 +23,8 @@ AC_PROG_CXX
 # Check whether some low-level functions/files are available
 AC_HEADER_STDC
 AC_CHECK_FUNCS(memcpy memmove)
-AC_CHECK_TYPES([u_int16_t])    # defined in most posix systems
+AC_CHECK_TYPES([uint16_t])     # defined in C99 systems
+AC_CHECK_TYPES([u_int16_t])    # defined in BSD-derived systems, and gnu
 AC_CHECK_TYPES([__uint16])     # defined in some windows systems (vc7)
 AC_CHECK_TYPES([long long])    # probably defined everywhere, but...
 # These are 'only' needed for unittests
@@ -38,13 +39,6 @@ AC_CXX_MAKE_HASH_FUN_H(src/google/sparsehash/hash_fun.h)
 # the user wants our classes to be defined in
 AC_CXX_STL_NAMESPACE
 AC_DEFINE_GOOGLE_NAMESPACE(google)
-
-# Check what STL features are defined
-AC_CXX_STL_ITERATOR_TAGS
-
-# TODO(csilvers): turn on again once we decide whether we want to enforce
-#                 DECLARE_POD with the hash types
-#AC_CXX_STL_TYPE_TRAITS
 
 # Write generated configuration file
 AC_CONFIG_FILES([Makefile])

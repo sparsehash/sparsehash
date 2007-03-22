@@ -93,6 +93,16 @@ _END_GOOGLE_NAMESPACE_
 
 namespace {
 
+// type_equals_ is a template type comparator, similar to Loki IsSameType.
+// type_equals_<A, B>::value is true iff "A" is the same type as "B".
+template<typename A, typename B>
+struct type_equals_ : public GOOGLE_NAMESPACE::false_type {
+};
+
+template<typename A>
+struct type_equals_<A, A> : public GOOGLE_NAMESPACE::true_type {
+};
+
 class TypeTraitsTest {
  public:
   static void TestIsInteger() {
@@ -249,9 +259,24 @@ class TypeTraitsTest {
     ASSERT_TRUE(GOOGLE_NAMESPACE::has_trivial_assign<D>::value);
   }
 
+  // Tests remove_pointer.
+  static void TestRemovePointer() {
+    bool value = false;
+    // Verify that remove_pointer<int*>::type is int.
+    value = type_equals_<GOOGLE_NAMESPACE::remove_pointer<int*>::type, int>::value;
+    ASSERT_TRUE(value);
+    // Verify that remove_pointer<const int*>::type is int.
+    value = type_equals_<GOOGLE_NAMESPACE::remove_pointer<const int*>::type, int>::value;
+    ASSERT_TRUE(value);
+    // Verify that remove_pointer<int*>::type is not bool.
+    value = type_equals_<GOOGLE_NAMESPACE::remove_pointer<int*>::type, bool>::value;
+    ASSERT_FALSE(value);
+  }
+
 };  // end class TypeTraitsTest
 
 }   // end anonymous namespace
+
 
 
 int main(int argc, char **argv) {
@@ -260,6 +285,7 @@ int main(int argc, char **argv) {
   TypeTraitsTest::TestIsPod();
   TypeTraitsTest::TestHasTrivialCopy();
   TypeTraitsTest::TestHasTrivialAssign();
+  TypeTraitsTest::TestRemovePointer();
 
   printf("PASS\n");
   return 0;

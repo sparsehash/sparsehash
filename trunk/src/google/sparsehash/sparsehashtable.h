@@ -108,6 +108,7 @@
 #include <google/sparsehash/config.h>
 #include <assert.h>
 #include <algorithm>              // For swap(), eg
+#include <iterator>               // for facts about iterator tags
 #include <google/sparsetable>     // Since that's basically what we are
 
 _START_GOOGLE_NAMESPACE_
@@ -138,9 +139,7 @@ struct sparse_hashtable_iterator {
   typedef sparse_hashtable_const_iterator<V,K,HF,ExK,EqK,A> const_iterator;
   typedef typename sparsetable<V>::nonempty_iterator        st_iterator;
 
-#ifdef UNDERSTANDS_ITERATOR_TAGS
   typedef STL_NAMESPACE::forward_iterator_tag iterator_category;
-#endif
   typedef V value_type;
   typedef ptrdiff_t difference_type;
   typedef size_t size_type;
@@ -189,9 +188,7 @@ struct sparse_hashtable_const_iterator {
   typedef sparse_hashtable_const_iterator<V,K,HF,ExK,EqK,A> const_iterator;
   typedef typename sparsetable<V>::const_nonempty_iterator  st_iterator;
 
-#ifdef UNDERSTANDS_ITERATOR_TAGS
   typedef STL_NAMESPACE::forward_iterator_tag iterator_category;
-#endif
   typedef V value_type;
   typedef ptrdiff_t difference_type;
   typedef size_t size_type;
@@ -242,9 +239,7 @@ struct sparse_hashtable_destructive_iterator {
   typedef sparse_hashtable_destructive_iterator<V,K,HF,ExK,EqK,A> iterator;
   typedef typename sparsetable<V>::destructive_iterator     st_iterator;
 
-#ifdef UNDERSTANDS_ITERATOR_TAGS
   typedef STL_NAMESPACE::forward_iterator_tag iterator_category;
-#endif
   typedef V value_type;
   typedef ptrdiff_t difference_type;
   typedef size_t size_type;
@@ -742,7 +737,6 @@ class sparse_hashtable {
     return insert_noresize(obj);
   }
 
-#ifdef UNDERSTANDS_ITERATOR_TAGS
   // When inserting a lot at a time, we specialize on the type of iterator
   template <class InputIterator>
   void insert(InputIterator f, InputIterator l) {
@@ -767,13 +761,6 @@ class sparse_hashtable {
     for ( ; f != l; ++f)
       insert(*f);
   }
-#else
-  template <class InputIterator>
-  void insert(InputIterator f, InputIterator l) {
-    for ( ; f != l; ++f)
-      insert(*f);
-  }
-#endif
 
 
   // DELETION ROUTINES

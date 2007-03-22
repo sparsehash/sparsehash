@@ -58,6 +58,7 @@
 //    1) set_deleted_key():
 //         If you want to use erase() you must call set_deleted_key(),
 //         in addition to set_empty_key(), after construction.
+//         The deleted and empty keys must differ.
 //
 //    2) resize(0):
 //         When an item is deleted, its memory isn't freed right

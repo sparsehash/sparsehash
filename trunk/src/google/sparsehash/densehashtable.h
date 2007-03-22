@@ -102,6 +102,7 @@
 #include <algorithm>            // For swap(), eg
 #include <iostream>             // For cerr
 #include <memory>               // For uninitialized_fill, uninitialized_copy
+#include <iterator>             // for facts about iterator tags
 #include <google/type_traits.h> // for true_type, integral_constant, etc.
 
 _START_GOOGLE_NAMESPACE_
@@ -126,9 +127,7 @@ struct dense_hashtable_iterator {
   typedef dense_hashtable_iterator<V,K,HF,ExK,EqK,A>       iterator;
   typedef dense_hashtable_const_iterator<V,K,HF,ExK,EqK,A> const_iterator;
 
-#ifdef UNDERSTANDS_ITERATOR_TAGS
   typedef STL_NAMESPACE::forward_iterator_tag iterator_category;
-#endif
   typedef V value_type;
   typedef ptrdiff_t difference_type;
   typedef size_t size_type;
@@ -179,9 +178,7 @@ struct dense_hashtable_const_iterator {
   typedef dense_hashtable_iterator<V,K,HF,ExK,EqK,A>       iterator;
   typedef dense_hashtable_const_iterator<V,K,HF,ExK,EqK,A> const_iterator;
 
-#ifdef UNDERSTANDS_ITERATOR_TAGS
   typedef STL_NAMESPACE::forward_iterator_tag iterator_category;
-#endif
   typedef V value_type;
   typedef ptrdiff_t difference_type;
   typedef size_t size_type;
@@ -310,6 +307,9 @@ class dense_hashtable {
 
  public:
   void set_deleted_key(const value_type &val) {
+    // the empty indicator (if specified) and the deleted indicator
+    // must be different
+    assert(!use_empty || !equals(get_key(val), get_key(emptyval)));
     // It's only safe to change what "deleted" means if we purge deleted guys
     squash_deleted();
     use_deleted = true;
@@ -396,6 +396,9 @@ class dense_hashtable {
   void set_empty_key(const value_type &val) {
     // Once you set the empty key, you can't change it
     assert(!use_empty);
+    // The deleted indicator (if specified) and the empty indicator
+    // must be different.
+    assert(!use_deleted || !equals(get_key(val), get_key(delval)));
     use_empty = true;
     set_value(&emptyval, val);
 
@@ -749,6 +752,7 @@ class dense_hashtable {
     for ( ; f != l; ++f)
       insert(*f);
   }
+
 
   // DELETION ROUTINES
   size_type erase(const key_type& key) {
