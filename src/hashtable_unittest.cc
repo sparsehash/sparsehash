@@ -51,6 +51,7 @@
 #include <time.h>              // for silly random-number-seed generator
 #include <math.h>              // for sqrt()
 #include <map>
+#include <iterator>            // for insert_iterator
 #include <iostream>
 #include <iomanip>             // for setprecision()
 #include <string>
@@ -71,6 +72,7 @@ using GOOGLE_NAMESPACE::dense_hashtable;
 using STL_NAMESPACE::map;
 using STL_NAMESPACE::pair;
 using STL_NAMESPACE::string;
+using STL_NAMESPACE::insert_iterator;
 using STL_NAMESPACE::allocator;
 using STL_NAMESPACE::equal_to;
 using STL_NAMESPACE::ostream;
@@ -95,6 +97,20 @@ const char *words[] = {"Baffin\n",        // in /usr/dict/words
 const char *nwords[] = {"Boffin\n",
                         "baffin\n",
 };
+
+// Apparently identity is not stl-standard, so we define our own
+template<class Value>
+struct Identity {
+  Value& operator()(Value& v) const { return v; }
+  const Value& operator()(const Value& v) const { return v; }
+};
+
+// Let us log the pairs that make up a hash_map
+template<class P1, class P2>
+ostream& operator<<(ostream& s, const pair<P1, P2>& p) {
+  s << "pair(" << p.first << ", " << p.second << ")";
+  return s;
+}
 
 struct strcmp_fnc {
   bool operator()(const char* s1, const char* s2) const {
@@ -180,6 +196,45 @@ static void insert(sparse_hash_map<K,V,H,C> *ht, Iterator begin, Iterator end) {
   }
 }
 
+// A version of insert that uses the insert_iterator.  But insert_iterator
+// isn't defined for the low level hashtable classes, so we just punt to insert.
+
+template <class T, class H, class I, class C, class A>
+static void iterator_insert(dense_hashtable<T,T,H,I,C,A>* ht, T val,
+                            insert_iterator<dense_hashtable<T,T,H,I,C,A> >* ) {
+  ht->insert(val);
+}
+
+template <class T, class H, class C>
+static void iterator_insert(dense_hash_set<T,H,C>* , T val,
+                            insert_iterator<dense_hash_set<T,H,C> >* ii) {
+  *(*ii)++ = val;
+}
+
+template <class K, class V, class H, class C>
+static void iterator_insert(dense_hash_map<K,V,H,C>* , K val,
+                            insert_iterator<dense_hash_map<K,V,H,C> >* ii) {
+  *(*ii)++ = pair<K,V>(val,V());
+}
+
+template <class T, class H, class I, class C, class A>
+static void iterator_insert(sparse_hashtable<T,T,H,I,C,A>* ht, T val,
+                            insert_iterator<sparse_hashtable<T,T,H,I,C,A> >* ) {
+  ht->insert(val);
+}
+
+template <class T, class H, class C>
+static void iterator_insert(sparse_hash_set<T,H,C>* , T val,
+                            insert_iterator<sparse_hash_set<T,H,C> >* ii) {
+  *(*ii)++ = val;
+}
+
+template <class K, class V, class H, class C>
+static void iterator_insert(sparse_hash_map<K,V,H,C> *, K val,
+                            insert_iterator<sparse_hash_map<K,V,H,C> >* ii) {
+  *(*ii)++ = pair<K,V>(val,V());
+}
+
 
 static void write_item(FILE *fp, const char *val) {
   fwrite(val, strlen(val), 1, fp);   // \n serves to separate
@@ -225,20 +280,6 @@ static void free_item(pair<char*const,int> *val) {
 }
 
 
-// Apparently identity is not stl-standard, so we define our own
-template<class Value>
-struct Identity {
-  Value& operator()(Value& v) const { return v; }
-  const Value& operator()(const Value& v) const { return v; }
-};
-
-// Let us log the pairs that make up a hash_map
-template<class P1, class P2>
-ostream& operator<<(ostream& s, const pair<P1, P2>& p) {
-  s << "pair(" << p.first << ", " << p.second << ")";
-  return s;
-}
-
 // The read_write parameters specifies whether the read/write tests
 // should be performed. Note that densehashtable::write_metdata is not
 // implemented, so we only do the read/write tests for the
@@ -262,8 +303,12 @@ void test(bool read_write) {
   insert(&y, 11111111);
   insert(&y, 111111111);
   insert(&y, 1111111111);  // 1B, more or less
-  for ( int i = 0; i < 64; ++i )
+  for ( int i = 0; i < 32; ++i )
     insert(&z, i);
+  // test the second half of the insert with an insert_iterator
+  insert_iterator<htint> insert_iter(z, z.begin());
+  for ( int i = 32; i < 64; ++i )
+    iterator_insert(&z, i, &insert_iter);
 
   for ( typename htint::const_iterator it = y.begin(); it != y.end(); ++it )
     LOGF << "y: " << *it << "\n";
@@ -274,6 +319,9 @@ void test(bool read_write) {
   LOGF << "z has " << z.bucket_count() << " buckets\n";
   LOGF << "y has " << y.bucket_count() << " buckets\n";
   LOGF << "z size: " << z.size() << "\n";
+
+  for (int i = 0; i < 64; ++i)
+    CHECK(y.find(i) != y.end());
 
   CHECK(z.size() == 10);
   z.set_deleted_key(1010101010);      // an unused value

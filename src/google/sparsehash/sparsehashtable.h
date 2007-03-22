@@ -1,10 +1,10 @@
 // Copyright (c) 2005, Google Inc.
 // All rights reserved.
-// 
+//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
-// 
+//
 //     * Redistributions of source code must retain the above copyright
 // notice, this list of conditions and the following disclaimer.
 //     * Redistributions in binary form must reproduce the above
@@ -14,7 +14,7 @@
 //     * Neither the name of Google Inc. nor the names of its
 // contributors may be used to endorse or promote products derived from
 // this software without specific prior written permission.
-// 
+//
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 // "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
 // LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -74,9 +74,9 @@
 //
 // From http://www.augustana.ca/~mohrj/courses/1999.fall/csc210/lecture_notes/hashing.html
 // NUMBER OF PROBES / LOOKUP       Successful            Unsuccessful
-// Quadratic collision resolution   1 - ln(1-L) - L/2    1/(1-L) - L - ln(1-L) 
+// Quadratic collision resolution   1 - ln(1-L) - L/2    1/(1-L) - L - ln(1-L)
 // Linear collision resolution     [1+1/(1-L)]/2         [1+1/(1-L)2]/2
-// 
+//
 // -- HT_OCCUPANCY_FLT --         0.10  0.50  0.60  0.75  0.80  0.90  0.99
 // QUADRATIC COLLISION RES.
 //    probes/successful lookup    1.05  1.44  1.62  2.01  2.21  2.85  5.11
@@ -361,6 +361,10 @@ class sparse_hashtable {
     new(dst) value_type(src);
   }
 
+  void set_key(key_type* dst, const key_type src) {
+    new(dst) key_type(src);   // used for set_deleted_key(), etc
+  }
+
   // This is used as a tag for the copy constructor, saying to destroy its
   // arg We have two ways of destructively copying: with potentially growing
   // the hashtable as we copy, and without.  To make sure the outside world
@@ -384,11 +388,11 @@ class sparse_hashtable {
   }
 
  public:
-  void set_deleted_key(const value_type &val) {
+  void set_deleted_key(const key_type &key) {
     // It's only safe to change what "deleted" means if we purge deleted guys
     squash_deleted();
     use_deleted = true;
-    set_value(&delval,val);         // save the key (and rest of val too)
+    set_key(&delkey, key);         // save the key
   }
   void clear_deleted_key() {
     squash_deleted();
@@ -401,19 +405,19 @@ class sparse_hashtable {
     // The num_deleted test is crucial for read(): after read(), the ht values
     // are garbage, and we don't want to think some of them are deleted.
     return (use_deleted && num_deleted > 0 && table.test(bucknum) &&
-            equals(get_key(delval), get_key(table.get(bucknum))));
+            equals(delkey, get_key(table.get(bucknum))));
   }
   bool test_deleted(const iterator &it) const {
     return (use_deleted && num_deleted > 0 &&
-            equals(get_key(delval), get_key(*it)));
+            equals(delkey, get_key(*it)));
   }
   bool test_deleted(const const_iterator &it) const {
     return (use_deleted && num_deleted > 0 &&
-            equals(get_key(delval), get_key(*it)));
+            equals(delkey, get_key(*it)));
   }
   bool test_deleted(const destructive_iterator &it) const {
     return (use_deleted && num_deleted > 0 &&
-            equals(get_key(delval), get_key(*it)));
+            equals(delkey, get_key(*it)));
   }
   // Set it so test_deleted is true.  true if object didn't used to be deleted
   // See below (at erase()) to explain why we allow const_iterators
@@ -421,7 +425,7 @@ class sparse_hashtable {
     assert(use_deleted);             // bad if set_deleted_key() wasn't called
     bool retval = !test_deleted(it);
     // &* converts from iterator to value-type
-    set_value(const_cast<value_type*>(&(*it)), delval);
+    set_key(const_cast<key_type*>(&get_key(*it)), delkey);
     return retval;
   }
   // Set it so test_deleted is false.  true if object used to be deleted
@@ -578,7 +582,7 @@ class sparse_hashtable {
                             const EqualKey& eql = EqualKey(),
                             const ExtractKey& ext = ExtractKey())
     : hash(hf), equals(eql), get_key(ext), num_deleted(0),
-      use_deleted(false), delval(), table(min_size(0, n)) {    // start small
+      use_deleted(false), delkey(), table(min_size(0, n)) {    // start small
     reset_thresholds();
   }
 
@@ -588,14 +592,14 @@ class sparse_hashtable {
   // into us instead of copying.
   sparse_hashtable(const sparse_hashtable& ht, size_type min_buckets_wanted = 0)
     : hash(ht.hash), equals(ht.equals), get_key(ht.get_key),
-      num_deleted(0), use_deleted(ht.use_deleted), delval(ht.delval), table() {
+      num_deleted(0), use_deleted(ht.use_deleted), delkey(ht.delkey), table() {
     reset_thresholds();
     copy_from(ht, min_buckets_wanted);   // copy_from() ignores deleted entries
   }
   sparse_hashtable(MoveDontCopyT mover, sparse_hashtable& ht,
                    size_type min_buckets_wanted=0)
     : hash(ht.hash), equals(ht.equals), get_key(ht.get_key),
-      num_deleted(0), use_deleted(ht.use_deleted), delval(ht.delval), table() {
+      num_deleted(0), use_deleted(ht.use_deleted), delkey(ht.delkey), table() {
     reset_thresholds();
     move_from(mover, ht, min_buckets_wanted);  // ignores deleted entries
   }
@@ -607,7 +611,7 @@ class sparse_hashtable {
     equals = ht.equals;
     get_key = ht.get_key;
     use_deleted = ht.use_deleted;
-    set_value(&delval, ht.delval);
+    set_key(&delkey, ht.delkey);
     copy_from(ht);                         // sets num_deleted to 0 too
     return *this;
   }
@@ -619,10 +623,10 @@ class sparse_hashtable {
     STL_NAMESPACE::swap(get_key, ht.get_key);
     STL_NAMESPACE::swap(num_deleted, ht.num_deleted);
     STL_NAMESPACE::swap(use_deleted, ht.use_deleted);
-    { value_type tmp;     // for annoying reasons, swap() doesn't work
-      set_value(&tmp, delval);
-      set_value(&delval, ht.delval);
-      set_value(&ht.delval, tmp);
+    { key_type tmp;     // for annoying reasons, swap() doesn't work
+      set_key(&tmp, delkey);
+      set_key(&delkey, ht.delkey);
+      set_key(&ht.delkey, tmp);
     }
     table.swap(ht.table);
     reset_thresholds();
@@ -748,7 +752,7 @@ class sparse_hashtable {
 
   // Iterator supports operator-, resize before inserting
   template <class ForwardIterator>
-  void insert(ForwardIterator f, ForwardIterator l, 
+  void insert(ForwardIterator f, ForwardIterator l,
               STL_NAMESPACE::forward_iterator_tag) {
     size_type n = STL_NAMESPACE::distance(f, l);   // TODO(csilvers): standard?
     resize_delta(n);
@@ -824,7 +828,7 @@ class sparse_hashtable {
   // write a hasher or key_equal, you have to make sure everything
   // but the table is the same.  We compact before writing.
   bool write_metadata(FILE *fp) {
-    squash_deleted();           // so we don't have to worry about delval
+    squash_deleted();           // so we don't have to worry about delkey
     return table.write_metadata(fp);
   }
 
@@ -849,8 +853,8 @@ class sparse_hashtable {
   key_equal equals;
   ExtractKey get_key;
   size_type num_deleted;        // how many occupied buckets are marked deleted
-  bool use_deleted;                          // false until delval has been set
-  value_type delval;                         // which key marks deleted entries
+  bool use_deleted;                          // false until delkey has been set
+  key_type delkey;                           // which key marks deleted entries
   sparsetable<value_type> table;      // holds num_buckets and num_elements too
   size_type shrink_threshold;                    // table.size() * HT_EMPTY_FLT
   size_type enlarge_threshold;               // table.size() * HT_OCCUPANCY_FLT
@@ -880,7 +884,7 @@ const typename sparse_hashtable<V,K,HF,ExK,EqK,A>::size_type
 // good -- higher causes us to probe too much, though saves memory
 template <class V, class K, class HF, class ExK, class EqK, class A>
 const float sparse_hashtable<V,K,HF,ExK,EqK,A>::HT_OCCUPANCY_FLT = 0.8f;
-  
+
 // How empty we let the table get before we resize lower.
 // It should be less than OCCUPANCY_FLT / 2 or we thrash resizing
 template <class V, class K, class HF, class ExK, class EqK, class A>

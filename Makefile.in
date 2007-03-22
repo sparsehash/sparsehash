@@ -147,7 +147,7 @@ time_hash_map_SOURCES = \
 
 
 EXTRA_DIST = packages/rpm.sh packages/rpm/rpm.spec packages/deb.sh packages/deb \
-             src/config.h.include
+             src/config.h.include src/windows experimental
 
 
 DISTCLEANFILES = $(configure_generated_h_files)

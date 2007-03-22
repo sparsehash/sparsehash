@@ -164,7 +164,7 @@ class table_iterator {
   // The main thing our iterator does is dereference.  If the table entry
   // we point to is empty, we return the default value type.
   // This is the big different function from the const iterator.
-  reference operator*()              { 
+  reference operator*()              {
     return table_element_adaptor<tabletype>(table, pos);
   }
   pointer operator->()               { return &(operator*()); }
@@ -1315,7 +1315,7 @@ class sparsetable {
 
   // Reading destroys the old table contents!  Returns true if read ok.
   bool read_metadata(FILE *fp) {
-    size_type magic_read;
+    size_type magic_read = 0;
     if ( !read_32_or_64(fp, &magic_read) )  return false;
     if ( magic_read != MAGIC_NUMBER ) {
       clear();                        // just to be consistent
