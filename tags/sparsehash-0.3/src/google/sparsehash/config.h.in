@@ -1,0 +1,45 @@
+
+/* Namespace for Google classes */
+#undef GOOGLE_NAMESPACE
+
+/* the namespace of hash_map */
+#undef HASH_NAMESPACE
+
+/* Define to 1 if you have the <inttypes.h> header file. */
+#undef HAVE_INTTYPES_H
+
+/* Define to 1 if you have the `memcpy' function. */
+#undef HAVE_MEMCPY
+
+/* Define to 1 if you have the <stdint.h> header file. */
+#undef HAVE_STDINT_H
+
+/* Define to 1 if you have the <sys/resource.h> header file. */
+#undef HAVE_SYS_RESOURCE_H
+
+/* Define to 1 if you have the <sys/time.h> header file. */
+#undef HAVE_SYS_TIME_H
+
+/* Define to 1 if you have the <sys/utsname.h> header file. */
+#undef HAVE_SYS_UTSNAME_H
+
+/* Define to 1 if you have the <unistd.h> header file. */
+#undef HAVE_UNISTD_H
+
+/* Define to 1 if the system has the type `u_int16_t'. */
+#undef HAVE_U_INT16_T
+
+/* Define to 1 if the system has the type `__uint16'. */
+#undef HAVE___UINT16
+
+/* the namespace where STL code like vector<> is defined */
+#undef STL_NAMESPACE
+
+/* does STL support iterator-tags? */
+#undef UNDERSTANDS_ITERATOR_TAGS
+
+/* Stops putting the code inside the Google namespace */
+#undef _END_GOOGLE_NAMESPACE_
+
+/* Puts following code inside the Google namespace */
+#undef _START_GOOGLE_NAMESPACE_
