@@ -59,14 +59,14 @@
 #include <google/sparsehash/config.h>
 #include <stdlib.h>             // for malloc/free
 #include <stdio.h>              // to read/write tables
+#ifdef HAVE_STDINT_H
+#include <stdint.h>             // the normal place uint16_t is defined
+#endif
 #ifdef HAVE_SYS_TYPES_H
 #include <sys/types.h>          // the normal place u_int16_t is defined
 #endif
-#ifdef HAVE_STDINT_H
-#include <stdint.h>             // another place that might define u_int16_t
-#endif
 #ifdef HAVE_INTTYPES_H
-#include <inttypes.h>           // a third place that might define u_int16_t
+#include <inttypes.h>           // a third place for uint16_t or u_int16_t
 #endif
 #include <assert.h>             // for bounds checking
 #include <iterator>             // to define reverse_iterator for me
@@ -84,6 +84,9 @@
 #endif
 #endif
 
+#if !defined HAVE_U_INT16_T && defined HAVE_UINT16_T
+typedef uint16_t u_int16_t        // true on solaris, possibly other C99 libc's
+#endif
 #if !defined HAVE_U_INT16_T && defined HAVE___UINT16
 typedef __uint16 u_int16_t        // true on vc++7
 #endif
@@ -149,9 +152,7 @@ class table_iterator {
  public:
   typedef table_iterator iterator;
 
-#ifdef UNDERSTANDS_ITERATOR_TAGS
   typedef STL_NAMESPACE::random_access_iterator_tag iterator_category;
-#endif
   typedef typename tabletype::value_type value_type;
   typedef typename tabletype::difference_type difference_type;
   typedef typename tabletype::size_type size_type;
@@ -234,9 +235,7 @@ class const_table_iterator {
   typedef table_iterator<tabletype> iterator;
   typedef const_table_iterator const_iterator;
 
-#ifdef UNDERSTANDS_ITERATOR_TAGS
   typedef STL_NAMESPACE::random_access_iterator_tag iterator_category;
-#endif
   typedef typename tabletype::value_type value_type;
   typedef typename tabletype::difference_type difference_type;
   typedef typename tabletype::size_type size_type;
@@ -347,9 +346,7 @@ class two_d_iterator {
  public:
   typedef two_d_iterator iterator;
 
-#ifdef UNDERSTANDS_ITERATOR_TAGS
   typedef STL_NAMESPACE::bidirectional_iterator_tag iterator_category;
-#endif
   // apparently some versions of VC++ have trouble with two ::'s in a typename
   typedef typename containertype::value_type _tmp_vt;
   typedef typename _tmp_vt::value_type value_type;
@@ -440,9 +437,7 @@ class const_two_d_iterator {
  public:
   typedef const_two_d_iterator iterator;
 
-#ifdef UNDERSTANDS_ITERATOR_TAGS
   typedef STL_NAMESPACE::bidirectional_iterator_tag iterator_category;
-#endif
   // apparently some versions of VC++ have trouble with two ::'s in a typename
   typedef typename containertype::value_type _tmp_vt;
   typedef typename _tmp_vt::value_type value_type;
@@ -529,9 +524,7 @@ class destructive_two_d_iterator {
  public:
   typedef destructive_two_d_iterator iterator;
 
-#ifdef UNDERSTANDS_ITERATOR_TAGS
   typedef STL_NAMESPACE::input_iterator_tag iterator_category;
-#endif
   // apparently some versions of VC++ have trouble with two ::'s in a typename
   typedef typename containertype::value_type _tmp_vt;
   typedef typename _tmp_vt::value_type value_type;

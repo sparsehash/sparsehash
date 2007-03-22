@@ -76,15 +76,18 @@ dictionaries to be persistent.</p>
 <h3>Example</h3>
 
 <pre>
+#include &lt;iostream&gt;
 #include &lt;google/sparse_hash_set&gt;
 
 using google::sparse_hash_set;      // namespace where class lives by default
+using std::cout;
+using std::endl;
 
 struct eqstr
 {
   bool operator()(const char* s1, const char* s2) const
   {
-    return strcmp(s1, s2) == 0;
+    return (s1 == s2) || (s1 && s2 && strcmp(s1, s2) == 0);
   }
 };
 

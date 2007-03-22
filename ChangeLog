@@ -43,3 +43,11 @@ Sun Apr 23 22:42:35 2006  Google Inc. <opensource@google.com>
 	* Update documentation to talk more about good hash fns. (csilvers)
 	* Fixes to compile on MSVC (working around some MSVC bugs). (rennie)
 	* Avoid resizing hashtable on operator[] lookups (austern)
+
+Sat Oct 21 13:47:47 2006  Google Inc. <opensource@google.com>
+
+	* sparsehash: version 0.5 release
+	* Support uint16_t (SunOS) in addition to u_int16_t (BSD) (csilvers)
+	* Get rid of UNDERSTANDS_ITERATOR_TAGS; everyone understands (csilvers)
+	* Test that empty-key and deleted-key differ (rbayardo)
+	* Fix example docs: strcmp needs to test for NULL (csilvers)
