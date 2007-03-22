@@ -1,0 +1,25 @@
+12 January 2005:
+
+1) TODO: I/O implementation in densehashtable.h
+
+2) TODO: support non-plain-old-data types for key/value.  Ideally,
+   identify POD situations and use malloc+memmove for them, otherwise
+   use new+copying.
+
+3) TODO: document SPARSEHASH_STAT_UPDATE macro, and also macros that
+   tweak performance.  Perhaps add support to these to the API?
+
+4) TODO: support exceptions?
+
+5) BUG: sparsetable's operator[] doesn't work well with printf: you
+   need to explicitly cast the result to value_type to print it.  (It
+   works fine with streams.)
+
+6) TODO: consider rewriting dense_hash_map to use a 'groups' scheme,
+   like sparsetable, but without the sparse-allocation within a
+   group.  This makes resizing have better memory-use properties.  The
+   downside is that probes across groups might take longer since
+   groups are not contiguous in memory.  Making groups the same size
+   as a cache-line, and ensuring they're loaded on cache-line
+   boundaries, might help.  Needs careful testing to make sure it
+   doesn't hurt performance.
