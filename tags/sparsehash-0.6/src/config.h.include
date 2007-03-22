@@ -1,0 +1,30 @@
+/*** 
+ *** These are #defines that autoheader puts in config.h.in that we
+ *** actually want to show up in config.h.  The reason we don't take
+ *** everything that autoheader emits is that we have to include
+ *** config.h in installed header files, and we want to minimize the
+ *** number of #defines we make so as to not pollute the namespace.
+ ***/
+#undef GOOGLE_NAMESPACE
+#undef HASH_NAMESPACE
+#undef HAVE_UINT16_T
+#undef HAVE_U_INT16_T
+#undef HAVE___UINT16
+#undef HAVE_LONG_LONG
+#undef HAVE_SYS_TYPES_H
+#undef HAVE_STDINT_H
+#undef HAVE_INTTYPES_H
+#undef HAVE_MEMCPY
+#undef HAVE_STDINT_H
+#undef STL_NAMESPACE
+#undef _END_GOOGLE_NAMESPACE_
+#undef _START_GOOGLE_NAMESPACE_
+/***
+ *** These are only needed for the unittests and could go outside config.h
+ ***/
+#undef HAVE_SYS_RESOURCE_H
+#undef HAVE_UNISTD_H
+#undef HAVE_SYS_TIME_H
+#undef HAVE_SYS_UTSNAME_H
+#undef HAVE_GOOGLE_MALLOC_EXTENSION_H
+

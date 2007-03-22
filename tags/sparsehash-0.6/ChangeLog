@@ -1,0 +1,64 @@
+Fri Jan 14 16:53:32 2005  Google Inc. <opensource@google.com>
+
+	* sparsehash: initial release:
+	  The sparsehash package contains several hash-map implementations,
+	  similar in API to SGI's hash_map class, but with different
+	  performance characteristics.  sparse_hash_map uses very little
+	  space overhead: 1-2 bits per entry.  dense_hash_map is typically
+	  faster than the default SGI STL implementation.  This package
+	  also includes hash-set analogues of these classes.
+
+Mon May  2 07:04:46 2005  Google Inc. <opensource@google.com>
+
+	* sparsehash: version 0.2 release
+	* Preliminary support for msvc++ compilation. (csilvers)
+	* Documentation fixes -- some example code was incomplete! (csilvers)
+	* Minimize size of config.h to avoid other-package conflicts (csilvers)
+	* Contribute a C-based version of sparsehash that served as the
+	  inspiration for this code.  One day, I hope to clean it up and
+	  support it, but for now it's just in experimental/, for playing
+	  around with. (csilvers)
+	* Change default namespace from std to google. (csilvers)
+
+Thu Nov  3 20:12:31 2005  Google Inc. <opensource@google.com>
+
+	* sparsehash: version 0.3 release
+	* Quiet compiler warnings on some compilers. (csilvers)
+	* Some documentation fixes: example code for dense_hash_map. (csilvers)
+	* Fix a bug where swap() wasn't swapping delete_key(). (csilvers)
+	* set_deleted_key() and set_empty_key() now take a key only,
+	  allowing hash-map values to be forward-declared. (csilvers)
+	* support for std::insert_iterator (and std::inserter). (csilvers)
+
+
+Sun Apr 23 22:42:35 2006  Google Inc. <opensource@google.com>
+
+	* sparsehash: version 0.4 release
+	* Remove POD requirement for keys and values! (austern)
+	* Add tr1-compatible type-traits system to speed up POD ops. (austern)
+	* Fixed const-iterator bug where postfix ++ didn't compile. (csilvers)
+	* Fixed iterator comparison bugs where <= was incorrect. (csilvers)
+	* Clean up config.h to keep its #defines from conflicting. (csilvers)
+	* Big documentation sweep and cleanup. (csilvers)
+	* Update documentation to talk more about good hash fns. (csilvers)
+	* Fixes to compile on MSVC (working around some MSVC bugs). (rennie)
+	* Avoid resizing hashtable on operator[] lookups (austern)
+
+Sat Oct 21 13:47:47 2006  Google Inc. <opensource@google.com>
+
+	* sparsehash: version 0.5 release
+	* Support uint16_t (SunOS) in addition to u_int16_t (BSD) (csilvers)
+	* Get rid of UNDERSTANDS_ITERATOR_TAGS; everyone understands (csilvers)
+	* Test that empty-key and deleted-key differ (rbayardo)
+	* Fix example docs: strcmp needs to test for NULL (csilvers)
+
+Tue Mar 20 17:29:34 2007  Google Inc. <opensource@google.com>
+
+	* sparsehash: version 0.6 release
+	* Some improvement to type-traits (jyasskin)
+	* Better timing results when google-perftools is installed (sanjay)
+	* Updates and fixes to html documentation and README (csilvers)
+	* A bit more careful about #includes (csilvers)
+	* Fix for typo that broken compilation on some systems (csilvers)
+	* USER VISIBLE: New clear_no_resize() method added to dense_hash_map
+          (uszkoreit)
