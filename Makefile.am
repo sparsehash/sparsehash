@@ -86,6 +86,7 @@ rpm: dist-gzip packages/rpm.sh packages/rpm/rpm.spec
 deb: dist-gzip packages/deb.sh packages/deb/*
 	@cd packages && ./deb.sh ${PACKAGE} ${VERSION}
 
-EXTRA_DIST = packages/rpm.sh packages/rpm/rpm.spec packages/deb.sh packages/deb
+EXTRA_DIST = packages/rpm.sh packages/rpm/rpm.spec packages/deb.sh packages/deb \
+             src/config.h.include
 
 DISTCLEANFILES = $(configure_generated_h_files)

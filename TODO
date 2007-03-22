@@ -1,5 +1,3 @@
-12 January 2005:
-
 1) TODO: I/O implementation in densehashtable.h
 
 2) TODO: support non-plain-old-data types for key/value.  Ideally,
@@ -23,3 +21,13 @@
    as a cache-line, and ensuring they're loaded on cache-line
    boundaries, might help.  Needs careful testing to make sure it
    doesn't hurt performance.
+
+7) TODO: Get the C-only version of sparsehash in experimental/ ready
+   for prime-time.
+
+8) TODO: solve the problem that config.h pollutes the global namespace
+   with all the #defines it makes (any number of which might conflict
+   with a #define in another config.h a user might happen to include).
+
+---
+20 March 2005

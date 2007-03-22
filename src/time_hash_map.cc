@@ -40,9 +40,14 @@
 #include <string.h>
 extern "C" {
 #include <time.h>
+#ifdef HAVE_SYS_TIME_H
 #include <sys/time.h>
+#endif
 #ifdef HAVE_SYS_RESOURCE_H
 #include <sys/resource.h>
+#endif
+#ifdef HAVE_SYS_UTSNAME_H
+#include <sys/utsname.h>      // for uname()
 #endif
 }
 
@@ -140,19 +145,31 @@ inline double Rusage::UserTime() {
 }
 
 
+static void print_uname() {
+#ifdef HAVE_SYS_UTSNAME_H
+  struct utsname u;
+  if (uname(&u) == 0) {
+    printf("%s %s %s %s %s\n",
+           u.sysname, u.nodename, u.release, u.version, u.machine);
+  }
+#endif
+}
+
 // Generate stamp for this run
 static void stamp_run(int iters) {
+  time_t now = time(0);
   printf("======\n");
   fflush(stdout);
-  system("uname -a");
+  print_uname();
   printf("Average over %d iterations\n", iters);
   fflush(stdout);
-  system("date");
+  // don't need asctime_r/gmtime_r: we're not threaded
+  printf("Current time (GMT): %s", asctime(gmtime(&now)));
 }
 
 
 static void report(char const* title, double t, int iters) {
-  printf("%-20s %8.0f ns\n",
+  printf("%-20s %8.02f ns\n",
          title,
          (t * 1000000000.0 / iters));
 }

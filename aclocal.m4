@@ -948,8 +948,8 @@ AC_DEFUN([AC_CXX_NAMESPACES],
 # make an include file for you.  This routine is a higher-level
 # wrapper around hash_fun.ac.
 #
-# If we can't find hash_fun.h, we include hash_map instead.  We hope
-# that it will #include have hash_fun itself!
+# If we can't find hash_fun.h, we copy in our own private copy of
+# sgi's stl_hash_fun.h into the file instead.
 
 AC_DEFUN([AC_CXX_MAKE_HASH_FUN_H],
   [AC_REQUIRE([AC_CXX_STL_HASH_FUN])
@@ -957,16 +957,17 @@ AC_DEFUN([AC_CXX_MAKE_HASH_FUN_H],
    AC_MSG_CHECKING(writing an include-helper for hash_fun.h)
 
    AS_MKDIR_P([`AS_DIRNAME([$1])`])
-   if test -n "$ac_cv_cxx_stl_hash_fun"; then
-     echo "#include $ac_cv_cxx_stl_hash_fun" > $1
-   else
-     echo "#include $ac_cv_cxx_hash_map" > $1
-   fi
-   cat >>$1 <<EOF
+   cat >$1 <<EOF
 #ifndef HASH_NAMESPACE
 #define HASH_NAMESPACE $ac_cv_cxx_hash_namespace
 #endif
+
 EOF
+   if test -n "$ac_cv_cxx_stl_hash_fun"; then
+     echo "#include $ac_cv_cxx_stl_hash_fun" >> $1
+   else
+     cat $srcdir/src/windows/stl_hash_fun.h >> $1
+   fi
 
    AC_MSG_RESULT([$1])
 ])
@@ -1045,7 +1046,7 @@ AC_DEFUN([AC_DEFINE_GOOGLE_NAMESPACE],
                         Namespace for Google classes)
      AC_DEFINE(_START_GOOGLE_NAMESPACE_, [ namespace GOOGLE_NAMESPACE { ],
                Puts following code inside the Google namespace)
-     AC_DEFINE(_END_GOOGLE_NAMESPACE_, [ }; ],
+     AC_DEFINE(_END_GOOGLE_NAMESPACE_, [ } ],
                Stops putting the code inside the Google namespace)
    else
      AC_DEFINE(GOOGLE_NAMESPACE,,

@@ -40,7 +40,10 @@
 #include <string>
 #include <stdio.h>
 #include <string.h>         // for memcmp()
+#include <stdlib.h>         // defines unlink() on some windows platforms(?)
+#ifdef HAVE_UNISTD_H
 #include <unistd.h>         // for unlink()
+#endif
 #include <google/sparsetable>
 
 using STL_NAMESPACE::string;

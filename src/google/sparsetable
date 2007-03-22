@@ -79,6 +79,10 @@
 #endif
 #endif
 
+#if !defined HAVE_U_INT16_T && defined HAVE___UINT16
+typedef __uint16 u_int16_t        // true on vc++7
+#endif
+
 _START_GOOGLE_NAMESPACE_
 
 using STL_NAMESPACE::vector;
@@ -346,10 +350,12 @@ class two_d_iterator {
 #ifdef UNDERSTANDS_ITERATOR_TAGS
   typedef STL_NAMESPACE::bidirectional_iterator_tag iterator_category;
 #endif
-  typedef typename containertype::value_type::value_type value_type;
-  typedef typename containertype::value_type::difference_type difference_type;
-  typedef typename containertype::value_type::reference reference;
-  typedef typename containertype::value_type::pointer pointer;
+  // apparently some versions of VC++ have trouble with two ::'s in a typename
+  typedef typename containertype::value_type _tmp_vt;
+  typedef typename _tmp_vt::value_type value_type;
+  typedef typename _tmp_vt::difference_type difference_type;
+  typedef typename _tmp_vt::reference reference;
+  typedef typename _tmp_vt::pointer pointer;
 
   // The "real" constructor.  begin and end specify how many rows we have
   // (in the diagram above); we always iterate over each row completely.
@@ -437,10 +443,12 @@ class const_two_d_iterator {
 #ifdef UNDERSTANDS_ITERATOR_TAGS
   typedef STL_NAMESPACE::bidirectional_iterator_tag iterator_category;
 #endif
-  typedef typename containertype::value_type::value_type value_type;
-  typedef typename containertype::value_type::difference_type difference_type;
-  typedef typename containertype::value_type::const_reference reference;
-  typedef typename containertype::value_type::const_pointer pointer;
+  // apparently some versions of VC++ have trouble with two ::'s in a typename
+  typedef typename containertype::value_type _tmp_vt;
+  typedef typename _tmp_vt::value_type value_type;
+  typedef typename _tmp_vt::difference_type difference_type;
+  typedef typename _tmp_vt::const_reference reference;
+  typedef typename _tmp_vt::const_pointer pointer;
 
   const_two_d_iterator(typename containertype::const_iterator begin, 
                        typename containertype::const_iterator end,
@@ -524,10 +532,12 @@ class destructive_two_d_iterator {
 #ifdef UNDERSTANDS_ITERATOR_TAGS
   typedef STL_NAMESPACE::input_iterator_tag iterator_category;
 #endif
-  typedef typename containertype::value_type::value_type value_type;
-  typedef typename containertype::value_type::difference_type difference_type;
-  typedef typename containertype::value_type::reference reference;
-  typedef typename containertype::value_type::pointer pointer;
+  // apparently some versions of VC++ have trouble with two ::'s in a typename
+  typedef typename containertype::value_type _tmp_vt;
+  typedef typename _tmp_vt::value_type value_type;
+  typedef typename _tmp_vt::difference_type difference_type;
+  typedef typename _tmp_vt::reference reference;
+  typedef typename _tmp_vt::pointer pointer;
 
   destructive_two_d_iterator(typename containertype::iterator begin, 
                              typename containertype::iterator end,

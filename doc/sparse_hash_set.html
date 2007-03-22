@@ -78,6 +78,8 @@ dictionaries to be persistent.</p>
 <pre>
 #include &lt;google/sparse_hash_set&gt;
 
+using std::sparse_hash_set;      // namespace where class lives by default
+
 struct eqstr
 {
   bool operator()(const char* s1, const char* s2) const
@@ -1034,7 +1036,7 @@ necessary).  In addition, there should
 be no data structures that point directly into parts of key or value,
 including the key or value itself (for instance, you cannot have a
 value like <tt>struct {int a = 1, *b = &a}</tt>.  This is because
-<tt>sparse_hash_set</tt> uses <tt>malloc()</tt> and <tt>free</tt> to
+<tt>sparse_hash_set</tt> uses <tt>malloc()</tt> and <tt>free()</tt> to
 allocate space for the key and value, and <tt>memmove()</tt> to
 reorganize the key and value in memory.</p>
 
@@ -1054,9 +1056,7 @@ hashtable metadata.  The second writes the actual data.</p>
 
 <p>To write a hashtable to disk, first call <tt>write_metadata()</tt>
 on an open file pointer.  This saves the hashtable information in a
-byte-order-independent format.  However, currently information written
-by a 32-bit system cannot be read by a 64-bit system, and vice
-versa.</p>
+byte-order-independent format.</p>
 
 <p>After the metadata has been written to disk, you must write the
 actual data stored in the hash-set to disk.  If both the key and data
