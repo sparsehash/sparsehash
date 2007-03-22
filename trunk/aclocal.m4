@@ -1041,10 +1041,10 @@ AC_DEFUN([AC_CXX_STL_NAMESPACE],
 
 AC_DEFUN([AC_DEFINE_GOOGLE_NAMESPACE],
   [google_namespace_default=[$1]
-   AC_ARG_ENABLE(namespace, [--enable-namespace=FOO to define these Google
+   AC_ARG_ENABLE(namespace, [  --enable-namespace=FOO to define these Google
                              classes in the FOO namespace. --disable-namespace
                              to define them in the global namespace. Default
-                             is to define them in std.],
+                             is to define them in namespace $1.],
                  [case "$enableval" in
                     yes) google_namespace="$google_namespace_default" ;;
                      no) google_namespace="" ;;
@@ -1052,20 +1052,20 @@ AC_DEFUN([AC_DEFINE_GOOGLE_NAMESPACE],
                   esac],
                  [google_namespace="$google_namespace_default"])
    if test -n "$google_namespace"; then
-     AC_DEFINE_UNQUOTED(GOOGLE_NAMESPACE, $google_namespace,
-                        Namespace for Google classes)
-     AC_DEFINE(_START_GOOGLE_NAMESPACE_, [ namespace GOOGLE_NAMESPACE { ],
-               Puts following code inside the Google namespace)
-     AC_DEFINE(_END_GOOGLE_NAMESPACE_, [ } ],
-               Stops putting the code inside the Google namespace)
+     ac_google_namespace="$google_namespace"
+     ac_google_start_namespace="namespace $google_namespace {"
+     ac_google_end_namespace="}"
    else
-     AC_DEFINE(GOOGLE_NAMESPACE,,
-               Namespace for Google classes)
-     AC_DEFINE(_START_GOOGLE_NAMESPACE_,,
-               Puts following code inside the Google namespace)
-     AC_DEFINE(_END_GOOGLE_NAMESPACE_,,
-               Stops putting the code inside the Google namespace)
+     ac_google_namespace=""
+     ac_google_start_namespace=""
+     ac_google_end_namespace=""
    fi
+   AC_DEFINE_UNQUOTED(GOOGLE_NAMESPACE, $ac_google_namespace,
+                      Namespace for Google classes)
+   AC_DEFINE_UNQUOTED(_START_GOOGLE_NAMESPACE_, $ac_google_start_namespace,
+                      Puts following code inside the Google namespace)
+   AC_DEFINE_UNQUOTED(_END_GOOGLE_NAMESPACE_,  $ac_google_end_namespace,
+                      Stops putting the code inside the Google namespace)
 ])
 
 # Checks whether the STL implementation used by this C++ compiler understands

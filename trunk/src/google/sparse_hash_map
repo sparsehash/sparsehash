@@ -31,7 +31,7 @@
 // Author: Craig Silverstein
 //
 // This is just a very thin wrapper over sparsehashtable.h, just
-// like sgi stl's stl_hash_map is a very thin wrapper over 
+// like sgi stl's stl_hash_map is a very thin wrapper over
 // stl_hashtable.  The major thing we define is operator[], because
 // we have a concept of a data_type which stl_hashtable doesn't
 // (it only has a key and a value).
@@ -84,48 +84,6 @@
 #include <google/sparsehash/sparsehashtable.h>
 
 
-// Lots of STLs don't support type traits, so we might well do without.
-// We also have a guard to make sure we don't include this code twice:
-// once for sparse_hash_map and once for dense_hash_map.
-#if defined(UNDERSTANDS_TYPE_TRAITS) && !defined(_ANDED_TRAITS_)
-#define _ANDED_TRAITS_
-
-#if defined HAVE_TYPE_TRAITS
-#include <type_traits.h>
-#elif defined HAVE_BITS_TYPE_TRAITS
-#include <bits/type_traits.h>
-#endif
-
-// We need to let the densetable know that our pair<Key,Data> is
-// a Plain Old Data type if both the Key and Data are.
-template <class Key, class T>       
-struct __and_trait {                             // by default x & y == false
-  typedef __false_type tp;
-};
-
-template <> struct __and_trait<__true_type, __true_type> {   // but true & true == true
-  typedef __true_type tp;
-};
-
-#define AND_(trait)                                                     \
-   typedef typename __and_trait<typename __type_traits<Key>::trait,     \
-                                typename __type_traits< T >::trait>::tp \
-   trait
-
-template <class Key, class T>
-struct __type_traits< STL_NAMESPACE::pair<const Key, T> > {
-  AND_(has_trivial_default_constructor);
-  AND_(has_trivial_copy_constructor);
-  AND_(has_trivial_assignment_operator);
-  AND_(has_trivial_destructor);
-  AND_(is_POD_type);
-};
-
-#undef AND_
-
-#endif   /* #defined UNDERSTANDS_TYPE_TRAITS && _ANDED_TRAITS_ */
-
-
 _START_GOOGLE_NAMESPACE_
 
 using STL_NAMESPACE::pair;
@@ -135,11 +93,10 @@ template <class Key, class T,
           class EqualKey = STL_NAMESPACE::equal_to<Key>,
           class Alloc = STL_NAMESPACE::allocator<T> >
 class sparse_hash_map {
-
  private:
   // Apparently select1st is not stl-standard, so we define our own
   struct SelectKey {
-    const Key& operator()(const pair<const Key, T>& p) const { 
+    const Key& operator()(const pair<const Key, T>& p) const {
       return p.first;
     }
   };
@@ -182,9 +139,9 @@ class sparse_hash_map {
   // Constructors
   explicit sparse_hash_map(size_type n = 0,
                            const hasher& hf = hasher(),
-                           const key_equal& eql = key_equal()) 
+                           const key_equal& eql = key_equal())
     : rep(n, hf, eql) { }
-  
+
   template <class InputIterator>
   sparse_hash_map(InputIterator f, InputIterator l,
                   size_type n = 0,
@@ -215,11 +172,16 @@ class sparse_hash_map {
   const_iterator find(const key_type& key) const     { return rep.find(key); }
 
   data_type& operator[](const key_type& key) {       // This is our value-add!
-    return (*((rep.insert(value_type(key, data_type()))).first)).second;
+    iterator it = find(key);
+    if (it != end()) {
+      return it->second;
+    } else {
+      return insert(value_type(key, data_type())).first->second;
+    }
   }
 
   size_type count(const key_type& key) const         { return rep.count(key); }
-  
+
   pair<iterator, iterator> equal_range(const key_type& key) {
     return rep.equal_range(key);
   }
@@ -241,7 +203,7 @@ class sparse_hash_map {
   // value to identify deleted buckets.  You can change the key as
   // time goes on, or get rid of it entirely to be insert-only.
   void set_deleted_key(const key_type& key)   {
-    rep.set_deleted_key(key);
+    rep.set_deleted_key(value_type(key, data_type()));  // rep wants a value
   }
   void clear_deleted_key()                    { rep.clear_deleted_key(); }
 

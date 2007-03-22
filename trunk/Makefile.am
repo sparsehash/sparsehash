@@ -1,4 +1,4 @@
-## Process this file with automake to produce Makefile.in       
+## Process this file with automake to produce Makefile.in
 
 # Make sure that when we re-make ./configure, we get the macros we need
 ACLOCAL_AMFLAGS = -I `pwd`/../autoconf
@@ -14,9 +14,10 @@ googleinclude_HEADERS =				\
    src/google/dense_hash_set			\
    src/google/sparse_hash_map			\
    src/google/sparse_hash_set			\
-   src/google/sparsetable
+   src/google/sparsetable                       \
+   src/google/type_traits.h
 
-docdir = $(prefix)/doc/$(PACKAGE)-$(VERSION)
+docdir = $(prefix)/share/doc/$(PACKAGE)-$(VERSION)
 ## This is for HTML and other documentation you want to install.
 ## Add your documentation files (in doc/) in addition to these boilerplate
 ## Also add a TODO file if you have one
@@ -36,7 +37,7 @@ lib_LTLIBRARIES =
 ## TESTS is for binary unittests, check_SCRIPTS for script-based unittests.
 ## TESTS_ENVIRONMENT sets environment variables for when you run unittest,
 ## but it only seems to take effect for *binary* unittests (argh!)
-TESTS = sparsetable_unittest hashtable_unittest
+TESTS = type_traits_unittest sparsetable_unittest hashtable_unittest
 check_SCRIPTS =
 TESTS_ENVIRONMENT =
 
@@ -58,6 +59,11 @@ sparsehashinclude_HEADERS =			\
    src/google/sparsehash/densehashtable.h	\
    src/google/sparsehash/sparsehashtable.h	\
    src/google/sparsehash/config.h
+
+type_traits_unittest_SOURCES =			\
+   src/type_traits_unittest.cc			\
+   src/google/sparsehash/config.h		\
+   src/google/type_traits.h
 
 sparsetable_unittest_SOURCES =			\
    src/sparsetable_unittest.cc			\

@@ -86,11 +86,6 @@ fails, the delete is a noop.  Otherwise, the appropriate entry is
 removed from the vector, all the vector elements above it are moved
 down one, and bitmap[i] is set to 0.</p>
 
-<p>Currently, the code uses memmove() to move vector elements around when
-making space for inserts and deletes.  This is why the value stored in
-a sparsetable must be Plain Old Data.  This requirement is easy to
-remove, though it may come at a speed cost.</p>
-
 <h3>iterators</h3>
 
 <p>Sparsetable iterators pose a special burden.  They must iterate over
@@ -144,7 +139,7 @@ HREF="performance.html">performance numbers</A>.</p>
 <p>For specificity, consider the declaration </p>
 
 <pre>
-   sparse_hash_set&lt;Foo&gt; t;           // Foo is a Plain Old Data type.
+   sparse_hash_set&lt;Foo&gt; t;
 </pre>
 
 <p>sparse_hash_set is a hashtable.  For more information on hashtables,
@@ -326,12 +321,6 @@ set_deleted_key(), set_empty_key() requires a value that will not be
 used by the client for any legitimate purpose.  Unlike
 set_deleted_key(), set_empty_key() is always required, no matter what
 hashtable operations the client wishes to perform.</p>
-
-<p>Since this implementation uses C arrays rather than an equivalent C++
-data structure like vectors, data in it must have a Plain Old Data
-type.  This restriction is probably easy to remove -- using a vector
-instead of an array would probably work fine -- but it has not been
-done.</p>
 
 <h3>Resource use</h3>
 

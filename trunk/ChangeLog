@@ -30,3 +30,16 @@ Thu Nov  3 20:12:31 2005  Google Inc. <opensource@google.com>
 	  allowing hash-map values to be forward-declared. (csilvers)
 	* support for std::insert_iterator (and std::inserter). (csilvers)
 
+
+Sun Apr 23 22:42:35 2006  Google Inc. <opensource@google.com>
+
+	* sparsehash: version 0.4 release
+	* Remove POD requirement for keys and values! (austern)
+	* Add tr1-compatible type-traits system to speed up POD ops. (austern)
+	* Fixed const-iterator bug where postfix ++ didn't compile. (csilvers)
+	* Fixed iterator comparison bugs where <= was incorrect. (csilvers)
+	* Clean up config.h to keep its #defines from conflicting. (csilvers)
+	* Big documentation sweep and cleanup. (csilvers)
+	* Update documentation to talk more about good hash fns. (csilvers)
+	* Fixes to compile on MSVC (working around some MSVC bugs). (rennie)
+	* Avoid resizing hashtable on operator[] lookups (austern)

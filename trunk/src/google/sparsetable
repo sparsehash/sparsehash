@@ -59,19 +59,24 @@
 #include <google/sparsehash/config.h>
 #include <stdlib.h>             // for malloc/free
 #include <stdio.h>              // to read/write tables
-#if defined HAVE_STDINT_H
-#include <stdint.h>             // to get uint16_t (ISO naming madness)
-#elif defined HAVE_INTTYPES_H
-#include <inttypes.h>           // another place uint16_t might be defined
-#else
-#include <sys/types.h>          // our last best hope
+#ifdef HAVE_SYS_TYPES_H
+#include <sys/types.h>          // the normal place u_int16_t is defined
+#endif
+#ifdef HAVE_STDINT_H
+#include <stdint.h>             // another place that might define u_int16_t
+#endif
+#ifdef HAVE_INTTYPES_H
+#include <inttypes.h>           // a third place that might define u_int16_t
 #endif
 #include <assert.h>             // for bounds checking
-#include <iterator>             // to define reverse_iterator<> for me
+#include <iterator>             // to define reverse_iterator for me
+#include <algorithm>            // equal, lexicographical_compare, swap,...
+#include <memory>               // uninitialized_copy
 #include <vector>               // a sparsetable is a vector of groups
+#include <google/type_traits.h> // for true_type, integral_constant, etc.
 
 #if STDC_HEADERS
-#include <string.h>             // for memcpy and mmemmove
+#include <string.h>             // for memcpy and memmove
 #else
 #if !HAVE_MEMCPY
 #define memcpy(d, s, n)   bcopy ((s), (d), (n))
@@ -86,12 +91,13 @@ typedef __uint16 u_int16_t        // true on vc++7
 _START_GOOGLE_NAMESPACE_
 
 using STL_NAMESPACE::vector;
+using STL_NAMESPACE::uninitialized_copy;
 
 // The smaller this is, the faster lookup is (because the group bitmap is
-// smaller) and the faster insert is, because there's less to memmove.
+// smaller) and the faster insert is, because there's less to move.
 // On the other hand, there are more groups.  Since group::size_type is
 // a short, this number should be of the form 32*x + 16 to avoid waste.
-static const uint16_t DEFAULT_SPARSEGROUP_SIZE = 48;   // fits in 1.5 words
+static const u_int16_t DEFAULT_SPARSEGROUP_SIZE = 48;   // fits in 1.5 words
 
 
 // A NOTE ON ASSIGNING:
@@ -114,9 +120,9 @@ class table_element_adaptor {
   typedef typename tabletype::reference reference;
   typedef typename tabletype::pointer pointer;
 
-  table_element_adaptor(tabletype *tbl, size_type p) 
+  table_element_adaptor(tabletype *tbl, size_type p)
     : table(tbl), pos(p) { }
-  table_element_adaptor& operator= (value_type val) { 
+  table_element_adaptor& operator= (const value_type &val) {
     table->set(pos, val);
     return *this;
   }
@@ -175,7 +181,7 @@ class table_iterator {
     assert(pos <= table->size());
   }
 
-  // Arithmetic: we just do arithmetic on pos.  We don't even need to 
+  // Arithmetic: we just do arithmetic on pos.  We don't even need to
   // do bounds checking, since STL doesn't consider that it's job.  :-)
   iterator& operator+=(size_type t) { pos += t; check(); return *this; }
   iterator& operator-=(size_type t) { pos -= t; check(); return *this; }
@@ -205,13 +211,10 @@ class table_iterator {
     assert(table == it.table);              // life is bad bad bad otherwise
     return pos < it.pos;
   }
-  bool operator<=(const iterator& it) const {
-    assert(table == it.table);
-    return pos <= it.pos;
-  }
   bool operator!=(const iterator& it) const { return !(*this == it); }
-  bool operator>(const iterator& it) const { return it <= *this; }
-  bool operator>=(const iterator& it) const { return it < *this; }
+  bool operator<=(const iterator& it) const { return !(it < *this); }
+  bool operator>(const iterator& it) const { return it < *this; }
+  bool operator>=(const iterator& it) const { return !(*this < it); }
 
   // Here's the info we actually need to be an iterator
   tabletype *table;              // so we can dereference and bounds-check
@@ -263,7 +266,7 @@ class const_table_iterator {
     assert(pos <= table->size());
   }
 
-  // Arithmetic: we just do arithmetic on pos.  We don't even need to 
+  // Arithmetic: we just do arithmetic on pos.  We don't even need to
   // do bounds checking, since STL doesn't consider that it's job.  :-)
   const_iterator& operator+=(size_type t) { pos += t; check(); return *this; }
   const_iterator& operator-=(size_type t) { pos -= t; check(); return *this; }
@@ -293,13 +296,10 @@ class const_table_iterator {
     assert(table == it.table);              // life is bad bad bad otherwise
     return pos < it.pos;
   }
-  bool operator<=(const const_iterator& it) const {
-    assert(table == it.table);
-    return pos <= it.pos;
-  }
   bool operator!=(const const_iterator& it) const { return !(*this == it); }
-  bool operator>(const const_iterator& it) const { return it <= *this; }
-  bool operator>=(const const_iterator& it) const { return it < *this; }
+  bool operator<=(const const_iterator& it) const { return !(it < *this); }
+  bool operator>(const const_iterator& it) const { return it < *this; }
+  bool operator>=(const const_iterator& it) const { return !(*this < it); }
 
   // Here's the info we actually need to be an iterator
   const tabletype *table;        // so we can dereference and bounds-check
@@ -308,7 +308,7 @@ class const_table_iterator {
 
 // support for "3 + iterator" has to be defined outside the class, alas
 template<class T>
-const_table_iterator<T> operator+(typename 
+const_table_iterator<T> operator+(typename
                                   const_table_iterator<T>::difference_type i,
                                   const_table_iterator<T> it) {
   return it + i;               // so people can say it2 = 3 + it
@@ -321,10 +321,10 @@ const_table_iterator<T> operator+(typename
 /*
 // This is a 2-D iterator.  You specify a begin and end over a list
 // of *containers*.  We iterate over each container by iterating over
-// it.  It's actually simple:                                    
-// VECTOR.begin() VECTOR[0].begin()  --------> VECTOR[0].end() ---\ 
+// it.  It's actually simple:
+// VECTOR.begin() VECTOR[0].begin()  --------> VECTOR[0].end() ---,
 //     |          ________________________________________________/
-//     |          \_> VECTOR[1].begin()  -------->  VECTOR[1].end() -\ 
+//     |          \_> VECTOR[1].begin()  -------->  VECTOR[1].end() -,
 //     |          ___________________________________________________/
 //     v          \_> ......
 // VECTOR.end()
@@ -359,7 +359,7 @@ class two_d_iterator {
 
   // The "real" constructor.  begin and end specify how many rows we have
   // (in the diagram above); we always iterate over each row completely.
-  two_d_iterator(typename containertype::iterator begin, 
+  two_d_iterator(typename containertype::iterator begin,
                  typename containertype::iterator end,
                  typename containertype::iterator curr)
     : row_begin(begin), row_end(end), row_current(curr), col_current() {
@@ -369,7 +369,7 @@ class two_d_iterator {
     }
   }
   // If you want to start at an arbitrary place, you can, I guess
-  two_d_iterator(typename containertype::iterator begin, 
+  two_d_iterator(typename containertype::iterator begin,
                  typename containertype::iterator end,
                  typename containertype::iterator curr,
                  typename containertype::value_type::TWOD_ITER_ col)
@@ -385,20 +385,20 @@ class two_d_iterator {
   reference operator*() const    { return *col_current; }
   pointer operator->() const     { return &(operator*()); }
 
-  // Arithmetic: we just do arithmetic on pos.  We don't even need to 
+  // Arithmetic: we just do arithmetic on pos.  We don't even need to
   // do bounds checking, since STL doesn't consider that it's job.  :-)
   // NOTE: this is not amortized constant time!  What do we do about it?
   void advance_past_end() {          // used when col_current points to end()
     while ( col_current == row_current->TWOD_END_() ) {  // end of current row
       ++row_current;                                // go to beginning of next
       if ( row_current != row_end )                 // col is irrelevant at end
-        col_current = row_current->TWOD_BEGIN_();         
-      else                                          
+        col_current = row_current->TWOD_BEGIN_();
+      else
         break;                                      // don't go past row_end
-    } 
-  } 
- 
-  iterator& operator++() { 
+    }
+  }
+
+  iterator& operator++() {
     assert(row_current != row_end);                 // how to ++ from there?
     ++col_current;
     advance_past_end();                 // in case col_current is at end()
@@ -450,7 +450,7 @@ class const_two_d_iterator {
   typedef typename _tmp_vt::const_reference reference;
   typedef typename _tmp_vt::const_pointer pointer;
 
-  const_two_d_iterator(typename containertype::const_iterator begin, 
+  const_two_d_iterator(typename containertype::const_iterator begin,
                        typename containertype::const_iterator end,
                        typename containertype::const_iterator curr)
     : row_begin(begin), row_end(end), row_current(curr), col_current() {
@@ -459,14 +459,14 @@ class const_two_d_iterator {
       advance_past_end();                 // in case cur->begin() == cur->end()
     }
   }
-  const_two_d_iterator(typename containertype::const_iterator begin, 
+  const_two_d_iterator(typename containertype::const_iterator begin,
                        typename containertype::const_iterator end,
                        typename containertype::const_iterator curr,
                        typename containertype::value_type::TWOD_CONST_ITER_ col)
     : row_begin(begin), row_end(end), row_current(curr), col_current(col) {
     advance_past_end();                 // in case cur->begin() == cur->end()
   }
-  const_two_d_iterator() 
+  const_two_d_iterator()
     : row_begin(), row_end(), row_current(), col_current() {
   }
   // Need this explicitly so we can convert normal iterators to const iterators
@@ -486,12 +486,12 @@ class const_two_d_iterator {
     while ( col_current == row_current->TWOD_END_() ) {  // end of current row
       ++row_current;                                // go to beginning of next
       if ( row_current != row_end )                 // col is irrelevant at end
-        col_current = row_current->TWOD_BEGIN_();         
-      else                                          
+        col_current = row_current->TWOD_BEGIN_();
+      else
         break;                                      // don't go past row_end
-    } 
-  } 
-  iterator& operator++() { 
+    }
+  }
+  iterator& operator++() {
     assert(row_current != row_end);                 // how to ++ from there?
     ++col_current;
     advance_past_end();                 // in case col_current is at end()
@@ -539,7 +539,7 @@ class destructive_two_d_iterator {
   typedef typename _tmp_vt::reference reference;
   typedef typename _tmp_vt::pointer pointer;
 
-  destructive_two_d_iterator(typename containertype::iterator begin, 
+  destructive_two_d_iterator(typename containertype::iterator begin,
                              typename containertype::iterator end,
                              typename containertype::iterator curr)
     : row_begin(begin), row_end(end), row_current(curr), col_current() {
@@ -548,7 +548,7 @@ class destructive_two_d_iterator {
       advance_past_end();                 // in case cur->begin() == cur->end()
     }
   }
-  destructive_two_d_iterator(typename containertype::iterator begin, 
+  destructive_two_d_iterator(typename containertype::iterator begin,
                              typename containertype::iterator end,
                              typename containertype::iterator curr,
                              typename containertype::value_type::TWOD_ITER_ col)
@@ -569,17 +569,17 @@ class destructive_two_d_iterator {
       // It would be nice if we could decrement sparsetable->num_buckets here
       ++row_current;                                // go to beginning of next
       if ( row_current != row_end )                 // col is irrelevant at end
-        col_current = row_current->TWOD_BEGIN_();         
-      else                                          
+        col_current = row_current->TWOD_BEGIN_();
+      else
         break;                                      // don't go past row_end
-    } 
-  } 
+    }
+  }
 
   // EVERYTHING FROM HERE DOWN IS THE SAME AS THE REGULAR ITERATOR
   reference operator*() const    { return *col_current; }
   pointer operator->() const     { return &(operator*()); }
 
-  iterator& operator++() { 
+  iterator& operator++() {
     assert(row_current != row_end);                 // how to ++ from there?
     ++col_current;
     advance_past_end();                 // in case col_current is at end()
@@ -614,11 +614,11 @@ class destructive_two_d_iterator {
 // logical-position-to-sparse-position lookup, which is also slow but
 // constant time.  The larger M is, the slower these operations are
 // but the less overhead (slightly).
-// 
+//
 // To store the sparse array, we store a bitmap B, where B[i] = 1 iff
 // bucket i is non-empty.  Then to look up bucket i we really look up
 // array[# of 1s before i in B].  This is constant time for fixed M.
-// 
+//
 // Terminology: the position of an item in the overall table (from
 // 1 .. t) is called its "location."  The logical position in a group
 // (from 1 .. M ) is called its "position."  The actual location in
@@ -638,7 +638,7 @@ class destructive_two_d_iterator {
     add_to |= (static_cast<size_type>(x) << ((offset) % (sizeof(add_to)*8)))
 
 
-template <class T, uint16_t GROUP_SIZE>
+template <class T, u_int16_t GROUP_SIZE>
 class sparsegroup {
  public:
   // Basic types
@@ -650,7 +650,7 @@ class sparsegroup {
   typedef table_element_adaptor<sparsegroup<T, GROUP_SIZE> > element_adaptor;
   typedef value_type &reference;
   typedef const value_type &const_reference;
-  typedef uint16_t size_type;                  // max # of buckets
+  typedef u_int16_t size_type;                  // max # of buckets
   typedef int16_t difference_type;
   typedef STL_NAMESPACE::reverse_iterator<const_iterator> const_reverse_iterator;
   typedef STL_NAMESPACE::reverse_iterator<iterator> reverse_iterator;
@@ -707,7 +707,6 @@ class sparsegroup {
   void bmset(size_type i)          { bitmap[charbit(i)] |= modbit(i); }
   void bmclear(size_type i)        { bitmap[charbit(i)] &= ~modbit(i); }
 
-  // malloc / realloc that dies if allocation fails
   void* realloc_or_die(void* ptr, size_t num_bytes) {
     void* retval = realloc(ptr, num_bytes);
     if (retval == NULL) {
@@ -718,8 +717,18 @@ class sparsegroup {
     return retval;
   }
 
-  void* malloc_or_die(size_t num_bytes) {
-    return realloc_or_die(NULL, num_bytes);
+  value_type* allocate_group(size_t n) {
+    return static_cast<value_type*>(realloc_or_die(NULL,
+                                                   n * sizeof(value_type)));
+  }
+
+  void free_group() {
+    // Valid even for empty group, because NULL+0 is defined to be NULL
+    value_type* end = group + num_buckets;
+    for (value_type* p = group; p != end; ++p)
+      p->value_type::~value_type();
+    free(group);
+    group = NULL;
   }
 
  public:                         // get_iter() in sparsetable needs it
@@ -748,7 +757,7 @@ class sparsegroup {
       4, 5, 5, 6, 5, 6, 6, 7, 5, 6, 6, 7, 6, 7, 7, 8,
     };
     size_type retval = 0;
-    
+
     // [Note: condition pos > 8 is an optimization; convince yourself we
     // give exactly the same result as if we had pos >= 8 here instead.]
     for ( ; pos > 8; pos -= 8 )                    // bm[0..pos/8-1]
@@ -766,23 +775,25 @@ class sparsegroup {
   sparsegroup() : group(0), num_buckets(0) { memset(bitmap, 0, sizeof(bitmap)); }
   sparsegroup(const sparsegroup& x) : group(0), num_buckets(x.num_buckets) {
     if ( num_buckets ) {
-      group = (value_type *)malloc_or_die(x.num_buckets * sizeof(*group));
-      memcpy(group, x.group, x.num_buckets * sizeof(*group));
+      group = allocate_group(x.num_buckets);
+      uninitialized_copy(x.group, x.group + x.num_buckets, group);
     }
     memcpy(bitmap, x.bitmap, sizeof(bitmap));
   }
-  ~sparsegroup() { free(group); }       // free(NULL) does the right thing
+  ~sparsegroup() { free_group(); }
 
   // Operator= is just like the copy constructor, I guess
+  // TODO(austern): Make this exception safe. Handle exceptions in value_type's
+  // copy constructor.
   sparsegroup &operator=(const sparsegroup& x) {
     if ( &x == this ) return *this;                    // x = x
     if ( x.num_buckets == 0 ) {
-      free(group);
-      group = NULL;
+      free_group();
     } else {
-      group = (value_type *)
-              realloc_or_die(group, x.num_buckets * sizeof(*group));
-      memcpy(group, x.group, x.num_buckets * sizeof(*group));
+      value_type* p = allocate_group(x.num_buckets);
+      uninitialized_copy(x.group, x.group + x.num_buckets, p);
+      free_group();
+      group = p;
     }
     memcpy(bitmap, x.bitmap, sizeof(bitmap));
     num_buckets = x.num_buckets;
@@ -799,9 +810,7 @@ class sparsegroup {
 
   // It's always nice to be able to clear a table without deallocating it
   void clear() {
-    if ( group )
-      free(group);
-    group = NULL;
+    free_group();
     memset(bitmap, 0, sizeof(bitmap));
     num_buckets = 0;
   }
@@ -841,22 +850,46 @@ class sparsegroup {
     return element_adaptor(this, i);
   }
 
-  // This returns a reference to the inserted item (which is a copy of val)
+ private:
+  // Create space at group[offset], assuming value_type has trivial
+  // copy constructor and assignment operator
+  void set_aux(size_type offset, true_type) {
+    group = (value_type *)
+            realloc_or_die(group, sizeof(*group) * (num_buckets+1));
+    memmove(group + offset+1, group + offset,
+            (num_buckets - offset) * sizeof(*group));
+  }
+
+  // Create space at group[offset], without special assumptions about value_type
+  void set_aux(size_type offset, false_type) {
+      // This is valid because 0 <= offset <= num_buckets
+      value_type* p = allocate_group(num_buckets + 1);
+      uninitialized_copy(group, group + offset, p);
+      uninitialized_copy(group + offset, group + num_buckets, p + offset + 1);
+      free_group();
+      group = p;
+  }
+
+ public:
+  // This returns a reference to the inserted item (which is a copy of val).
+  // TODO(austern): Make this exception safe: handle exceptions from
+  // value_type's copy constructor.
   reference set(size_type i, const_reference val) {
     size_type offset = pos_to_offset(bitmap, i);  // where we'll find (or insert)
-    if ( !bmtest(i) ) {                           // make space at group[offset]
-      // We know the realloc and memmove are safe because we ensure
-      // value_type is a Plain Old Data Type (see below)
-      group = (value_type *)
-              realloc_or_die(group, sizeof(*group) * ++num_buckets);
-      memmove(group + offset+1, group + offset, 
-              (num_buckets-1 - offset) * sizeof(*group));
+    if ( bmtest(i) ) {
+      // Delete the old value, which we're replacing with the new one
+      group[offset].value_type::~value_type();
+    } else {
+      typedef integral_constant<bool,
+                                (has_trivial_copy<value_type>::value &&
+                                 has_trivial_assign<value_type>::value)>
+        is_simple_type;
+      set_aux(offset, is_simple_type());
+      ++num_buckets;
       bmset(i);
     }
     // This does the actual inserting.  Since we made the array using
     // malloc, we use "placement new" to just call the constructor.
-    // We really should destruct this later, via group[offset].~value_type(),
-    // every time we free(), but we don't because it's a POD type.
     new(&group[offset]) value_type(val);
     return group[offset];
   }
@@ -869,23 +902,48 @@ class sparsegroup {
     return bmtest(pos.pos);
   }
 
+ private:
+  // Shrink the array, assuming value_type has trivial copy and assign.
+  void erase_aux(size_type offset, true_type) {
+    group[offset].value_type::~value_type();
+    memmove(group + offset, group + offset+1,
+            ((num_buckets-1) - offset) * sizeof(*group));
+    group = (value_type *)
+            realloc_or_die(group, sizeof(*group) * (num_buckets-1));
+  }
+
+  // Shrink the array, without any special assumptions about value_type.
+  void erase_aux(size_type offset, false_type) {
+    // This is valid because 0 <= offset < num_buckets. Note the inequality.
+    value_type* p = allocate_group(num_buckets - 1);
+    uninitialized_copy(group, group + offset, p);
+    uninitialized_copy(group + offset + 1, group + num_buckets, p + offset);
+    free_group();
+    group = p;
+  }
+
+ public:
   // This takes the specified elements out of the group.  This is
   // "undefining", rather than "clearing".
+  // TODO(austern): Make this exception safe: handle exceptions from
+  // value_type's copy constructor.
   void erase(size_type i) {
     if ( bmtest(i) ) {                           // trivial to erase empty bucket
       size_type offset = pos_to_offset(bitmap,i); // where we'll find (or insert)
-      if ( --num_buckets == 0 ) {
-        free(group);
+      if ( num_buckets == 1 ) {
+        free_group();
         group = NULL;
       } else {
-        memmove(group + offset, group + offset+1, 
-                (num_buckets - offset) * sizeof(*group));
-        group = (value_type *)
-                realloc_or_die(group, sizeof(*group) * num_buckets);
+        typedef integral_constant<bool,
+                                  (has_trivial_copy<value_type>::value &&
+                                   has_trivial_assign<value_type>::value)>
+          is_simple_type;
+        erase_aux(offset, is_simple_type());
       }
+      --num_buckets;
       bmclear(i);
     }
-    }
+  }
 
   void erase(iterator pos) {
     erase(pos.pos);
@@ -915,21 +973,21 @@ class sparsegroup {
   // Reading destroys the old group contents!  Returns true if all was ok
   bool read_metadata(FILE *fp) {
     clear();
-    
+
     int x;          // the GET_ macro requires an 'int x' to be defined
     GET_(num_buckets, 8);
     GET_(num_buckets, 0);
 
     if ( !fread(bitmap, sizeof(bitmap), 1, fp) )  return false;
 
-    // We'll allocate the space; you'd better fill it somehow!
-    group = (value_type *)malloc(num_buckets * sizeof(*group));
-    if ( group == NULL )  return false;
+    // We'll allocate the space, but we won't fill it: it will be
+    // left as uninitialized raw memory.
+    group = allocate_group(num_buckets);
     return true;
   }
 
   // If your keys and values are simple enough, we can write them
-  // to disk for you.  "simple enough" means no pointers.
+  // to disk for you.  "simple enough" means POD and no pointers.
   // However, we don't try to normalize endianness
   bool write_nopointer_data(FILE *fp) const {
     for ( const_nonempty_iterator it = nonempty_begin();
@@ -939,7 +997,8 @@ class sparsegroup {
     return true;
   }
 
-  // When reading, we have to override the potential const-ness of *it
+  // When reading, we have to override the potential const-ness of *it.
+  // Again, only meaningful if value_type is a POD.
   bool read_nopointer_data(FILE *fp) {
     for ( nonempty_iterator it = nonempty_begin();
           it != nonempty_end(); ++it ) {
@@ -962,32 +1021,11 @@ class sparsegroup {
                                                   x.begin(), x.end());
   }
   bool operator!=(const sparsegroup& x) const { return !(*this == x); }
-  bool operator<=(const sparsegroup& x) const { return *this < x || *this == x; }
-  bool operator>(const sparsegroup& x) const { return x <= *this; }
-  bool operator>=(const sparsegroup& x) const { return x < *this; }
+  bool operator<=(const sparsegroup& x) const { return !(x < *this); }
+  bool operator>(const sparsegroup& x) const { return x < *this; }
+  bool operator>=(const sparsegroup& x) const { return !(*this < x); }
 
  private:
-  // We need to enforce that our value_type is a Plain Old Data Type
-  // (so we know realloc and memmove will work).  We use traits to
-  // enforce this.  The following gives a compile-time error if
-  // is_POD_type is false (which is the default for user types).
-  //
-  // IF YOU GET AN ERROR HERE, make sure your class is a POD type,
-  // and if so tell the compiler via code similar to this:
-  // template<> struct __type_traits<classname> {
-  //   typedef __true_type    has_trivial_default_constructor;
-  //   typedef __true_type    has_trivial_copy_constructor;
-  //   typedef __true_type    has_trivial_assignment_operator;
-  //   typedef __true_type    has_trivial_destructor;
-  //   typedef __true_type    is_POD_type;
-  // };
-  //
-  // If this is part of a hash_map, you need to make sure both the
-  // Key and Value types are POD types, if they're user-defined.
-#ifdef UNDERSTANDS_TYPE_TRAITS
-  static __true_type * const enforce_pod;
-#endif
-
   // The actual data
   value_type *group;                            // (small) array of T's
   unsigned char bitmap[(GROUP_SIZE-1)/8 + 1];   // fancy math is so we round up
@@ -995,21 +1033,15 @@ class sparsegroup {
 };
 
 // We need a global swap as well
-template <class T, uint16_t GROUP_SIZE>
+template <class T, u_int16_t GROUP_SIZE>
 inline void swap(sparsegroup<T,GROUP_SIZE> &x, sparsegroup<T,GROUP_SIZE> &y) {
   x.swap(y);
 }
 
-#ifdef UNDERSTANDS_TYPE_TRAITS
-template <class T, uint16_t GROUP_SIZE>
-__true_type * const sparsegroup<T, GROUP_SIZE>::enforce_pod = 
-static_cast<typename __type_traits<value_type>::is_POD_type *>(0);
-#endif
-
 // ---------------------------------------------------------------------------
 
 
-template <class T, uint16_t GROUP_SIZE = DEFAULT_SPARSEGROUP_SIZE>
+template <class T, u_int16_t GROUP_SIZE = DEFAULT_SPARSEGROUP_SIZE>
 class sparsetable {
  public:
   // Basic types
@@ -1083,8 +1115,8 @@ class sparsetable {
  private:
   typedef typename vector< sparsegroup<value_type, GROUP_SIZE> >::reference
     GroupsReference;
-  typedef typename 
-    vector< sparsegroup<value_type, GROUP_SIZE> >::const_reference 
+  typedef typename
+    vector< sparsegroup<value_type, GROUP_SIZE> >::const_reference
     GroupsConstReference;
   typedef typename vector< sparsegroup<value_type, GROUP_SIZE> >::iterator
     GroupsIterator;
@@ -1099,13 +1131,13 @@ class sparsetable {
   size_type pos_in_group(size_type i) const { return i % GROUP_SIZE; }
   size_type group_num(size_type i) const    { return i / GROUP_SIZE; }
   GroupsReference which_group(size_type i)  { return groups[group_num(i)]; }
-  GroupsConstReference which_group(size_type i) const 
+  GroupsConstReference which_group(size_type i) const
                                             { return groups[group_num(i)]; }
 
 
  public:
   // Constructors -- default, normal (when you specify size), and copy
-  sparsetable(size_type size = 0) 
+  sparsetable(size_type size = 0)
     : groups(num_groups(size)), table_size(size), num_buckets(0) { }
   // We'll can get away with using the default copy constructor,
   // and default destructor, and hence the default operator=.  Huzzah!
@@ -1163,7 +1195,7 @@ class sparsetable {
     return which_group(pos.pos).test(pos_in_group(pos.pos));
   }
 
-  // We only return const_references because it's really hard to 
+  // We only return const_references because it's really hard to
   // return something settable for empty buckets.  Use set() instead.
   const_reference get(size_type i) const {
     assert(i < table_size);
@@ -1192,16 +1224,16 @@ class sparsetable {
   const_nonempty_iterator get_iter(size_type i) const {
     assert(test(i));    // how can a nonempty_iterator point to an empty bucket?
     return const_nonempty_iterator(
-      groups.begin(), groups.end(), 
+      groups.begin(), groups.end(),
       groups.begin() + group_num(i),
-      (groups[group_num(i)].nonempty_begin() + 
+      (groups[group_num(i)].nonempty_begin() +
        groups[group_num(i)].pos_to_offset(pos_in_group(i))));
   }
   // For nonempty we can return a non-const version
   nonempty_iterator get_iter(size_type i) {
     assert(test(i));    // how can a nonempty_iterator point to an empty bucket?
     return nonempty_iterator(
-      groups.begin(), groups.end(), 
+      groups.begin(), groups.end(),
       groups.begin() + group_num(i),
       (groups[group_num(i)].nonempty_begin() +
        groups[group_num(i)].pos_to_offset(pos_in_group(i))));
@@ -1237,7 +1269,7 @@ class sparsetable {
     for ( ; start != end; ++start )
       erase(start);
   }
-  
+
 
   // We support reading and writing tables to disk.  We don't store
   // the actual array contents (which we don't know how to store),
@@ -1367,9 +1399,9 @@ class sparsetable {
                                                   x.begin(), x.end());
   }
   bool operator!=(const sparsetable& x) const { return !(*this == x); }
-  bool operator<=(const sparsetable& x) const { return *this < x || *this == x; }
-  bool operator>(const sparsetable& x) const { return x <= *this; }
-  bool operator>=(const sparsetable& x) const { return x < *this; }
+  bool operator<=(const sparsetable& x) const { return !(x < *this); }
+  bool operator>(const sparsetable& x) const { return x < *this; }
+  bool operator>=(const sparsetable& x) const { return !(*this < x); }
 
 
  private:
@@ -1380,7 +1412,7 @@ class sparsetable {
 };
 
 // We need a global swap as well
-template <class T, uint16_t GROUP_SIZE>
+template <class T, u_int16_t GROUP_SIZE>
 inline void swap(sparsetable<T,GROUP_SIZE> &x, sparsetable<T,GROUP_SIZE> &y) {
   x.swap(y);
 }

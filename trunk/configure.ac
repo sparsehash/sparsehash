@@ -8,7 +8,7 @@
 # make sure we're interpreted by some minimal autoconf
 AC_PREREQ(2.57)
 
-AC_INIT(sparsehash, 0.3, opensource@google.com)
+AC_INIT(sparsehash, 0.4, opensource@google.com)
 # The argument here is just something that should be in the current directory
 # (for sanity checking)
 AC_CONFIG_SRCDIR(README)
@@ -25,6 +25,7 @@ AC_HEADER_STDC
 AC_CHECK_FUNCS(memcpy memmove)
 AC_CHECK_TYPES([u_int16_t])    # defined in most posix systems
 AC_CHECK_TYPES([__uint16])     # defined in some windows systems (vc7)
+AC_CHECK_TYPES([long long])    # probably defined everywhere, but...
 # These are 'only' needed for unittests
 AC_CHECK_HEADERS(sys/resource.h unistd.h sys/time.h sys/utsname.h)
 

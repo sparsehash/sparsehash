@@ -71,7 +71,7 @@ unassigned elements, lookup returns the default value
 </A>
 
 <p>This class is appropriate for applications that need to store large
-arrays in memory, and for applications that need these arrays to be
+arrays in memory, or for applications that need these arrays to be
 persistent.</p>
 
 
@@ -79,6 +79,8 @@ persistent.</p>
 
 <pre>
 #include &lt;google/sparsetable&gt;
+
+using google::sparsetable;      // namespace where class lives by default
 
 sparsetable&lt;int&gt; t(100);
 t[5] = 6;
@@ -89,9 +91,8 @@ cout &lt;&lt; "Default value = " &lt;&lt t[99];
 
 <h3>Definition</h3>
 
-Defined in the header <A
-href="sparsetable.h">sparsetable.h</A>.  This class is not
-part of the C++ standard.
+Defined in the header <A href="sparsetable">sparsetable</A>.  This
+class is not part of the C++ standard.
 
 
 <h3>Template parameters</h3>
@@ -155,7 +156,7 @@ None.
 
 <TR>
 <TD VAlign=top>
-   <tt>value_type</tt> <A href="#1">[1]</A>
+   <tt>value_type</tt>
 </TD>
 <TD VAlign=top>
    <A href="http://www.sgi.com/tech/stl/Container.html">Container</A>
@@ -345,7 +346,7 @@ None.
    Iterator used to iterate through the
    <A HREF="#assigned">assigned</A> elements of the
    <tt>sparsetable</tt>, erasing elements as it iterates.
-   <A href="#2">[2]</A>
+   <A href="#1">[1]</A>
 </TD>
 </TR>
 
@@ -715,7 +716,7 @@ None.
     Access Container</A>
 </TD>
 <TD VAlign=top>
-   Returns the <tt>n</tt>'th element.  <A href="#3">[2]</A>
+   Returns the <tt>n</tt>'th element.  <A href="#2">[2]</A>
 </TD>
 </TR>
 
@@ -856,7 +857,6 @@ None.
 </TD>
 <TD VAlign=top>
    Changes the size of sparsetable to <tt>n</tt>.
-   <A HREF="#1">[1]</A>
 </TD>
 </TR>
 
@@ -1005,7 +1005,7 @@ Access Container</A> requirement, but are specific to
    Iterator used to iterate through the
    <A HREF="#assigned">assigned</A> elements of the
    <tt>sparsetable</tt>, erasing elements as it iterates.
-   <A href="#2">[2]</A>
+   <A href="#1">[1]</A>
 </TD>
 </TR>
 
@@ -1230,7 +1230,6 @@ Access Container</A> requirement, but are specific to
    greater than the old size, new, <A HREF="#assigned">unassigned</A>
    elements are appended.  If <tt>n</tt> is less than the old size,
    all elements in position &gt;<tt>n</tt> are deleted.
-   <A HREF="#1">[1]</A>
 </TD>
 </TR>
 
@@ -1279,21 +1278,6 @@ Access Container</A> requirement, but are specific to
 
 <P><A name="1">[1]</A>
 
-<tt>value_type</tt> must be <A
-HREF="http://c2.com/cgi/wiki?PlainOldData">plain old data</A> (see <A
-HREF="implementation.html">implementation.html</A> for why this is necessary).
-In addition, there should be no data structures that point directly
-into parts of value, including the value itself (for instance, you
-cannot have a value like <tt>struct {int a = 1, *b = &a}</tt>.  This
-is because <tt>sparsetable</tt> uses <tt>malloc()</tt> and
-<tt>free</tt> to allocate space for the key and value, and
-<tt>memmove()</tt> to reorganize the key and value in memory.</p>
-
-<p>Almost all common uses fit this criterion: <tt>value_type</tt> can
-be a basic C type or an STL type like <tt>string</tt>, for instance.
-
-<P><A name="2">[2]</A>
-
 <tt>sparsetable::destructive_iterator</tt> iterates through a
 sparsetable like a normal iterator, but <tt>++it</tt> may delete the
 element being iterated past.  Obviously, this iterator can only be
@@ -1302,7 +1286,7 @@ copy data from a sparsetable to some other data structure without
 using extra memory to store the data in both places during the
 copy.</p>
 
-<P><A name="3">[3]</A>
+<P><A name="2">[2]</A>
 
 Since <tt>operator[]</tt> might insert a new element into the
 <tt>sparsetable</tt>, it can't possibly be a <tt>const</tt> member
@@ -1341,9 +1325,7 @@ table metadata.  The second writes the actual data.</p>
 
 <p>To write a sparsetable to disk, first call <tt>write_metadata()</tt>
 on an open file pointer.  This saves the sparsetable information in a
-byte-order-independent format.  However, currently information written
-by a 32-bit system cannot be read by a 64-bit system, and vice
-versa.</p>
+byte-order-independent format.</p>
 
 <p>After the metadata has been written to disk, you must write the
 actual data stored in the sparsetable to disk.  If the value is
@@ -1380,6 +1362,19 @@ set it appropriately.  The code might look like this:</p>
         it != t.nonempty_end(); ++it) {
        *it = new int;
        fread(*it, sizeof(int), 1, fp);
+   }
+</pre>
+
+<p>Here's another example, where the item stored in the sparsetable is
+a C++ object with a non-trivial constructor.  In this case, you must
+use "placement new" to construct the object at the correct memory
+location.</p>
+<pre>
+   for (sparsetable&lt;ComplicatedCppClass&gt;::nonempty_iterator it = t.nonempty_begin();
+        it != t.nonempty_end(); ++it) {
+       int constructor_arg;   // ComplicatedCppClass takes an int to construct
+       fread(&constructor_arg, sizeof(int), 1, fp);
+       new (&(*it)) ComplicatedCppClass(constructor_arg);     // placement new
    }
 </pre>
 

@@ -84,7 +84,9 @@
 // LINEAR COLLISION RES.
 //    probes/successful lookup    1.06  1.5   1.75  2.5   3.0   5.5   50.5
 //    probes/unsuccessful lookup  1.12  2.5   3.6   8.5   13.0  50.0  5000.0
-
+//
+// The value type is required to be copy constructible and default
+// constructible, but it need not be (and commonly isn't) assignable.
 
 #ifndef _SPARSEHASHTABLE_H_
 #define _SPARSEHASHTABLE_H_
@@ -112,8 +114,8 @@ _START_GOOGLE_NAMESPACE_
 
 using STL_NAMESPACE::pair;
 
-// sparsetable uses malloc()/realloc()/free(), so Alloc is basically
-// ignored.  We include it because we're being compatible.
+// Alloc is completely ignored.  It is present as a template parameter only
+// for the sake of being compatible with the old SGI hashtable interface.
 // TODO(csilvers): is that the right thing to do?
 
 template <class Value, class Key, class HashFcn,
@@ -220,7 +222,7 @@ struct sparse_hashtable_const_iterator {
   const_iterator& operator++() {
     assert(pos != end); ++pos; advance_past_deleted(); return *this;
   }
-  const_iterator operator++(int) { iterator tmp(*this); ++*this; return tmp; }
+  const_iterator operator++(int) { const_iterator tmp(*this); ++*this; return tmp; }
 
   // Comparison.
   bool operator==(const const_iterator& it) const { return pos == it.pos; }
@@ -281,7 +283,6 @@ struct sparse_hashtable_destructive_iterator {
   const sparse_hashtable *ht;
   st_iterator pos, end;
 };
-
 
 
 template <class Value, class Key, class HashFcn,
@@ -353,16 +354,15 @@ class sparse_hashtable {
   hasher hash_funct() const { return hash; }
   key_equal key_eq() const  { return equals; }
 
-  // Annoyingly, we can't copy values around, because they might have
-  // const components (they're probably pair<const X, Y>).  We use
+  // We need to copy values when we set the special marker for deleted
+  // elements, but, annoyingly, we can't just use the copy assignment
+  // operator because value_type might not be assignable (it's often
+  // pair<const X, Y>).  We use explicit destructor invocation and
   // placement new to get around this.  Arg.
  private:
   void set_value(value_type* dst, const value_type src) {
+    dst->~value_type();   // delete the old value, if any
     new(dst) value_type(src);
-  }
-
-  void set_key(key_type* dst, const key_type src) {
-    new(dst) key_type(src);   // used for set_deleted_key(), etc
   }
 
   // This is used as a tag for the copy constructor, saying to destroy its
@@ -388,11 +388,11 @@ class sparse_hashtable {
   }
 
  public:
-  void set_deleted_key(const key_type &key) {
+  void set_deleted_key(const value_type &val) {
     // It's only safe to change what "deleted" means if we purge deleted guys
     squash_deleted();
     use_deleted = true;
-    set_key(&delkey, key);         // save the key
+    set_value(&delval, val);        // save the key (and rest of val too)
   }
   void clear_deleted_key() {
     squash_deleted();
@@ -405,19 +405,19 @@ class sparse_hashtable {
     // The num_deleted test is crucial for read(): after read(), the ht values
     // are garbage, and we don't want to think some of them are deleted.
     return (use_deleted && num_deleted > 0 && table.test(bucknum) &&
-            equals(delkey, get_key(table.get(bucknum))));
+            equals(get_key(delval), get_key(table.get(bucknum))));
   }
   bool test_deleted(const iterator &it) const {
     return (use_deleted && num_deleted > 0 &&
-            equals(delkey, get_key(*it)));
+            equals(get_key(delval), get_key(*it)));
   }
   bool test_deleted(const const_iterator &it) const {
     return (use_deleted && num_deleted > 0 &&
-            equals(delkey, get_key(*it)));
+            equals(get_key(delval), get_key(*it)));
   }
   bool test_deleted(const destructive_iterator &it) const {
     return (use_deleted && num_deleted > 0 &&
-            equals(delkey, get_key(*it)));
+            equals(get_key(delval), get_key(*it)));
   }
   // Set it so test_deleted is true.  true if object didn't used to be deleted
   // See below (at erase()) to explain why we allow const_iterators
@@ -425,7 +425,7 @@ class sparse_hashtable {
     assert(use_deleted);             // bad if set_deleted_key() wasn't called
     bool retval = !test_deleted(it);
     // &* converts from iterator to value-type
-    set_key(const_cast<key_type*>(&get_key(*it)), delkey);
+    set_value(const_cast<value_type*>(&(*it)), delval);
     return retval;
   }
   // Set it so test_deleted is false.  true if object used to be deleted
@@ -582,7 +582,7 @@ class sparse_hashtable {
                             const EqualKey& eql = EqualKey(),
                             const ExtractKey& ext = ExtractKey())
     : hash(hf), equals(eql), get_key(ext), num_deleted(0),
-      use_deleted(false), delkey(), table(min_size(0, n)) {    // start small
+      use_deleted(false), delval(), table(min_size(0, n)) {    // start small
     reset_thresholds();
   }
 
@@ -592,14 +592,14 @@ class sparse_hashtable {
   // into us instead of copying.
   sparse_hashtable(const sparse_hashtable& ht, size_type min_buckets_wanted = 0)
     : hash(ht.hash), equals(ht.equals), get_key(ht.get_key),
-      num_deleted(0), use_deleted(ht.use_deleted), delkey(ht.delkey), table() {
+      num_deleted(0), use_deleted(ht.use_deleted), delval(ht.delval), table() {
     reset_thresholds();
     copy_from(ht, min_buckets_wanted);   // copy_from() ignores deleted entries
   }
   sparse_hashtable(MoveDontCopyT mover, sparse_hashtable& ht,
                    size_type min_buckets_wanted=0)
     : hash(ht.hash), equals(ht.equals), get_key(ht.get_key),
-      num_deleted(0), use_deleted(ht.use_deleted), delkey(ht.delkey), table() {
+      num_deleted(0), use_deleted(ht.use_deleted), delval(ht.delval), table() {
     reset_thresholds();
     move_from(mover, ht, min_buckets_wanted);  // ignores deleted entries
   }
@@ -611,7 +611,7 @@ class sparse_hashtable {
     equals = ht.equals;
     get_key = ht.get_key;
     use_deleted = ht.use_deleted;
-    set_key(&delkey, ht.delkey);
+    set_value(&delval, ht.delval);
     copy_from(ht);                         // sets num_deleted to 0 too
     return *this;
   }
@@ -623,10 +623,10 @@ class sparse_hashtable {
     STL_NAMESPACE::swap(get_key, ht.get_key);
     STL_NAMESPACE::swap(num_deleted, ht.num_deleted);
     STL_NAMESPACE::swap(use_deleted, ht.use_deleted);
-    { key_type tmp;     // for annoying reasons, swap() doesn't work
-      set_key(&tmp, delkey);
-      set_key(&delkey, ht.delkey);
-      set_key(&ht.delkey, tmp);
+    { value_type tmp;     // for annoying reasons, swap() doesn't work
+      set_value(&tmp, delval);
+      set_value(&delval, ht.delval);
+      set_value(&ht.delval, tmp);
     }
     table.swap(ht.table);
     reset_thresholds();
@@ -839,10 +839,12 @@ class sparse_hashtable {
     return result;
   }
 
+  // Only meaningful if value_type is a POD.
   bool write_nopointer_data(FILE *fp) {
     return table.write_nopointer_data(fp);
   }
 
+  // Only meaningful if value_type is a POD.
   bool read_nopointer_data(FILE *fp) {
     return table.read_nopointer_data(fp);
   }
@@ -853,8 +855,8 @@ class sparse_hashtable {
   key_equal equals;
   ExtractKey get_key;
   size_type num_deleted;        // how many occupied buckets are marked deleted
-  bool use_deleted;                          // false until delkey has been set
-  key_type delkey;                           // which key marks deleted entries
+  bool use_deleted;                          // false until delval has been set
+  value_type delval;                         // which key marks deleted entries
   sparsetable<value_type> table;      // holds num_buckets and num_elements too
   size_type shrink_threshold;                    // table.size() * HT_EMPTY_FLT
   size_type enlarge_threshold;               // table.size() * HT_OCCUPANCY_FLT

@@ -4,7 +4,7 @@
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
-// 
+//
 //     * Redistributions of source code must retain the above copyright
 // notice, this list of conditions and the following disclaimer.
 //     * Redistributions in binary form must reproduce the above
@@ -166,7 +166,6 @@ static void stamp_run(int iters) {
   // don't need asctime_r/gmtime_r: we're not threaded
   printf("Current time (GMT): %s", asctime(gmtime(&now)));
 }
-
 
 static void report(char const* title, double t, int iters) {
   printf("%-20s %8.02f ns\n",

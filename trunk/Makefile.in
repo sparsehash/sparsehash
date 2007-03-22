@@ -89,10 +89,11 @@ googleinclude_HEADERS = \
    src/google/dense_hash_set			\
    src/google/sparse_hash_map			\
    src/google/sparse_hash_set			\
-   src/google/sparsetable
+   src/google/sparsetable                       \
+   src/google/type_traits.h
 
 
-docdir = $(prefix)/doc/$(PACKAGE)-$(VERSION)
+docdir = $(prefix)/share/doc/$(PACKAGE)-$(VERSION)
 dist_doc_DATA = AUTHORS COPYING ChangeLog INSTALL NEWS README TODO \
    doc/dense_hash_map.html			\
    doc/dense_hash_set.html			\
@@ -105,7 +106,7 @@ dist_doc_DATA = AUTHORS COPYING ChangeLog INSTALL NEWS README TODO \
 
 lib_LTLIBRARIES = 
 
-TESTS = sparsetable_unittest hashtable_unittest
+TESTS = type_traits_unittest sparsetable_unittest hashtable_unittest
 check_SCRIPTS = 
 TESTS_ENVIRONMENT = 
 
@@ -123,6 +124,12 @@ sparsehashinclude_HEADERS = \
    src/google/sparsehash/densehashtable.h	\
    src/google/sparsehash/sparsehashtable.h	\
    src/google/sparsehash/config.h
+
+
+type_traits_unittest_SOURCES = \
+   src/type_traits_unittest.cc			\
+   src/google/sparsehash/config.h		\
+   src/google/type_traits.h
 
 
 sparsetable_unittest_SOURCES = \
@@ -158,8 +165,9 @@ CONFIG_HEADER = $(top_builddir)/src/google/sparsehash/config.h
 CONFIG_CLEAN_FILES =
 LTLIBRARIES = $(lib_LTLIBRARIES)
 
-noinst_PROGRAMS = sparsetable_unittest$(EXEEXT) \
-	hashtable_unittest$(EXEEXT) time_hash_map$(EXEEXT)
+noinst_PROGRAMS = type_traits_unittest$(EXEEXT) \
+	sparsetable_unittest$(EXEEXT) hashtable_unittest$(EXEEXT) \
+	time_hash_map$(EXEEXT)
 PROGRAMS = $(noinst_PROGRAMS)
 
 am__objects_1 =
@@ -179,6 +187,11 @@ time_hash_map_OBJECTS = $(am_time_hash_map_OBJECTS)
 time_hash_map_LDADD = $(LDADD)
 time_hash_map_DEPENDENCIES =
 time_hash_map_LDFLAGS =
+am_type_traits_unittest_OBJECTS = type_traits_unittest.$(OBJEXT)
+type_traits_unittest_OBJECTS = $(am_type_traits_unittest_OBJECTS)
+type_traits_unittest_LDADD = $(LDADD)
+type_traits_unittest_DEPENDENCIES =
+type_traits_unittest_LDFLAGS =
 
 DEFS = @DEFS@
 DEFAULT_INCLUDES =  -I. -I$(srcdir) -I$(top_builddir)/src/google/sparsehash
@@ -189,7 +202,8 @@ depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
 @AMDEP_TRUE@DEP_FILES = ./$(DEPDIR)/hashtable_unittest.Po \
 @AMDEP_TRUE@	./$(DEPDIR)/sparsetable_unittest.Po \
-@AMDEP_TRUE@	./$(DEPDIR)/time_hash_map.Po
+@AMDEP_TRUE@	./$(DEPDIR)/time_hash_map.Po \
+@AMDEP_TRUE@	./$(DEPDIR)/type_traits_unittest.Po
 CXXCOMPILE = $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
 	$(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS)
 CXXLD = $(CXX)
@@ -202,7 +216,8 @@ COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 CCLD = $(CC)
 LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
 DIST_SOURCES = $(hashtable_unittest_SOURCES) \
-	$(sparsetable_unittest_SOURCES) $(time_hash_map_SOURCES)
+	$(sparsetable_unittest_SOURCES) $(time_hash_map_SOURCES) \
+	$(type_traits_unittest_SOURCES)
 DATA = $(dist_doc_DATA)
 
 HEADERS = $(googleinclude_HEADERS) $(sparsehashinclude_HEADERS)
@@ -213,7 +228,7 @@ DIST_COMMON = README $(dist_doc_DATA) $(googleinclude_HEADERS) \
 	INSTALL Makefile.am Makefile.in NEWS TODO aclocal.m4 compile \
 	config.guess config.sub configure configure.ac depcomp \
 	install-sh missing mkinstalldirs
-SOURCES = $(hashtable_unittest_SOURCES) $(sparsetable_unittest_SOURCES) $(time_hash_map_SOURCES)
+SOURCES = $(hashtable_unittest_SOURCES) $(sparsetable_unittest_SOURCES) $(time_hash_map_SOURCES) $(type_traits_unittest_SOURCES)
 
 all: all-am
 
@@ -295,6 +310,10 @@ time_hash_map.$(OBJEXT): src/time_hash_map.cc
 time_hash_map$(EXEEXT): $(time_hash_map_OBJECTS) $(time_hash_map_DEPENDENCIES) 
 	@rm -f time_hash_map$(EXEEXT)
 	$(CXXLINK) $(time_hash_map_LDFLAGS) $(time_hash_map_OBJECTS) $(time_hash_map_LDADD) $(LIBS)
+type_traits_unittest.$(OBJEXT): src/type_traits_unittest.cc
+type_traits_unittest$(EXEEXT): $(type_traits_unittest_OBJECTS) $(type_traits_unittest_DEPENDENCIES) 
+	@rm -f type_traits_unittest$(EXEEXT)
+	$(CXXLINK) $(type_traits_unittest_LDFLAGS) $(type_traits_unittest_OBJECTS) $(type_traits_unittest_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT) core *.core
@@ -305,6 +324,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hashtable_unittest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sparsetable_unittest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/time_hash_map.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/type_traits_unittest.Po@am__quote@
 
 distclean-depend:
 	-rm -rf ./$(DEPDIR)
@@ -356,6 +376,18 @@ time_hash_map.obj: src/time_hash_map.cc
 @AMDEP_TRUE@	depfile='$(DEPDIR)/time_hash_map.Po' tmpdepfile='$(DEPDIR)/time_hash_map.TPo' @AMDEPBACKSLASH@
 @AMDEP_TRUE@	$(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o time_hash_map.obj `cygpath -w src/time_hash_map.cc`
+
+type_traits_unittest.o: src/type_traits_unittest.cc
+@AMDEP_TRUE@	source='src/type_traits_unittest.cc' object='type_traits_unittest.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@	depfile='$(DEPDIR)/type_traits_unittest.Po' tmpdepfile='$(DEPDIR)/type_traits_unittest.TPo' @AMDEPBACKSLASH@
+@AMDEP_TRUE@	$(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o type_traits_unittest.o `test -f 'src/type_traits_unittest.cc' || echo '$(srcdir)/'`src/type_traits_unittest.cc
+
+type_traits_unittest.obj: src/type_traits_unittest.cc
+@AMDEP_TRUE@	source='src/type_traits_unittest.cc' object='type_traits_unittest.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@	depfile='$(DEPDIR)/type_traits_unittest.Po' tmpdepfile='$(DEPDIR)/type_traits_unittest.TPo' @AMDEPBACKSLASH@
+@AMDEP_TRUE@	$(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o type_traits_unittest.obj `cygpath -w src/type_traits_unittest.cc`
 CXXDEPMODE = @CXXDEPMODE@
 uninstall-info-am:
 dist_docDATA_INSTALL = $(INSTALL_DATA)
