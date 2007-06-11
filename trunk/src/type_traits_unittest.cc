@@ -30,7 +30,8 @@
 // ----
 // Author: Matt Austern
 
-#include <google/sparsehash/config.h>
+#include "config.h"
+#include <stdlib.h>   // for exit()
 #include <stdio.h>
 #include <string>
 #include <vector>
@@ -90,6 +91,33 @@ class D {
 _START_GOOGLE_NAMESPACE_
 template<> struct has_trivial_assign<D> : true_type { };
 _END_GOOGLE_NAMESPACE_
+
+// Another user-defined non-POD type with a trivial constructor.
+// We will explicitly declare E to have a trivial constructor
+// by specializing has_trivial_constructor.
+class E {
+ public:
+  int n_;
+};
+
+_START_GOOGLE_NAMESPACE_
+template<> struct has_trivial_constructor<E> : true_type { };
+_END_GOOGLE_NAMESPACE_
+
+// Another user-defined non-POD type with a trivial destructor.
+// We will explicitly declare E to have a trivial destructor
+// by specializing has_trivial_destructor.
+class F {
+ public:
+  F(int n) : n_(n) { }
+ private:
+  int n_;
+};
+
+_START_GOOGLE_NAMESPACE_
+template<> struct has_trivial_destructor<F> : true_type { };
+_END_GOOGLE_NAMESPACE_
+
 
 namespace {
 
@@ -223,6 +251,48 @@ class TypeTraitsTest {
     ASSERT_TRUE(GOOGLE_NAMESPACE::has_trivial_copy<C>::value);
   }
 
+  static void TestHasTrivialConstructor() {
+    // Verify that arithmetic types and pointers have trivial constructors.
+    ASSERT_TRUE(GOOGLE_NAMESPACE::has_trivial_constructor<bool>::value);
+    ASSERT_TRUE(GOOGLE_NAMESPACE::has_trivial_constructor<char>::value);
+    ASSERT_TRUE(GOOGLE_NAMESPACE::has_trivial_constructor<unsigned char>::value);
+    ASSERT_TRUE(GOOGLE_NAMESPACE::has_trivial_constructor<signed char>::value);
+    ASSERT_TRUE(GOOGLE_NAMESPACE::has_trivial_constructor<wchar_t>::value);
+    ASSERT_TRUE(GOOGLE_NAMESPACE::has_trivial_constructor<int>::value);
+    ASSERT_TRUE(GOOGLE_NAMESPACE::has_trivial_constructor<unsigned int>::value);
+    ASSERT_TRUE(GOOGLE_NAMESPACE::has_trivial_constructor<short>::value);
+    ASSERT_TRUE(GOOGLE_NAMESPACE::has_trivial_constructor<unsigned short>::value);
+    ASSERT_TRUE(GOOGLE_NAMESPACE::has_trivial_constructor<long>::value);
+    ASSERT_TRUE(GOOGLE_NAMESPACE::has_trivial_constructor<unsigned long>::value);
+    ASSERT_TRUE(GOOGLE_NAMESPACE::has_trivial_constructor<float>::value);
+    ASSERT_TRUE(GOOGLE_NAMESPACE::has_trivial_constructor<double>::value);
+    ASSERT_TRUE(GOOGLE_NAMESPACE::has_trivial_constructor<long double>::value);
+    ASSERT_TRUE(GOOGLE_NAMESPACE::has_trivial_constructor<string*>::value);
+    ASSERT_TRUE(GOOGLE_NAMESPACE::has_trivial_constructor<A*>::value);
+    ASSERT_TRUE(GOOGLE_NAMESPACE::has_trivial_constructor<const B*>::value);
+    ASSERT_TRUE(GOOGLE_NAMESPACE::has_trivial_constructor<C**>::value);
+
+    // Verify that pairs and arrays of such types have trivial
+    // constructors.
+    typedef int int10[10];
+    ASSERT_TRUE((GOOGLE_NAMESPACE::has_trivial_constructor<pair<int, char*> >::value));
+    ASSERT_TRUE(GOOGLE_NAMESPACE::has_trivial_constructor<int10>::value);
+
+    // Verify that pairs of types without trivial constructors
+    // are not marked as trivial.
+    ASSERT_FALSE((GOOGLE_NAMESPACE::has_trivial_constructor<pair<int, string> >::value));
+    ASSERT_FALSE((GOOGLE_NAMESPACE::has_trivial_constructor<pair<string, int> >::value));
+
+    // Verify that types without trivial constructors are
+    // correctly marked as such.
+    ASSERT_FALSE(GOOGLE_NAMESPACE::has_trivial_constructor<string>::value);
+    ASSERT_FALSE(GOOGLE_NAMESPACE::has_trivial_constructor<vector<int> >::value);
+
+    // Verify that E, which we have declared to have a trivial
+    // constructor, is correctly marked as such.
+    ASSERT_TRUE(GOOGLE_NAMESPACE::has_trivial_constructor<E>::value);
+  }
+
   static void TestHasTrivialAssign() {
     // Verify that arithmetic types and pointers have trivial assignment
     // operators.
@@ -266,6 +336,48 @@ class TypeTraitsTest {
     ASSERT_TRUE(GOOGLE_NAMESPACE::has_trivial_assign<D>::value);
   }
 
+  static void TestHasTrivialDestructor() {
+    // Verify that arithmetic types and pointers have trivial destructors.
+    ASSERT_TRUE(GOOGLE_NAMESPACE::has_trivial_destructor<bool>::value);
+    ASSERT_TRUE(GOOGLE_NAMESPACE::has_trivial_destructor<char>::value);
+    ASSERT_TRUE(GOOGLE_NAMESPACE::has_trivial_destructor<unsigned char>::value);
+    ASSERT_TRUE(GOOGLE_NAMESPACE::has_trivial_destructor<signed char>::value);
+    ASSERT_TRUE(GOOGLE_NAMESPACE::has_trivial_destructor<wchar_t>::value);
+    ASSERT_TRUE(GOOGLE_NAMESPACE::has_trivial_destructor<int>::value);
+    ASSERT_TRUE(GOOGLE_NAMESPACE::has_trivial_destructor<unsigned int>::value);
+    ASSERT_TRUE(GOOGLE_NAMESPACE::has_trivial_destructor<short>::value);
+    ASSERT_TRUE(GOOGLE_NAMESPACE::has_trivial_destructor<unsigned short>::value);
+    ASSERT_TRUE(GOOGLE_NAMESPACE::has_trivial_destructor<long>::value);
+    ASSERT_TRUE(GOOGLE_NAMESPACE::has_trivial_destructor<unsigned long>::value);
+    ASSERT_TRUE(GOOGLE_NAMESPACE::has_trivial_destructor<float>::value);
+    ASSERT_TRUE(GOOGLE_NAMESPACE::has_trivial_destructor<double>::value);
+    ASSERT_TRUE(GOOGLE_NAMESPACE::has_trivial_destructor<long double>::value);
+    ASSERT_TRUE(GOOGLE_NAMESPACE::has_trivial_destructor<string*>::value);
+    ASSERT_TRUE(GOOGLE_NAMESPACE::has_trivial_destructor<A*>::value);
+    ASSERT_TRUE(GOOGLE_NAMESPACE::has_trivial_destructor<const B*>::value);
+    ASSERT_TRUE(GOOGLE_NAMESPACE::has_trivial_destructor<C**>::value);
+
+    // Verify that pairs and arrays of such types have trivial
+    // destructors.
+    typedef int int10[10];
+    ASSERT_TRUE((GOOGLE_NAMESPACE::has_trivial_destructor<pair<int, char*> >::value));
+    ASSERT_TRUE(GOOGLE_NAMESPACE::has_trivial_destructor<int10>::value);
+
+    // Verify that pairs of types without trivial destructors
+    // are not marked as trivial.
+    ASSERT_FALSE((GOOGLE_NAMESPACE::has_trivial_destructor<pair<int, string> >::value));
+    ASSERT_FALSE((GOOGLE_NAMESPACE::has_trivial_destructor<pair<string, int> >::value));
+
+    // Verify that types without trivial destructors are
+    // correctly marked as such.
+    ASSERT_FALSE(GOOGLE_NAMESPACE::has_trivial_destructor<string>::value);
+    ASSERT_FALSE(GOOGLE_NAMESPACE::has_trivial_destructor<vector<int> >::value);
+
+    // Verify that F, which we have declared to have a trivial
+    // destructor, is correctly marked as such.
+    ASSERT_TRUE(GOOGLE_NAMESPACE::has_trivial_destructor<F>::value);
+  }
+
   // Tests remove_pointer.
   static void TestRemovePointer() {
     COMPILE_ASSERT_TYPES_EQ(int, GOOGLE_NAMESPACE::remove_pointer<int>::type);
@@ -273,6 +385,23 @@ class TypeTraitsTest {
     COMPILE_ASSERT_TYPES_EQ(const int, GOOGLE_NAMESPACE::remove_pointer<const int*>::type);
     COMPILE_ASSERT_TYPES_EQ(int, GOOGLE_NAMESPACE::remove_pointer<int* const>::type);
     COMPILE_ASSERT_TYPES_EQ(int, GOOGLE_NAMESPACE::remove_pointer<int* volatile>::type);
+  }
+
+  static void TestRemoveConst() {
+    COMPILE_ASSERT_TYPES_EQ(int, GOOGLE_NAMESPACE::remove_const<int>::type);
+    COMPILE_ASSERT_TYPES_EQ(int, GOOGLE_NAMESPACE::remove_const<const int>::type);
+    COMPILE_ASSERT_TYPES_EQ(int *, GOOGLE_NAMESPACE::remove_const<int * const>::type);
+    // TR1 examples.
+    COMPILE_ASSERT_TYPES_EQ(const int *, GOOGLE_NAMESPACE::remove_const<const int *>::type);
+    COMPILE_ASSERT_TYPES_EQ(volatile int,
+                            GOOGLE_NAMESPACE::remove_const<const volatile int>::type);
+  }
+
+  static void TestRemoveReference() {
+    COMPILE_ASSERT_TYPES_EQ(int, GOOGLE_NAMESPACE::remove_reference<int>::type);
+    COMPILE_ASSERT_TYPES_EQ(int, GOOGLE_NAMESPACE::remove_reference<int&>::type);
+    COMPILE_ASSERT_TYPES_EQ(const int, GOOGLE_NAMESPACE::remove_reference<const int&>::type);
+    COMPILE_ASSERT_TYPES_EQ(int*, GOOGLE_NAMESPACE::remove_reference<int * &>::type);
   }
 
 };  // end class TypeTraitsTest
@@ -285,9 +414,12 @@ int main(int argc, char **argv) {
   TypeTraitsTest::TestIsFloating();
   TypeTraitsTest::TestIsPod();
   TypeTraitsTest::TestHasTrivialCopy();
+  TypeTraitsTest::TestHasTrivialConstructor();
   TypeTraitsTest::TestHasTrivialAssign();
+  TypeTraitsTest::TestHasTrivialDestructor();
   TypeTraitsTest::TestRemovePointer();
-
+  TypeTraitsTest::TestRemoveConst();
+  TypeTraitsTest::TestRemoveReference();
   printf("PASS\n");
   return 0;
 }

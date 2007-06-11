@@ -42,7 +42,7 @@
 #ifndef BASE_TYPE_TRAITS_H__
 #define BASE_TYPE_TRAITS_H__
 
-#include <google/sparsehash/config.h>
+#include <google/sparsehash/sparseconfig.h>
 #include <utility>                  // For pair
 
 _START_GOOGLE_NAMESPACE_
@@ -73,7 +73,7 @@ template<> struct is_integral<char> : true_type { };
 template<> struct is_integral<unsigned char> : true_type { };
 template<> struct is_integral<signed char> : true_type { };
 #if defined(_MSC_VER)
-// wchar_t is not by default a distinct type from unsigned short in 
+// wchar_t is not by default a distinct type from unsigned short in
 // Microsoft C.
 // See http://msdn2.microsoft.com/en-us/library/dh8che7s(VS.80).aspx
 template<> struct is_integral<__wchar_t> : true_type { };
@@ -114,10 +114,26 @@ template <class T> struct is_pod
 template <class T> struct is_pod<const T> : is_pod<T> { };
 
 
+// We can't get has_trivial_constructor right without compiler help, so
+// fail conservatively. We will assume it's false except for: (1) types
+// for which is_pod is true. (2) std::pair of types with trivial
+// constructors. (3) array of a type with a trivial constructor.
+// (4) const versions thereof.
+template <class T> struct has_trivial_constructor : is_pod<T> { };
+template <class T, class U> struct has_trivial_constructor<std::pair<T, U> >
+  : integral_constant<bool,
+                      (has_trivial_constructor<T>::value &&
+                       has_trivial_constructor<U>::value)> { };
+template <class A, int N> struct has_trivial_constructor<A[N]>
+  : has_trivial_constructor<A> { };
+template <class T> struct has_trivial_constructor<const T>
+  : has_trivial_constructor<T> { };
+
 // We can't get has_trivial_copy right without compiler help, so fail
 // conservatively. We will assume it's false except for: (1) types
 // for which is_pod is true. (2) std::pair of types with trivial copy
 // constructors. (3) array of a type with a trivial copy constructor.
+// (4) const versions thereof.
 template <class T> struct has_trivial_copy : is_pod<T> { };
 template <class T, class U> struct has_trivial_copy<std::pair<T, U> >
   : integral_constant<bool,
@@ -125,7 +141,7 @@ template <class T, class U> struct has_trivial_copy<std::pair<T, U> >
                        has_trivial_copy<U>::value)> { };
 template <class A, int N> struct has_trivial_copy<A[N]>
   : has_trivial_copy<A> { };
-
+template <class T> struct has_trivial_copy<const T> : has_trivial_copy<T> { };
 
 // We can't get has_trivial_assign right without compiler help, so fail
 // conservatively. We will assume it's false except for: (1) types
@@ -138,6 +154,29 @@ template <class T, class U> struct has_trivial_assign<std::pair<T, U> >
                        has_trivial_assign<U>::value)> { };
 template <class A, int N> struct has_trivial_assign<A[N]>
   : has_trivial_assign<A> { };
+
+// We can't get has_trivial_destructor right without compiler help, so
+// fail conservatively. We will assume it's false except for: (1) types
+// for which is_pod is true. (2) std::pair of types with trivial
+// destructors. (3) array of a type with a trivial destructor.
+// (4) const versions thereof.
+template <class T> struct has_trivial_destructor : is_pod<T> { };
+template <class T, class U> struct has_trivial_destructor<std::pair<T, U> >
+  : integral_constant<bool,
+                      (has_trivial_destructor<T>::value &&
+                       has_trivial_destructor<U>::value)> { };
+template <class A, int N> struct has_trivial_destructor<A[N]>
+  : has_trivial_destructor<A> { };
+template <class T> struct has_trivial_destructor<const T>
+  : has_trivial_destructor<T> { };
+
+// Specified by TR1 [4.7.1]
+template<typename T> struct remove_const { typedef T type; };
+template<typename T> struct remove_const<T const> { typedef T type; };
+
+// Specified by TR1 [4.7.2]
+template<typename T> struct remove_reference { typedef T type; };
+template<typename T> struct remove_reference<T&> { typedef T type; };
 
 // Specified by TR1 [4.7.4] Pointer modifications.
 template<typename T> struct remove_pointer { typedef T type; };

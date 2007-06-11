@@ -96,7 +96,7 @@
 // Hashtable class, used to implement the hashed associative containers
 // hash_set and hash_map.
 
-#include <google/sparsehash/config.h>
+#include <google/sparsehash/sparseconfig.h>
 #include <assert.h>
 #include <stdlib.h>             // for abort()
 #include <algorithm>            // For swap(), eg
@@ -124,7 +124,6 @@ struct dense_hashtable_const_iterator;
 template <class V, class K, class HF, class ExK, class EqK, class A>
 struct dense_hashtable_iterator {
  public:
-  typedef dense_hashtable<V,K,HF,ExK,EqK,A>                dense_hashtable;
   typedef dense_hashtable_iterator<V,K,HF,ExK,EqK,A>       iterator;
   typedef dense_hashtable_const_iterator<V,K,HF,ExK,EqK,A> const_iterator;
 
@@ -136,7 +135,7 @@ struct dense_hashtable_iterator {
   typedef V* pointer;
 
   // "Real" constructor and default constructor
-  dense_hashtable_iterator(const dense_hashtable *h,
+  dense_hashtable_iterator(const dense_hashtable<V,K,HF,ExK,EqK,A> *h,
                            pointer it, pointer it_end, bool advance)
     : ht(h), pos(it), end(it_end)   {
     if (advance)  advance_past_empty_and_deleted();
@@ -166,7 +165,7 @@ struct dense_hashtable_iterator {
 
 
   // The actual data
-  const dense_hashtable *ht;
+  const dense_hashtable<V,K,HF,ExK,EqK,A> *ht;
   pointer pos, end;
 };
 
@@ -175,7 +174,6 @@ struct dense_hashtable_iterator {
 template <class V, class K, class HF, class ExK, class EqK, class A>
 struct dense_hashtable_const_iterator {
  public:
-  typedef dense_hashtable<V,K,HF,ExK,EqK,A>                dense_hashtable;
   typedef dense_hashtable_iterator<V,K,HF,ExK,EqK,A>       iterator;
   typedef dense_hashtable_const_iterator<V,K,HF,ExK,EqK,A> const_iterator;
 
@@ -187,7 +185,7 @@ struct dense_hashtable_const_iterator {
   typedef const V* pointer;
 
   // "Real" constructor and default constructor
-  dense_hashtable_const_iterator(const dense_hashtable *h,
+  dense_hashtable_const_iterator(const dense_hashtable<V,K,HF,ExK,EqK,A> *h,
                                  pointer it, pointer it_end, bool advance)
     : ht(h), pos(it), end(it_end)   {
     if (advance)  advance_past_empty_and_deleted();
@@ -220,7 +218,7 @@ struct dense_hashtable_const_iterator {
 
 
   // The actual data
-  const dense_hashtable *ht;
+  const dense_hashtable<V,K,HF,ExK,EqK,A> *ht;
   pointer pos, end;
 };
 
@@ -252,6 +250,7 @@ class dense_hashtable {
   static const float HT_OCCUPANCY_FLT; // = 0.8;
 
   // How empty we let the table get before we resize lower.
+  // (0.0 means never resize lower.)
   // It should be less than OCCUPANCY_FLT / 2 or we thrash resizing
   static const float HT_EMPTY_FLT; // = 0.4 * HT_OCCUPANCY_FLT
 
@@ -440,11 +439,11 @@ class dense_hashtable {
     assert((bucket_count() & (bucket_count()-1)) == 0); // is a power of two
     assert(bucket_count() >= HT_MIN_BUCKETS);
 
-    if ( (num_elements-num_deleted) <= shrink_threshold &&
+    if ( (num_elements-num_deleted) < shrink_threshold &&
          bucket_count() > HT_MIN_BUCKETS ) {
       size_type sz = bucket_count() / 2;    // find how much we should shrink
       while ( sz > HT_MIN_BUCKETS &&
-              (num_elements - num_deleted) <= sz * HT_EMPTY_FLT )
+              (num_elements - num_deleted) < sz * HT_EMPTY_FLT )
         sz /= 2;                            // stay a power of 2
       dense_hashtable tmp(*this, sz);       // Do the actual resizing
       swap(tmp);                            // now we are tmp
@@ -469,8 +468,12 @@ class dense_hashtable {
     }
   }
 
-  // Increase number of buckets, assuming value_type has trivial
-  // copy constructor and assignment operator
+  // Increase number of buckets, assuming value_type has trivial copy
+  // constructor and destructor.  (Really, we want it to have "trivial
+  // move", because that's what realloc does.  But there's no way to
+  // capture that using type_traits, so we pretend that move(x, y) is
+  // equivalent to "x.~T(); new(x) T(y);" which is pretty much
+  // correct, if a bit conservative.)
   void expand_array(size_t resize_to, true_type) {
     table = (value_type *) realloc(table, resize_to * sizeof(value_type));
     assert(table);
@@ -499,10 +502,10 @@ class dense_hashtable {
     const size_type resize_to = min_size(ht.size(), min_buckets_wanted);
     if ( resize_to > bucket_count() ) { // we don't have enough buckets
       typedef integral_constant<bool,
-                                (has_trivial_copy<value_type>::value &&
-                                 has_trivial_assign<value_type>::value)>
-        is_simple_type;
-      expand_array(resize_to, is_simple_type());
+          (has_trivial_copy<value_type>::value &&
+           has_trivial_destructor<value_type>::value)>
+          realloc_ok; // we pretend mv(x,y) == "x.~T(); new(x) T(y)"
+      expand_array(resize_to, realloc_ok());
       num_buckets = resize_to;
       reset_thresholds();
     }

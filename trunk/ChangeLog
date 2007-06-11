@@ -62,3 +62,19 @@ Tue Mar 20 17:29:34 2007  Google Inc. <opensource@google.com>
 	* Fix for typo that broken compilation on some systems (csilvers)
 	* USER VISIBLE: New clear_no_resize() method added to dense_hash_map
           (uszkoreit)
+
+Mon Jun 11 11:33:41 2007  Google Inc. <opensource@google.com>
+
+	* sparsehash: version 0.7 release
+	* Syntax fixes to better support gcc 4.3 and VC++ 7 (mec, csilvers)
+	* Improved windows/VC++ support (see README.windows) (csilvers)
+	* Config improvements: better tcmalloc support and config.h (csilvers)
+	* More robust with missing hash_map + nix 'trampoline' .h's (csilvers)
+	* Support for STLport's hash_map/hash_fun locations (csilvers)
+	* Add .m4 files to distribution; now all source is there (csilvers)
+	* Tiny modification of shrink-threshhold to allow never-shrinking (amc)
+	* Protect timing tests against aggressive optimizers (csilvers)
+	* Extend time_hash_map to test bigger objects (csilvers)
+	* Extend type-trait support to work with const objects (csilvers)
+	* USER VISIBLE: speed up all code by replacing memmove with memcpy
+	  (csilvers)

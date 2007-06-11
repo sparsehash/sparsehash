@@ -1,0 +1,21 @@
+It is possible to use sparsehash with Visual C++ on Windows.
+
+Visual C++ does not use the './configure' mechanism, so to configure
+the system, do the following:
+
+   1) copy src/windows/config.h       to src/config.h
+   2) copy src/windows/config.h       to src/google/sparsehash/sparseconfig.h
+   3) copy src/windows/stl_hash_fun.h to src/google/sparsehash/stl_hash_fun.h
+
+(Note config.h will be copied to two separate locations.)
+
+There are also some .sln and .proj files available for sparsehash.
+These are provided by users, not Google, so we take no responsibility
+for them.  However, feel free to share your experience with them on
+the google-sparsehash Google Group!
+
+The files are available here:
+   http://code.google.com/p/google-sparsehash/issues/attachment?aid=-3401054937858510607&name=projectfiles-sparsehash.zip
+
+Credit goes to Eugene Shustin for creating these files, and Tobias
+Polzin for verifying their suitability for sparsehash 0.6.

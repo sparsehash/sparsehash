@@ -105,7 +105,7 @@
 // Hashtable class, used to implement the hashed associative containers
 // hash_set and hash_map.
 
-#include <google/sparsehash/config.h>
+#include <google/sparsehash/sparseconfig.h>
 #include <assert.h>
 #include <algorithm>              // For swap(), eg
 #include <iterator>               // for facts about iterator tags
@@ -135,7 +135,6 @@ struct sparse_hashtable_const_iterator;
 template <class V, class K, class HF, class ExK, class EqK, class A>
 struct sparse_hashtable_iterator {
  public:
-  typedef sparse_hashtable<V,K,HF,ExK,EqK,A>                sparse_hashtable;
   typedef sparse_hashtable_iterator<V,K,HF,ExK,EqK,A>       iterator;
   typedef sparse_hashtable_const_iterator<V,K,HF,ExK,EqK,A> const_iterator;
   typedef typename sparsetable<V>::nonempty_iterator        st_iterator;
@@ -148,7 +147,7 @@ struct sparse_hashtable_iterator {
   typedef V* pointer;
 
   // "Real" constructor and default constructor
-  sparse_hashtable_iterator(const sparse_hashtable *h,
+  sparse_hashtable_iterator(const sparse_hashtable<V,K,HF,ExK,EqK,A> *h,
                             st_iterator it, st_iterator it_end)
     : ht(h), pos(it), end(it_end)   { advance_past_deleted(); }
   sparse_hashtable_iterator() { }      // not ever used internally
@@ -176,7 +175,7 @@ struct sparse_hashtable_iterator {
 
 
   // The actual data
-  const sparse_hashtable *ht;
+  const sparse_hashtable<V,K,HF,ExK,EqK,A> *ht;
   st_iterator pos, end;
 };
 
@@ -184,7 +183,6 @@ struct sparse_hashtable_iterator {
 template <class V, class K, class HF, class ExK, class EqK, class A>
 struct sparse_hashtable_const_iterator {
  public:
-  typedef sparse_hashtable<V,K,HF,ExK,EqK,A>                sparse_hashtable;
   typedef sparse_hashtable_iterator<V,K,HF,ExK,EqK,A>       iterator;
   typedef sparse_hashtable_const_iterator<V,K,HF,ExK,EqK,A> const_iterator;
   typedef typename sparsetable<V>::const_nonempty_iterator  st_iterator;
@@ -197,7 +195,7 @@ struct sparse_hashtable_const_iterator {
   typedef const V* pointer;
 
   // "Real" constructor and default constructor
-  sparse_hashtable_const_iterator(const sparse_hashtable *h,
+  sparse_hashtable_const_iterator(const sparse_hashtable<V,K,HF,ExK,EqK,A> *h,
                                   st_iterator it, st_iterator it_end)
     : ht(h), pos(it), end(it_end)   { advance_past_deleted(); }
   // This lets us convert regular iterators to const iterators
@@ -228,7 +226,7 @@ struct sparse_hashtable_const_iterator {
 
 
   // The actual data
-  const sparse_hashtable *ht;
+  const sparse_hashtable<V,K,HF,ExK,EqK,A> *ht;
   st_iterator pos, end;
 };
 
@@ -236,7 +234,6 @@ struct sparse_hashtable_const_iterator {
 template <class V, class K, class HF, class ExK, class EqK, class A>
 struct sparse_hashtable_destructive_iterator {
  public:
-  typedef sparse_hashtable<V,K,HF,ExK,EqK,A>                sparse_hashtable;
   typedef sparse_hashtable_destructive_iterator<V,K,HF,ExK,EqK,A> iterator;
   typedef typename sparsetable<V>::destructive_iterator     st_iterator;
 
@@ -248,7 +245,8 @@ struct sparse_hashtable_destructive_iterator {
   typedef V* pointer;
 
   // "Real" constructor and default constructor
-  sparse_hashtable_destructive_iterator(const sparse_hashtable *h,
+  sparse_hashtable_destructive_iterator(const
+                                        sparse_hashtable<V,K,HF,ExK,EqK,A> *h,
                                         st_iterator it, st_iterator it_end)
     : ht(h), pos(it), end(it_end)   { advance_past_deleted(); }
   sparse_hashtable_destructive_iterator() { }          // never used internally
@@ -276,7 +274,7 @@ struct sparse_hashtable_destructive_iterator {
 
 
   // The actual data
-  const sparse_hashtable *ht;
+  const sparse_hashtable<V,K,HF,ExK,EqK,A> *ht;
   st_iterator pos, end;
 };
 

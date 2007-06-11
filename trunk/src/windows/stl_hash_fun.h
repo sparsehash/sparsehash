@@ -31,7 +31,7 @@
 #ifndef __SGI_STL_HASH_FUN_H
 #define __SGI_STL_HASH_FUN_H
 
-#include <google/sparsehash/config.h>
+#include <google/sparsehash/sparseconfig.h>
 #include <stddef.h>
 
 #define __STL_TEMPLATE_NULL template<>

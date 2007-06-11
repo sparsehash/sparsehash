@@ -1,30 +1,40 @@
 /*** 
  *** These are #defines that autoheader puts in config.h.in that we
- *** actually want to show up in config.h.  The reason we don't take
+ *** want to show up in sparseconfig.h, the minimal config.h file
+ *** #included by all our .h files.  The reason we don't take
  *** everything that autoheader emits is that we have to include
  *** config.h in installed header files, and we want to minimize the
  *** number of #defines we make so as to not pollute the namespace.
+ ***
+ *** Note: when adding new variables to this file, please also add
+ ***       them to src/windows/config.h, with a reasonable value.
  ***/
-#undef GOOGLE_NAMESPACE
-#undef HASH_NAMESPACE
-#undef HAVE_UINT16_T
-#undef HAVE_U_INT16_T
-#undef HAVE___UINT16
-#undef HAVE_LONG_LONG
-#undef HAVE_SYS_TYPES_H
-#undef HAVE_STDINT_H
-#undef HAVE_INTTYPES_H
-#undef HAVE_MEMCPY
-#undef HAVE_STDINT_H
-#undef STL_NAMESPACE
-#undef _END_GOOGLE_NAMESPACE_
-#undef _START_GOOGLE_NAMESPACE_
-/***
- *** These are only needed for the unittests and could go outside config.h
- ***/
-#undef HAVE_SYS_RESOURCE_H
-#undef HAVE_UNISTD_H
-#undef HAVE_SYS_TIME_H
-#undef HAVE_SYS_UTSNAME_H
-#undef HAVE_GOOGLE_MALLOC_EXTENSION_H
+GOOGLE_NAMESPACE
+HASH_NAMESPACE
+HASH_FUN_H
+HAVE_UINT16_T
+HAVE_U_INT16_T
+HAVE___UINT16
+HAVE_LONG_LONG
+HAVE_SYS_TYPES_H
+HAVE_STDINT_H
+HAVE_INTTYPES_H
+HAVE_MEMCPY
+STL_NAMESPACE
+_END_GOOGLE_NAMESPACE_
+_START_GOOGLE_NAMESPACE_
 
+/***
+ *** These are only needed for the unittests, and thus do not need
+ *** to be in sparseconfig.h (the unittests include the full
+ *** config.h).  However, they are listed here because they *should*
+ *** be included in the windows manually-generated config.h:
+ ***
+ ***   HAVE_SYS_RESOURCE_H
+ ***   HAVE_UNISTD_H
+ ***   HAVE_SYS_TIME_H
+ ***   HAVE_SYS_UTSNAME_H
+ ***   HAVE_HASH_MAP
+ ***   HASH_MAP_H
+ ***   HAVE_GOOGLE_MALLOC_EXTENSION_H
+ ***/
