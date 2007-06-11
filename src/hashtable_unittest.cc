@@ -41,7 +41,7 @@
 // we test every function in every class in this file -- not just to
 // see if it works, but even if it compiles.
 
-#include <google/sparsehash/config.h>
+#include "config.h"
 #include <stdio.h>
 #include <sys/stat.h>          // for stat()
 #ifdef HAVE_UNISTD_H
@@ -55,7 +55,8 @@
 #include <iostream>
 #include <iomanip>             // for setprecision()
 #include <string>
-#include <google/sparsehash/hash_fun.h>
+#include HASH_FUN_H            // defined in config.h
+#include <google/type_traits.h>
 #include <google/dense_hash_map>
 #include <google/dense_hash_set>
 #include <google/sparsehash/densehashtable.h>
@@ -713,6 +714,85 @@ void test(bool read_write) {
   test_charptr<ht>(read_write);
 }
 
+// For data types with trivial copy-constructors and destructors, we
+// should use an optimized routine for data-copying, that involves
+// memmove.  We test this by keeping count of how many times the
+// copy-constructor is called; it should be much less with the
+// optimized code.
+
+class Memmove {
+ public:
+  Memmove(): i_(0) {}
+  explicit Memmove(int i): i_(i) {}
+  Memmove(const Memmove& that) {
+    this->i_ = that.i_;
+    num_copies_++;
+  }
+
+  int i_;
+  static int num_copies_;
+};
+int Memmove::num_copies_ = 0;
+
+
+// This is what tells the hashtable code it can use memmove for this class:
+_START_GOOGLE_NAMESPACE_
+template<> struct has_trivial_copy<Memmove> : true_type { };
+template<> struct has_trivial_destructor<Memmove> : true_type { };
+_END_GOOGLE_NAMESPACE_
+
+class NoMemmove {
+ public:
+  NoMemmove(): i_(0) {}
+  explicit NoMemmove(int i): i_(i) {}
+  NoMemmove(const NoMemmove& that) {
+    this->i_ = that.i_;
+    num_copies_++;
+  }
+
+  int i_;
+  static int num_copies_;
+};
+int NoMemmove::num_copies_ = 0;
+
+void TestSimpleDataTypeOptimizations() {
+  {
+    sparse_hash_map<int, Memmove> memmove;
+    sparse_hash_map<int, NoMemmove> nomemmove;
+
+    Memmove::num_copies_ = 0;  // reset
+    NoMemmove::num_copies_ = 0;  // reset
+    for (int i = 10000; i > 0; i--) {
+      memmove[i] = Memmove(i);
+    }
+    for (int i = 10000; i > 0; i--) {
+      nomemmove[i] = NoMemmove(i);
+    }
+    LOGF << "sparse_hash_map copies for unoptimized/optimized cases: "
+         << NoMemmove::num_copies_ << "/" << Memmove::num_copies_;
+    CHECK(NoMemmove::num_copies_ > Memmove::num_copies_);
+  }
+  // Same should hold true for dense_hash_map
+  {
+    dense_hash_map<int, Memmove> memmove;
+    dense_hash_map<int, NoMemmove> nomemmove;
+    memmove.set_empty_key(0);
+    nomemmove.set_empty_key(0);
+
+    Memmove::num_copies_ = 0;  // reset
+    NoMemmove::num_copies_ = 0;  // reset
+    for (int i = 10000; i > 0; i--) {
+      memmove[i] = Memmove(i);
+    }
+    for (int i = 10000; i > 0; i--) {
+      nomemmove[i] = NoMemmove(i);
+    }
+    LOGF << "dense_hash_map copies for unoptimized/optimized cases: "
+         << NoMemmove::num_copies_ << "/" << Memmove::num_copies_;
+    CHECK(NoMemmove::num_copies_ > Memmove::num_copies_);
+  }
+}
+
 int main(int argc, char **argv) {
   // First try with the low-level hashtable interface
   LOGF << "\n\nTEST WITH DENSE_HASHTABLE\n\n";
@@ -757,6 +837,10 @@ int main(int argc, char **argv) {
   test<sparse_hash_map<char *, int, HASH_NAMESPACE::hash<char *>, strcmp_fnc>,
        sparse_hash_map<string, int, StrHash>,
        sparse_hash_map<int, int> >(true);
+
+  // Test that we use the optimized routines for simple data types
+  LOGF << "\n\nTesting simple-data-type optimizations";
+  TestSimpleDataTypeOptimizations();
 
   LOGF << "\nAll tests pass.\n";
   return 0;

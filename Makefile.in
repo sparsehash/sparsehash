@@ -37,23 +37,28 @@ POST_INSTALL = :
 NORMAL_UNINSTALL = :
 PRE_UNINSTALL = :
 POST_UNINSTALL = :
+build_triplet = @build@
+host_triplet = @host@
 noinst_PROGRAMS = $(am__EXEEXT_1) time_hash_map$(EXEEXT)
-subdir = .
 DIST_COMMON = README $(am__configure_deps) $(dist_doc_DATA) \
 	$(googleinclude_HEADERS) $(sparsehashinclude_HEADERS) \
 	$(srcdir)/Makefile.am $(srcdir)/Makefile.in \
-	$(top_srcdir)/configure \
-	$(top_srcdir)/src/google/sparsehash/config.h.in AUTHORS \
+	$(top_srcdir)/configure $(top_srcdir)/src/config.h.in AUTHORS \
 	COPYING ChangeLog INSTALL NEWS TODO compile config.guess \
 	config.sub depcomp install-sh missing mkinstalldirs
+subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/configure.ac
+am__aclocal_m4_deps = $(top_srcdir)/m4/acx_pthread.m4 \
+	$(top_srcdir)/m4/google_namespace.m4 \
+	$(top_srcdir)/m4/namespaces.m4 $(top_srcdir)/m4/stl_hash.m4 \
+	$(top_srcdir)/m4/stl_hash_fun.m4 \
+	$(top_srcdir)/m4/stl_namespace.m4 $(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 am__CONFIG_DISTCLEAN_FILES = config.status config.cache config.log \
  configure.lineno configure.status.lineno
 mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
-CONFIG_HEADER = $(top_builddir)/src/google/sparsehash/config.h
+CONFIG_HEADER = $(top_builddir)/src/config.h
 CONFIG_CLEAN_FILES =
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
 am__vpath_adj = case $$p in \
@@ -74,16 +79,19 @@ am_hashtable_unittest_OBJECTS = hashtable_unittest.$(OBJEXT) \
 	$(am__objects_1) $(am__objects_1)
 hashtable_unittest_OBJECTS = $(am_hashtable_unittest_OBJECTS)
 hashtable_unittest_LDADD = $(LDADD)
-am_sparsetable_unittest_OBJECTS = sparsetable_unittest.$(OBJEXT)
+am_sparsetable_unittest_OBJECTS = sparsetable_unittest.$(OBJEXT) \
+	$(am__objects_1)
 sparsetable_unittest_OBJECTS = $(am_sparsetable_unittest_OBJECTS)
 sparsetable_unittest_LDADD = $(LDADD)
-am_time_hash_map_OBJECTS = time_hash_map.$(OBJEXT) $(am__objects_1)
+am_time_hash_map_OBJECTS = time_hash_map-time_hash_map.$(OBJEXT) \
+	$(am__objects_1) $(am__objects_1)
 time_hash_map_OBJECTS = $(am_time_hash_map_OBJECTS)
 time_hash_map_DEPENDENCIES =
-am_type_traits_unittest_OBJECTS = type_traits_unittest.$(OBJEXT)
+am_type_traits_unittest_OBJECTS = type_traits_unittest.$(OBJEXT) \
+	$(am__objects_1)
 type_traits_unittest_OBJECTS = $(am_type_traits_unittest_OBJECTS)
 type_traits_unittest_LDADD = $(LDADD)
-DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)/src/google/sparsehash
+DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)/src
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
 CXXCOMPILE = $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
@@ -161,6 +169,9 @@ PACKAGE_STRING = @PACKAGE_STRING@
 PACKAGE_TARNAME = @PACKAGE_TARNAME@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
+PTHREAD_CC = @PTHREAD_CC@
+PTHREAD_CFLAGS = @PTHREAD_CFLAGS@
+PTHREAD_LIBS = @PTHREAD_LIBS@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
 STRIP = @STRIP@
@@ -168,6 +179,7 @@ VERSION = @VERSION@
 ac_ct_CC = @ac_ct_CC@
 ac_ct_CXX = @ac_ct_CXX@
 ac_ct_STRIP = @ac_ct_STRIP@
+acx_pthread_config = @acx_pthread_config@
 am__fastdepCC_FALSE = @am__fastdepCC_FALSE@
 am__fastdepCC_TRUE = @am__fastdepCC_TRUE@
 am__fastdepCXX_FALSE = @am__fastdepCXX_FALSE@
@@ -178,10 +190,18 @@ am__quote = @am__quote@
 am__tar = @am__tar@
 am__untar = @am__untar@
 bindir = @bindir@
+build = @build@
 build_alias = @build_alias@
+build_cpu = @build_cpu@
+build_os = @build_os@
+build_vendor = @build_vendor@
 datadir = @datadir@
 exec_prefix = @exec_prefix@
+host = @host@
 host_alias = @host_alias@
+host_cpu = @host_cpu@
+host_os = @host_os@
+host_vendor = @host_vendor@
 includedir = @includedir@
 infodir = @infodir@
 install_sh = @install_sh@
@@ -197,10 +217,11 @@ sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
 sysconfdir = @sysconfdir@
 target_alias = @target_alias@
-tcmalloc = @tcmalloc@
+tcmalloc_flags = @tcmalloc_flags@
+tcmalloc_libs = @tcmalloc_libs@
 
 # Make sure that when we re-make ./configure, we get the macros we need
-ACLOCAL_AMFLAGS = -I `pwd`/../autoconf
+ACLOCAL_AMFLAGS = -I m4
 
 # This is so we can #include <google/foo>
 AM_CPPFLAGS = -I$(top_srcdir)/src
@@ -229,27 +250,25 @@ lib_LTLIBRARIES =
 TESTS = type_traits_unittest sparsetable_unittest hashtable_unittest
 check_SCRIPTS = 
 TESTS_ENVIRONMENT = 
-
-# This doesn't include the config.h file, but everything else we make
-configure_generated_h_files = \
-   src/google/sparsehash/hash_fun.h		\
-   src/hash_map.h
-
+# This is how we tell automake about auto-generated .h files
+BUILT_SOURCES = src/google/sparsehash/sparseconfig.h
+CLEANFILES = src/google/sparsehash/sparseconfig.h
 sparsehashincludedir = $(googleincludedir)/sparsehash
 sparsehashinclude_HEADERS = \
-   src/google/sparsehash/hash_fun.h		\
    src/google/sparsehash/densehashtable.h	\
    src/google/sparsehash/sparsehashtable.h	\
-   src/google/sparsehash/config.h
+   src/google/sparsehash/sparseconfig.h
 
 type_traits_unittest_SOURCES = \
    src/type_traits_unittest.cc			\
-   src/google/sparsehash/config.h		\
+   src/config.h					\
+   $(sparsehashinclude_HEADERS)			\
    src/google/type_traits.h
 
 sparsetable_unittest_SOURCES = \
    src/sparsetable_unittest.cc			\
-   src/google/sparsehash/config.h		\
+   src/config.h					\
+   $(sparsehashinclude_HEADERS)			\
    src/google/sparsetable			\
    src/sparsetable_unittest.expected
 
@@ -261,19 +280,21 @@ hashtable_unittest_SOURCES = \
 
 time_hash_map_SOURCES = \
    src/time_hash_map.cc				\
-   src/google/sparsehash/config.h		\
-   src/hash_map.h				\
+   $(sparsehashinclude_HEADERS)			\
+   src/config.h					\
    $(googleinclude_HEADERS)
 
 
 # If tcmalloc is installed, use it with time_hash_map; it gives us
 # heap-usage statistics for the hash_map routines, which is very nice
-time_hash_map_LDADD = @tcmalloc@
+time_hash_map_CXXFLAGS = @tcmalloc_flags@
+time_hash_map_LDFLAGS = @tcmalloc_flags@
+time_hash_map_LDADD = @tcmalloc_libs@
 EXTRA_DIST = packages/rpm.sh packages/rpm/rpm.spec packages/deb.sh packages/deb \
              src/config.h.include src/windows experimental
 
-DISTCLEANFILES = $(configure_generated_h_files)
-all: all-am
+all: $(BUILT_SOURCES)
+	$(MAKE) $(AM_MAKEFLAGS) all-am
 
 .SUFFIXES:
 .SUFFIXES: .cc .o .obj
@@ -311,22 +332,22 @@ $(top_srcdir)/configure:  $(am__configure_deps)
 $(ACLOCAL_M4):  $(am__aclocal_m4_deps)
 	cd $(srcdir) && $(ACLOCAL) $(ACLOCAL_AMFLAGS)
 
-src/google/sparsehash/config.h: src/google/sparsehash/stamp-h1
+src/config.h: src/stamp-h1
 	@if test ! -f $@; then \
-	  rm -f src/google/sparsehash/stamp-h1; \
-	  $(MAKE) src/google/sparsehash/stamp-h1; \
+	  rm -f src/stamp-h1; \
+	  $(MAKE) src/stamp-h1; \
 	else :; fi
 
-src/google/sparsehash/stamp-h1: $(top_srcdir)/src/google/sparsehash/config.h.in $(top_builddir)/config.status
-	@rm -f src/google/sparsehash/stamp-h1
-	cd $(top_builddir) && $(SHELL) ./config.status src/google/sparsehash/config.h
-$(top_srcdir)/src/google/sparsehash/config.h.in:  $(am__configure_deps) 
+src/stamp-h1: $(top_srcdir)/src/config.h.in $(top_builddir)/config.status
+	@rm -f src/stamp-h1
+	cd $(top_builddir) && $(SHELL) ./config.status src/config.h
+$(top_srcdir)/src/config.h.in:  $(am__configure_deps) 
 	cd $(top_srcdir) && $(AUTOHEADER)
-	rm -f src/google/sparsehash/stamp-h1
+	rm -f src/stamp-h1
 	touch $@
 
 distclean-hdr:
-	-rm -f src/google/sparsehash/config.h src/google/sparsehash/stamp-h1
+	-rm -f src/config.h src/stamp-h1
 install-libLTLIBRARIES: $(lib_LTLIBRARIES)
 	@$(NORMAL_INSTALL)
 	test -z "$(libdir)" || $(mkdir_p) "$(DESTDIR)$(libdir)"
@@ -378,7 +399,7 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hashtable_unittest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sparsetable_unittest.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/time_hash_map.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/time_hash_map-time_hash_map.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/type_traits_unittest.Po@am__quote@
 
 .cc.o:
@@ -423,19 +444,19 @@ sparsetable_unittest.obj: src/sparsetable_unittest.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o sparsetable_unittest.obj `if test -f 'src/sparsetable_unittest.cc'; then $(CYGPATH_W) 'src/sparsetable_unittest.cc'; else $(CYGPATH_W) '$(srcdir)/src/sparsetable_unittest.cc'; fi`
 
-time_hash_map.o: src/time_hash_map.cc
-@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT time_hash_map.o -MD -MP -MF "$(DEPDIR)/time_hash_map.Tpo" -c -o time_hash_map.o `test -f 'src/time_hash_map.cc' || echo '$(srcdir)/'`src/time_hash_map.cc; \
-@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/time_hash_map.Tpo" "$(DEPDIR)/time_hash_map.Po"; else rm -f "$(DEPDIR)/time_hash_map.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/time_hash_map.cc' object='time_hash_map.o' libtool=no @AMDEPBACKSLASH@
+time_hash_map-time_hash_map.o: src/time_hash_map.cc
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(time_hash_map_CXXFLAGS) $(CXXFLAGS) -MT time_hash_map-time_hash_map.o -MD -MP -MF "$(DEPDIR)/time_hash_map-time_hash_map.Tpo" -c -o time_hash_map-time_hash_map.o `test -f 'src/time_hash_map.cc' || echo '$(srcdir)/'`src/time_hash_map.cc; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/time_hash_map-time_hash_map.Tpo" "$(DEPDIR)/time_hash_map-time_hash_map.Po"; else rm -f "$(DEPDIR)/time_hash_map-time_hash_map.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/time_hash_map.cc' object='time_hash_map-time_hash_map.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o time_hash_map.o `test -f 'src/time_hash_map.cc' || echo '$(srcdir)/'`src/time_hash_map.cc
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(time_hash_map_CXXFLAGS) $(CXXFLAGS) -c -o time_hash_map-time_hash_map.o `test -f 'src/time_hash_map.cc' || echo '$(srcdir)/'`src/time_hash_map.cc
 
-time_hash_map.obj: src/time_hash_map.cc
-@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT time_hash_map.obj -MD -MP -MF "$(DEPDIR)/time_hash_map.Tpo" -c -o time_hash_map.obj `if test -f 'src/time_hash_map.cc'; then $(CYGPATH_W) 'src/time_hash_map.cc'; else $(CYGPATH_W) '$(srcdir)/src/time_hash_map.cc'; fi`; \
-@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/time_hash_map.Tpo" "$(DEPDIR)/time_hash_map.Po"; else rm -f "$(DEPDIR)/time_hash_map.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/time_hash_map.cc' object='time_hash_map.obj' libtool=no @AMDEPBACKSLASH@
+time_hash_map-time_hash_map.obj: src/time_hash_map.cc
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(time_hash_map_CXXFLAGS) $(CXXFLAGS) -MT time_hash_map-time_hash_map.obj -MD -MP -MF "$(DEPDIR)/time_hash_map-time_hash_map.Tpo" -c -o time_hash_map-time_hash_map.obj `if test -f 'src/time_hash_map.cc'; then $(CYGPATH_W) 'src/time_hash_map.cc'; else $(CYGPATH_W) '$(srcdir)/src/time_hash_map.cc'; fi`; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/time_hash_map-time_hash_map.Tpo" "$(DEPDIR)/time_hash_map-time_hash_map.Po"; else rm -f "$(DEPDIR)/time_hash_map-time_hash_map.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/time_hash_map.cc' object='time_hash_map-time_hash_map.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o time_hash_map.obj `if test -f 'src/time_hash_map.cc'; then $(CYGPATH_W) 'src/time_hash_map.cc'; else $(CYGPATH_W) '$(srcdir)/src/time_hash_map.cc'; fi`
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(time_hash_map_CXXFLAGS) $(CXXFLAGS) -c -o time_hash_map-time_hash_map.obj `if test -f 'src/time_hash_map.cc'; then $(CYGPATH_W) 'src/time_hash_map.cc'; else $(CYGPATH_W) '$(srcdir)/src/time_hash_map.cc'; fi`
 
 type_traits_unittest.o: src/type_traits_unittest.cc
 @am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT type_traits_unittest.o -MD -MP -MF "$(DEPDIR)/type_traits_unittest.Tpo" -c -o type_traits_unittest.o `test -f 'src/type_traits_unittest.cc' || echo '$(srcdir)/'`src/type_traits_unittest.cc; \
@@ -627,7 +648,7 @@ check-TESTS: $(TESTS)
 distdir: $(DISTFILES)
 	$(am__remove_distdir)
 	mkdir $(distdir)
-	$(mkdir_p) $(distdir)/doc $(distdir)/packages $(distdir)/packages/rpm $(distdir)/src $(distdir)/src/google $(distdir)/src/google/sparsehash
+	$(mkdir_p) $(distdir)/doc $(distdir)/m4 $(distdir)/packages $(distdir)/packages/rpm $(distdir)/src $(distdir)/src/google $(distdir)/src/google/sparsehash
 	@srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`; \
 	topsrcdirstrip=`echo "$(top_srcdir)" | sed 's|.|.|g'`; \
 	list='$(DISTFILES)'; for file in $$list; do \
@@ -754,13 +775,15 @@ distcleancheck: distclean
 check-am: all-am
 	$(MAKE) $(AM_MAKEFLAGS) $(check_SCRIPTS)
 	$(MAKE) $(AM_MAKEFLAGS) check-TESTS
-check: check-am
+check: $(BUILT_SOURCES)
+	$(MAKE) $(AM_MAKEFLAGS) check-am
 all-am: Makefile $(LTLIBRARIES) $(PROGRAMS) $(DATA) $(HEADERS)
 installdirs:
 	for dir in "$(DESTDIR)$(libdir)" "$(DESTDIR)$(docdir)" "$(DESTDIR)$(googleincludedir)" "$(DESTDIR)$(sparsehashincludedir)"; do \
 	  test -z "$$dir" || $(mkdir_p) "$$dir"; \
 	done
-install: install-am
+install: $(BUILT_SOURCES)
+	$(MAKE) $(AM_MAKEFLAGS) install-am
 install-exec: install-exec-am
 install-data: install-data-am
 uninstall: uninstall-am
@@ -777,14 +800,15 @@ install-strip:
 mostlyclean-generic:
 
 clean-generic:
+	-test -z "$(CLEANFILES)" || rm -f $(CLEANFILES)
 
 distclean-generic:
 	-test -z "$(CONFIG_CLEAN_FILES)" || rm -f $(CONFIG_CLEAN_FILES)
-	-test -z "$(DISTCLEANFILES)" || rm -f $(DISTCLEANFILES)
 
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
 	@echo "it deletes files that may require special tools to rebuild."
+	-test -z "$(BUILT_SOURCES)" || rm -f $(BUILT_SOURCES)
 clean: clean-am
 
 clean-am: clean-generic clean-libLTLIBRARIES clean-noinstPROGRAMS \
@@ -859,6 +883,19 @@ uninstall-am: uninstall-dist_docDATA uninstall-googleincludeHEADERS \
 	uninstall-googleincludeHEADERS uninstall-info-am \
 	uninstall-libLTLIBRARIES uninstall-sparsehashincludeHEADERS
 
+
+# All our .h files need to read the config information in config.h.  The
+# autoheader config.h has too much info, including PACKAGENAME, that
+# might conflict with other config.h's an application might #include.
+# Thus, we create a "minimal" config.h, called sparseconfig.h, that
+# includes only the #defines we really need, and that are unlikely to
+# change from system to system.
+src/google/sparsehash/sparseconfig.h: $(top_srcdir)/src/config.h \
+                                      $(top_srcdir)/src/config.h.include
+	grep . $(top_srcdir)/src/config.h.include \
+          | fgrep -B2 -f- $(top_srcdir)/src/config.h \
+	  | fgrep -vx -e -- > _sparsehash_config
+	mv -f _sparsehash_config $@
 
 rpm: dist-gzip packages/rpm.sh packages/rpm/rpm.spec
 	@cd packages && ./rpm.sh ${PACKAGE} ${VERSION}

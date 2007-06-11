@@ -9,7 +9,7 @@ Version: %ver
 Release: %rel
 Group: Development/Libraries
 URL: http://goog-sparsehash.sourceforge.net
-Copyright: BSD
+License: BSD
 Vendor: Google
 Packager: Google <opensource@google.com>
 Source: http://goog-sparsehash.sourceforge.net/%{NAME}-%{PACKAGE_VERSION}.tar.gz

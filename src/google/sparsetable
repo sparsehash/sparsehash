@@ -56,7 +56,7 @@
 #ifndef _SPARSETABLE_H_
 #define _SPARSETABLE_H_
 
-#include <google/sparsehash/config.h>
+#include <google/sparsehash/sparseconfig.h>
 #include <stdlib.h>             // for malloc/free
 #include <stdio.h>              // to read/write tables
 #ifdef HAVE_STDINT_H
@@ -76,11 +76,10 @@
 #include <google/type_traits.h> // for true_type, integral_constant, etc.
 
 #if STDC_HEADERS
-#include <string.h>             // for memcpy and memmove
+#include <string.h>             // for memcpy
 #else
 #if !HAVE_MEMCPY
 #define memcpy(d, s, n)   bcopy ((s), (d), (n))
-#define memmove(d, s, n)  bcopy ((s), (d), (n))
 #endif
 #endif
 
@@ -90,7 +89,7 @@
 # elif defined HAVE___UINT16
     typedef __uint16 u_int16_t;    // true on vc++7
 # else
-#   warn Cannot find a 16-bit integer type.  Hoping for the best with "short"...
+    // Cannot find a 16-bit integer type.  Hoping for the best with "short"...
     typedef unsigned short int u_int16_t;
 # endif
 #endif
@@ -723,7 +722,7 @@ class sparsegroup {
     // Valid even for empty group, because NULL+0 is defined to be NULL
     value_type* end = group + num_buckets;
     for (value_type* p = group; p != end; ++p)
-      p->value_type::~value_type();
+      p->~value_type();
     free(group);
     group = NULL;
   }
@@ -849,22 +848,28 @@ class sparsegroup {
 
  private:
   // Create space at group[offset], assuming value_type has trivial
-  // copy constructor and assignment operator
+  // copy constructor and destructor.  (Really, we want it to have
+  // "trivial move", because that's what realloc and memmove both do.
+  // But there's no way to capture that using type_traits, so we
+  // pretend that move(x, y) is equivalent to "x.~T(); new(x) T(y);"
+  // which is pretty much correct, if a bit conservative.)
   void set_aux(size_type offset, true_type) {
     group = (value_type *)
             realloc_or_die(group, sizeof(*group) * (num_buckets+1));
-    memmove(group + offset+1, group + offset,
-            (num_buckets - offset) * sizeof(*group));
+    // This is equivalent to memmove(), but faster on my Intel P4,
+    // at least with gcc4.1 -O2 / glibc 2.3.6.
+    for (size_t i = num_buckets; i > offset; --i)
+      memcpy(group + i, group + i-1, sizeof(*group));
   }
 
   // Create space at group[offset], without special assumptions about value_type
   void set_aux(size_type offset, false_type) {
-      // This is valid because 0 <= offset <= num_buckets
-      value_type* p = allocate_group(num_buckets + 1);
-      uninitialized_copy(group, group + offset, p);
-      uninitialized_copy(group + offset, group + num_buckets, p + offset + 1);
-      free_group();
-      group = p;
+    // This is valid because 0 <= offset <= num_buckets
+    value_type* p = allocate_group(num_buckets + 1);
+    uninitialized_copy(group, group + offset, p);
+    uninitialized_copy(group + offset, group + num_buckets, p + offset + 1);
+    free_group();
+    group = p;
   }
 
  public:
@@ -875,13 +880,13 @@ class sparsegroup {
     size_type offset = pos_to_offset(bitmap, i);  // where we'll find (or insert)
     if ( bmtest(i) ) {
       // Delete the old value, which we're replacing with the new one
-      group[offset].value_type::~value_type();
+      group[offset].~value_type();
     } else {
       typedef integral_constant<bool,
-                                (has_trivial_copy<value_type>::value &&
-                                 has_trivial_assign<value_type>::value)>
-        is_simple_type;
-      set_aux(offset, is_simple_type());
+          (has_trivial_copy<value_type>::value &&
+           has_trivial_destructor<value_type>::value)>
+          realloc_and_memmove_ok; // we pretend mv(x,y) == "x.~T(); new(x) T(y)"
+      set_aux(offset, realloc_and_memmove_ok());
       ++num_buckets;
       bmset(i);
     }
@@ -900,11 +905,20 @@ class sparsegroup {
   }
 
  private:
-  // Shrink the array, assuming value_type has trivial copy and assign.
+  // Shrink the array, assuming value_type has trivial copy
+  // constructor and destructor.  (Really, we want it to have "trivial
+  // move", because that's what realloc and memmove both do.  But
+  // there's no way to capture that using type_traits, so we pretend
+  // that move(x, y) is equivalent to ""x.~T(); new(x) T(y);"
+  // which is pretty much correct, if a bit conservative.)
   void erase_aux(size_type offset, true_type) {
-    group[offset].value_type::~value_type();
-    memmove(group + offset, group + offset+1,
-            ((num_buckets-1) - offset) * sizeof(*group));
+    // This isn't technically necessary, since we know we have a
+    // trivial destructor, but is a cheap way to get a bit more safety.
+    group[offset].~value_type();
+    // This is equivalent to memmove(), but faster on my Intel P4,
+    // at lesat with gcc4.1 -O2 / glibc 2.3.6.
+    for (size_t i = offset; i < num_buckets-1; ++i)
+      memcpy(group + i, group + i+1, sizeof(*group));  // hopefully inlined!
     group = (value_type *)
             realloc_or_die(group, sizeof(*group) * (num_buckets-1));
   }
@@ -932,10 +946,10 @@ class sparsegroup {
         group = NULL;
       } else {
         typedef integral_constant<bool,
-                                  (has_trivial_copy<value_type>::value &&
-                                   has_trivial_assign<value_type>::value)>
-          is_simple_type;
-        erase_aux(offset, is_simple_type());
+            (has_trivial_copy<value_type>::value &&
+             has_trivial_destructor<value_type>::value)>
+            realloc_and_memmove_ok; // pretend mv(x,y) == "x.~T(); new(x) T(y)"
+        erase_aux(offset, realloc_and_memmove_ok());
       }
       --num_buckets;
       bmclear(i);

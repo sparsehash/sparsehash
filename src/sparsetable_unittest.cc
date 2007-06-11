@@ -36,7 +36,7 @@
 // function in every class in this file -- not just to see if it
 // works, but even if it compiles.
 
-#include <google/sparsehash/config.h>
+#include "config.h"
 #include <string>
 #include <stdio.h>
 #include <string.h>         // for memcmp()

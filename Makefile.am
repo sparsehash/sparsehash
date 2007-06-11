@@ -1,7 +1,7 @@
 ## Process this file with automake to produce Makefile.in
 
 # Make sure that when we re-make ./configure, we get the macros we need
-ACLOCAL_AMFLAGS = -I `pwd`/../autoconf
+ACLOCAL_AMFLAGS = -I m4
 
 # This is so we can #include <google/foo>
 AM_CPPFLAGS = -I$(top_srcdir)/src
@@ -50,26 +50,38 @@ noinst_PROGRAMS = $(TESTS) time_hash_map
 
 ## vvvv RULES TO MAKE THE LIBRARIES, BINARIES, AND UNITTESTS
 
-# This doesn't include the config.h file, but everything else we make
-configure_generated_h_files =			\
-   src/google/sparsehash/hash_fun.h		\
-   src/hash_map.h
+# All our .h files need to read the config information in config.h.  The
+# autoheader config.h has too much info, including PACKAGENAME, that
+# might conflict with other config.h's an application might #include.
+# Thus, we create a "minimal" config.h, called sparseconfig.h, that
+# includes only the #defines we really need, and that are unlikely to
+# change from system to system.
+src/google/sparsehash/sparseconfig.h: $(top_srcdir)/src/config.h \
+                                      $(top_srcdir)/src/config.h.include
+	grep . $(top_srcdir)/src/config.h.include \
+          | fgrep -B2 -f- $(top_srcdir)/src/config.h \
+	  | fgrep -vx -e -- > _sparsehash_config
+	mv -f _sparsehash_config $@
+# This is how we tell automake about auto-generated .h files
+BUILT_SOURCES = src/google/sparsehash/sparseconfig.h
+CLEANFILES = src/google/sparsehash/sparseconfig.h
 
 sparsehashincludedir = $(googleincludedir)/sparsehash
 sparsehashinclude_HEADERS =			\
-   src/google/sparsehash/hash_fun.h		\
    src/google/sparsehash/densehashtable.h	\
    src/google/sparsehash/sparsehashtable.h	\
-   src/google/sparsehash/config.h
+   src/google/sparsehash/sparseconfig.h
 
 type_traits_unittest_SOURCES =			\
    src/type_traits_unittest.cc			\
-   src/google/sparsehash/config.h		\
+   src/config.h					\
+   $(sparsehashinclude_HEADERS)			\
    src/google/type_traits.h
 
 sparsetable_unittest_SOURCES =			\
    src/sparsetable_unittest.cc			\
-   src/google/sparsehash/config.h		\
+   src/config.h					\
+   $(sparsehashinclude_HEADERS)			\
    src/google/sparsetable			\
    src/sparsetable_unittest.expected
 
@@ -81,13 +93,15 @@ hashtable_unittest_SOURCES =			\
 
 time_hash_map_SOURCES =				\
    src/time_hash_map.cc				\
-   src/google/sparsehash/config.h		\
-   src/hash_map.h				\
+   $(sparsehashinclude_HEADERS)			\
+   src/config.h					\
    $(googleinclude_HEADERS)
 
 # If tcmalloc is installed, use it with time_hash_map; it gives us
 # heap-usage statistics for the hash_map routines, which is very nice
-time_hash_map_LDADD = @tcmalloc@
+time_hash_map_CXXFLAGS = @tcmalloc_flags@
+time_hash_map_LDFLAGS = @tcmalloc_flags@
+time_hash_map_LDADD = @tcmalloc_libs@
 
 ## ^^^^ END OF RULES TO MAKE THE LIBRARIES, BINARIES, AND UNITTESTS
 
@@ -100,5 +114,3 @@ deb: dist-gzip packages/deb.sh packages/deb/*
 
 EXTRA_DIST = packages/rpm.sh packages/rpm/rpm.spec packages/deb.sh packages/deb \
              src/config.h.include src/windows experimental
-
-DISTCLEANFILES = $(configure_generated_h_files)
