@@ -78,3 +78,10 @@ Mon Jun 11 11:33:41 2007  Google Inc. <opensource@google.com>
 	* Extend type-trait support to work with const objects (csilvers)
 	* USER VISIBLE: speed up all code by replacing memmove with memcpy
 	  (csilvers)
+
+Tue Jul  3 12:55:04 2007  Google Inc. <opensource@google.com>
+
+	* sparsehash: version 0.8 release
+	* Minor type-hygiene improvements: size_t for int, etc. (csilvers)
+	* Porting improvements: tests pass on OS X, FreeBSD, Solaris (csilvers)
+	* Full windows port!  VS solution provided for all unittests (csilvers)

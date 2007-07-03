@@ -107,7 +107,9 @@ template<class K, class V> inline void RESIZE(dense_hash_map<K,V>& m,
 }
 template<class K, class V> inline void RESIZE(hash_map<K,V>& m,
                                               int iters) {
+#ifndef WIN32    /* apparently windows hash_map doesn't support resizing */
   m.resize(iters);
+#endif
 }
 
 /*
@@ -174,6 +176,14 @@ template<int Size, int Hashsize> struct hash< HashObject<Size,Hashsize> > {
   size_t operator()(const HashObject<Size,Hashsize>& obj) const {
     return obj.Hash();
   }
+  // Less operator for MSVC's hash containers
+  bool operator()(const HashObject<Size,Hashsize>& a,
+                  const HashObject<Size,Hashsize>& b) const {
+    return a < b;
+  }
+  // These two public members are required by msvc.  4 and 8 are defaults.
+  static const size_t bucket_size = 4;
+  static const size_t min_buckets = 8;
 };
 
 }
@@ -361,7 +371,7 @@ static void time_map_fetch(int iters) {
   r = 1;
   t.Reset();
   for (i = 0; i < iters; i++) {
-    r ^= (set.find(i) != set.end());
+    r ^= static_cast<int>(set.find(i) != set.end());
   }
   double ut = t.UserTime();
 
@@ -380,7 +390,7 @@ static void time_map_fetch_empty(int iters) {
   r = 1;
   t.Reset();
   for (i = 0; i < iters; i++) {
-    r ^= (set.find(i) != set.end());
+    r ^= static_cast<int>(set.find(i) != set.end());
   }
   double ut = t.UserTime();
 

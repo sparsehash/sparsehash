@@ -87,9 +87,11 @@
 # if defined HAVE_UINT16_T
     typedef uint16_t u_int16_t;    // true on solaris, possibly other C99 libc's
 # elif defined HAVE___UINT16
-    typedef __uint16 u_int16_t;    // true on vc++7
+    typedef __int16 int16_t;       // true on vc++7
+    typedef unsigned __int16 u_int16_t;
 # else
     // Cannot find a 16-bit integer type.  Hoping for the best with "short"...
+    typedef short int int16_t;
     typedef unsigned short int u_int16_t;
 # endif
 #endif
@@ -622,17 +624,20 @@ class destructive_two_d_iterator {
 // called its "offset."
 
 // The weird mod in the offset is entirely to quiet compiler warnings
-#define PUT_(take_from, offset)                                              \
-  if ( putc(((take_from) >> ((offset) % (sizeof(take_from)*8))) % 256, fp)   \
-       == EOF )                                                              \
-    return false
+// as is the cast to int after doing the "x mod 256"
+#define PUT_(take_from, offset)  do {                                          \
+  if (putc(static_cast<int>(((take_from) >> ((offset) % (sizeof(take_from)*8)))\
+                             % 256), fp)                                       \
+      == EOF)                                                                  \
+    return false;                                                              \
+} while (0)
 
-#define GET_(add_to, offset)                            \
-  if ((x=getc(fp)) == EOF)                              \
-    return false;                                       \
-  else                                                  \
-    add_to |= (static_cast<size_type>(x) << ((offset) % (sizeof(add_to)*8)))
-
+#define GET_(add_to, offset)  do {                                            \
+  if ((x=getc(fp)) == EOF)                                                    \
+    return false;                                                             \
+  else                                                                        \
+    add_to |= (static_cast<size_type>(x) << ((offset) % (sizeof(add_to)*8))); \
+} while (0)
 
 template <class T, u_int16_t GROUP_SIZE>
 class sparsegroup {
@@ -699,7 +704,7 @@ class sparsegroup {
   // We need to do all this bit manipulation, of course.  ick
   static size_type charbit(size_type i)  { return i >> 3; }
   static size_type modbit(size_type i)   { return 1 << (i&7); }
-  bool bmtest(size_type i) const   { return bitmap[charbit(i)] & modbit(i); }
+  int bmtest(size_type i) const    { return bitmap[charbit(i)] & modbit(i); }
   void bmset(size_type i)          { bitmap[charbit(i)] |= modbit(i); }
   void bmclear(size_type i)        { bitmap[charbit(i)] &= ~modbit(i); }
 
@@ -858,7 +863,7 @@ class sparsegroup {
             realloc_or_die(group, sizeof(*group) * (num_buckets+1));
     // This is equivalent to memmove(), but faster on my Intel P4,
     // at least with gcc4.1 -O2 / glibc 2.3.6.
-    for (size_t i = num_buckets; i > offset; --i)
+    for (size_type i = num_buckets; i > offset; --i)
       memcpy(group + i, group + i-1, sizeof(*group));
   }
 
@@ -898,10 +903,10 @@ class sparsegroup {
 
   // We let you see if a bucket is non-empty without retrieving it
   bool test(size_type i) const {
-    return bmtest(i);
+    return bmtest(i) ? true : false;   // cast an int to a bool
   }
   bool test(iterator pos) const {
-    return bmtest(pos.pos);
+    return bmtest(pos.pos) ? true : false;
   }
 
  private:
@@ -917,7 +922,8 @@ class sparsegroup {
     group[offset].~value_type();
     // This is equivalent to memmove(), but faster on my Intel P4,
     // at lesat with gcc4.1 -O2 / glibc 2.3.6.
-    for (size_t i = offset; i < num_buckets-1; ++i)
+    assert(num_buckets > 0);
+    for (size_type i = offset; i < num_buckets-1; ++i)
       memcpy(group + i, group + i+1, sizeof(*group));  // hopefully inlined!
     group = (value_type *)
             realloc_or_die(group, sizeof(*group) * (num_buckets-1));
@@ -1139,12 +1145,18 @@ class sparsetable {
     return num == 0 ? 0 : ((num-1) / GROUP_SIZE) + 1;
   }
 
-  size_type pos_in_group(size_type i) const { return i % GROUP_SIZE; }
-  size_type group_num(size_type i) const    { return i / GROUP_SIZE; }
-  GroupsReference which_group(size_type i)  { return groups[group_num(i)]; }
-  GroupsConstReference which_group(size_type i) const
-                                            { return groups[group_num(i)]; }
-
+  u_int16_t pos_in_group(size_type i) const {
+    return static_cast<u_int16_t>(i % GROUP_SIZE);
+  }
+  size_type group_num(size_type i) const {
+    return i / GROUP_SIZE;
+  }
+  GroupsReference which_group(size_type i) {
+    return groups[group_num(i)];
+  }
+  GroupsConstReference which_group(size_type i) const {
+    return groups[group_num(i)];
+  }
 
  public:
   // Constructors -- default, normal (when you specify size), and copy
@@ -1183,8 +1195,8 @@ class sparsetable {
   void resize(size_type new_size) {
     groups.resize(num_groups(new_size));
     if ( new_size < table_size) {   // lower num_buckets, clear last group
-      if ( new_size % GROUP_SIZE > 0 )       // need to clear from last group
-        groups.back().erase(groups.back().begin() + (new_size % GROUP_SIZE),
+      if ( pos_in_group(new_size) > 0 )     // need to clear inside last group
+        groups.back().erase(groups.back().begin() + pos_in_group(new_size),
                             groups.back().end());
       num_buckets = 0;                       // refigure # of used buckets
       GroupsConstIterator group;
