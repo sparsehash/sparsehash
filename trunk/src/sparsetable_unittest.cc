@@ -43,6 +43,7 @@
 #include <stdlib.h>         // defines unlink() on some windows platforms(?)
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>         // for unlink()
+#include <sys/types.h>      // for size_t
 #include <string>
 #endif
 #include <google/sparsetable>
@@ -62,17 +63,7 @@ static char* out = outbuf;       // where to write next
 #define TEST(cond)  out += snprintf(out, LEFT, #cond "? %s\n", \
                                     (cond) ? "yes" : "no");
 
-// replaces buf, in-place, with a version of buf that lacks \r's.
-static int strip_cr(char* buf, int len) {
-  char *r, *w;
-  for ( r = buf, w = buf; r - buf < len; r++ ) {
-    if (*r != '\r')
-      *w++ = *r;
-  }
-  return w - buf;
-}
-
-inline string as_string(int n) {
+inline string AsString(int n) {
   const int N = 64;
   char buf[N];
   snprintf(buf, N, "%d", n);
@@ -80,7 +71,7 @@ inline string as_string(int n) {
 }
 
 // Test sparsetable with a POD type, int.
-void test_int() {
+void TestInt() {
   out += snprintf(out, LEFT, "int test\n");
   sparsetable<int> x(7), y(70), z;
   x.set(4, 10);
@@ -363,7 +354,7 @@ void test_int() {
 }
 
 // Test sparsetable with a non-POD type, std::string
-void test_string() {
+void TestString() {
   out += snprintf(out, LEFT, "string test\n");
   sparsetable<string> x(7), y(70), z;
   x.set(4, "foo");
@@ -428,13 +419,13 @@ void test_string() {
 
   y.resize(70);
   for ( int i = 10; i < 40; ++i )
-    y.set(i, as_string(-i));
+    y.set(i, AsString(-i));
   y.erase(y.begin() + 15, y.begin() + 30);
   y.erase(y.begin() + 34);
   y.erase(12);
   y.resize(38);
   y.resize(10000);
-  y.set(9898, as_string(-9898));
+  y.set(9898, AsString(-9898));
   for ( sparsetable<string>::const_iterator it = y.begin(); it != y.end(); ++it ) {
     if ( y.test(it) )
       out += snprintf(out, LEFT, "y[%lu] is set\n", UL(it - y.begin()));
@@ -452,28 +443,254 @@ void test_string() {
     out += snprintf(out, LEFT, "y[??] = %s\n", (*--it).c_str());
 }
 
+// The expected output from all of the above: TestInt() and TestString()
+static const char g_expected[] = (
+    "int test\n"
+    "x[0]: 0\n"
+    "x[1]: 0\n"
+    "x[2]: 0\n"
+    "x[3]: 0\n"
+    "x[4]: 10\n"
+    "x[5]: 0\n"
+    "x[6]: 0\n"
+    "x[0]: 0\n"
+    "x[1]: 0\n"
+    "x[2]: 0\n"
+    "x[3]: 0\n"
+    "x[4]: 10\n"
+    "x[5]: 0\n"
+    "x[6]: 0\n"
+    "x[6]: 0\n"
+    "x[5]: 0\n"
+    "x[4]: 10\n"
+    "x[3]: 0\n"
+    "x[2]: 0\n"
+    "x[1]: 0\n"
+    "x[0]: 0\n"
+    "x[6]: 0\n"
+    "x[5]: 0\n"
+    "x[4]: 10\n"
+    "x[3]: 0\n"
+    "x[2]: 0\n"
+    "x[1]: 0\n"
+    "x[0]: 0\n"
+    "x[3]: 0\n"
+    "x[4]: 10\n"
+    "x[5]: 0\n"
+    "x[4]: 10\n"
+    "x[4]: 10\n"
+    "x[3]: 0\n"
+    "x[4]: 10\n"
+    "x[5]: 55\n"
+    "x[5]: 55\n"
+    "x[6]: 66\n"
+    "it == it? yes\n"
+    "!(it != it)? yes\n"
+    "!(it < it)? yes\n"
+    "!(it > it)? yes\n"
+    "it <= it? yes\n"
+    "it >= it? yes\n"
+    "!(it == it_minus_1)? yes\n"
+    "it != it_minus_1? yes\n"
+    "!(it < it_minus_1)? yes\n"
+    "it > it_minus_1? yes\n"
+    "!(it <= it_minus_1)? yes\n"
+    "it >= it_minus_1? yes\n"
+    "!(it_minus_1 == it)? yes\n"
+    "it_minus_1 != it? yes\n"
+    "it_minus_1 < it? yes\n"
+    "!(it_minus_1 > it)? yes\n"
+    "it_minus_1 <= it? yes\n"
+    "!(it_minus_1 >= it)? yes\n"
+    "!(it == it_plus_1)? yes\n"
+    "it != it_plus_1? yes\n"
+    "it < it_plus_1? yes\n"
+    "!(it > it_plus_1)? yes\n"
+    "it <= it_plus_1? yes\n"
+    "!(it >= it_plus_1)? yes\n"
+    "!(it_plus_1 == it)? yes\n"
+    "it_plus_1 != it? yes\n"
+    "!(it_plus_1 < it)? yes\n"
+    "it_plus_1 > it? yes\n"
+    "!(it_plus_1 <= it)? yes\n"
+    "it_plus_1 >= it? yes\n"
+    "x[4]: 10\n"
+    "x[4]: 10\n"
+    "x[3]: 0\n"
+    "x[4]: 10\n"
+    "x[5]: 55\n"
+    "x[6]: 66\n"
+    "it == it? yes\n"
+    "!(it != it)? yes\n"
+    "!(it < it)? yes\n"
+    "!(it > it)? yes\n"
+    "it <= it? yes\n"
+    "it >= it? yes\n"
+    "!(it == it_minus_1)? yes\n"
+    "it != it_minus_1? yes\n"
+    "!(it < it_minus_1)? yes\n"
+    "it > it_minus_1? yes\n"
+    "!(it <= it_minus_1)? yes\n"
+    "it >= it_minus_1? yes\n"
+    "!(it_minus_1 == it)? yes\n"
+    "it_minus_1 != it? yes\n"
+    "it_minus_1 < it? yes\n"
+    "!(it_minus_1 > it)? yes\n"
+    "it_minus_1 <= it? yes\n"
+    "!(it_minus_1 >= it)? yes\n"
+    "!(it == it_plus_1)? yes\n"
+    "it != it_plus_1? yes\n"
+    "it < it_plus_1? yes\n"
+    "!(it > it_plus_1)? yes\n"
+    "it <= it_plus_1? yes\n"
+    "!(it >= it_plus_1)? yes\n"
+    "!(it_plus_1 == it)? yes\n"
+    "it_plus_1 != it? yes\n"
+    "!(it_plus_1 < it)? yes\n"
+    "it_plus_1 > it? yes\n"
+    "!(it_plus_1 <= it)? yes\n"
+    "it_plus_1 >= it? yes\n"
+    "x.begin() == x.begin() + 1 - 1? yes\n"
+    "x.begin() < x.end()? yes\n"
+    "z.begin() < z.end()? no\n"
+    "z.begin() <= z.end()? yes\n"
+    "z.begin() == z.end()? yes\n"
+    "x[??]: 10\n"
+    "x[??]: 55\n"
+    "x[??]: 66\n"
+    "y[??]: -12\n"
+    "y[??]: -47\n"
+    "y[??]: -48\n"
+    "y[??]: -49\n"
+    "y[??]: -49\n"
+    "y[??]: -48\n"
+    "y[??]: -47\n"
+    "y[??]: -12\n"
+    "y[??]: -49\n"
+    "y[??]: -48\n"
+    "y[??]: -47\n"
+    "y[??]: -12\n"
+    "first non-empty y: -12\n"
+    "first non-empty x: 10\n"
+    "first non-empty x: 10\n"
+    "first non-empty x: 10\n"
+    "first non-empty y: -12\n"
+    "first non-empty x: 10\n"
+    "first non-empty x: 10\n"
+    "first non-empty x: 10\n"
+    "x.begin() == x.begin() + 1 - 1? yes\n"
+    "z.begin() != z.end()? no\n"
+    "x has 3/7 buckets, y 4/70, z 0/0\n"
+    "y shrank and grew: it's now 2/70\n"
+    "y[12] = -12, y.get(12) = -12\n"
+    "y[12] cleared.  y now 1/70.  y[12] = 0, y.get(12) = 0\n"
+    "y == z? no\n"
+    "y[10] is set\n"
+    "y[11] is set\n"
+    "y[13] is set\n"
+    "y[14] is set\n"
+    "y[30] is set\n"
+    "y[31] is set\n"
+    "y[32] is set\n"
+    "y[33] is set\n"
+    "y[35] is set\n"
+    "y[36] is set\n"
+    "y[37] is set\n"
+    "y[9898] is set\n"
+    "That's 12 set buckets\n"
+    "Starting from y[32]...\n"
+    "y[??] = -32\n"
+    "y[??] = -33\n"
+    "y[??] = -35\n"
+    "y[??] = -36\n"
+    "y[??] = -37\n"
+    "y[??] = -9898\n"
+    "From y[32] down...\n"
+    "y[??] = -31\n"
+    "y[??] = -30\n"
+    "y[??] = -14\n"
+    "y[??] = -13\n"
+    "y[??] = -11\n"
+    "y[??] = -10\n"
+    "y2[10] is -10\n"
+    "y2[11] is -11\n"
+    "y2[13] is -13\n"
+    "y2[14] is -14\n"
+    "y2[30] is -30\n"
+    "y2[31] is -31\n"
+    "y2[32] is -32\n"
+    "y2[33] is -33\n"
+    "y2[35] is -35\n"
+    "y2[36] is -36\n"
+    "y2[37] is -37\n"
+    "y2[9898] is -9898\n"
+    "That's 12 set buckets\n"
+    "string test\n"
+    "x[0]: \n"
+    "x[1]: \n"
+    "x[2]: \n"
+    "x[3]: \n"
+    "x[4]: foo\n"
+    "x[5]: \n"
+    "x[6]: \n"
+    "x.begin() == x.begin() + 1 - 1? yes\n"
+    "x.begin() < x.end()? yes\n"
+    "z.begin() < z.end()? no\n"
+    "z.begin() <= z.end()? yes\n"
+    "z.begin() == z.end()? yes\n"
+    "x[??]: foo\n"
+    "y[??]: orange\n"
+    "y[??]: grape\n"
+    "y[??]: pear\n"
+    "y[??]: apple\n"
+    "x has 1/7 buckets, y 4/70, z 0/0\n"
+    "y shrank and grew: it's now 2/70\n"
+    "y[12] = orange, y.get(12) = orange\n"
+    "y[12] cleared.  y now 1/70.  y[12] = , y.get(12) = \n"
+    "y == z? no\n"
+    "y[10] is set\n"
+    "y[11] is set\n"
+    "y[13] is set\n"
+    "y[14] is set\n"
+    "y[30] is set\n"
+    "y[31] is set\n"
+    "y[32] is set\n"
+    "y[33] is set\n"
+    "y[35] is set\n"
+    "y[36] is set\n"
+    "y[37] is set\n"
+    "y[9898] is set\n"
+    "That's 12 set buckets\n"
+    "Starting from y[32]...\n"
+    "y[??] = -32\n"
+    "y[??] = -33\n"
+    "y[??] = -35\n"
+    "y[??] = -36\n"
+    "y[??] = -37\n"
+    "y[??] = -9898\n"
+    "From y[32] down...\n"
+    "y[??] = -31\n"
+    "y[??] = -30\n"
+    "y[??] = -14\n"
+    "y[??] = -13\n"
+    "y[??] = -11\n"
+    "y[??] = -10\n"
+    );
+
+// defined at bottom of file for ease of maintainence
 int main(int argc, char **argv) {          // though we ignore the args
-  test_int();
-  test_string();
+  TestInt();
+  TestString();
+
   // Finally, check to see if our output (in out) is what it's supposed to be.
-  char expected[sizeof(outbuf) + 10];
-  string filename = (string(getenv("srcdir") ? getenv("srcdir") : ".") +
-                     "/src/sparsetable_unittest.expected");
-  FILE* expected_fp = fopen(filename.c_str(), "rb");
-  if ( expected_fp == NULL ) {
-    fprintf(stderr, "Can't judge test: can't load 'golden' file '%s'.\n",
-            filename.c_str());
-    return 2;
-  }
-  int r = fread(expected, 1, sizeof(expected) - 1, expected_fp);
-  r = strip_cr(expected, r);
-  if ( r != out - outbuf ||             // output not the same size
-       memcmp(outbuf, expected, r) ) {  // or bytes differed
+  const size_t r = sizeof(g_expected) - 1;
+  if ( r != out - outbuf ||               // output not the same size
+       memcmp(outbuf, g_expected, r) ) {  // or bytes differed
     fprintf(stderr, "TESTS FAILED\n\nEXPECTED:\n\n%s\n\nACTUAL:\n\n%s\n\n",
-            expected, outbuf);
+            g_expected, outbuf);
     return 1;
   } else {
-    printf("All tests passed.\n");
+    printf("PASS.\n");
     return 0;
   }
 }

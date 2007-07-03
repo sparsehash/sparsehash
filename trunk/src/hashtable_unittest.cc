@@ -64,6 +64,11 @@
 #include <google/sparse_hash_set>
 #include <google/sparsehash/sparsehashtable.h>
 
+// Otherwise, VC++7 warns about size_t -> int in the cout logging lines
+#ifdef MSVC
+#pragma warning(disable:4267)
+#endif
+
 using GOOGLE_NAMESPACE::sparse_hash_map;
 using GOOGLE_NAMESPACE::dense_hash_map;
 using GOOGLE_NAMESPACE::sparse_hash_set;
@@ -87,16 +92,42 @@ using STL_NAMESPACE::ostream;
   }                                             \
 } while (0)
 
+#ifndef WIN32   // windows defines its own version
+static string TmpFile(const char* basename) {
+  return string("/tmp/") + basename;
+}
+#endif
+
 const char *words[] = {"Baffin\n",        // in /usr/dict/words
                        "Boffin\n",        // not in
                        "baffin\n",        // not in
                        "genial\n",        // last word in
                        "Aarhus\n",        // first word alphabetically
                        "Zurich\n",        // last word alphabetically
+                       "Getty\n",
 };
 
 const char *nwords[] = {"Boffin\n",
                         "baffin\n",
+};
+
+const char *default_dict[] = {"Aarhus\n",
+                              "aback\n",
+                              "abandon\n",
+                              "Baffin\n",
+                              "baffle\n",
+                              "bagged\n",
+                              "congenial\n",
+                              "genial\n",
+                              "Getty\n",
+                              "indiscreet\n",
+                              "linens\n",
+                              "pence\n",
+                              "reassure\n",
+                              "sequel\n",
+                              "zoning\n",
+                              "zoo\n",
+                              "Zurich\n",
 };
 
 // Apparently identity is not stl-standard, so we define our own
@@ -305,7 +336,7 @@ static char* read_line(FILE* fp, char* line, int linesize) {
   if ( fgets(line, linesize, fp) == NULL )
     return NULL;
   // normalize windows files :-(
-  const int linelen = strlen(line);
+  const size_t linelen = strlen(line);
   if ( linelen >= 2 && line[linelen-2] == '\r' && line[linelen-1] == '\n' ) {
     line[linelen-2] = '\n';
     line[linelen-1] = '\0';
@@ -394,7 +425,7 @@ void test_int() {
   // dense{hashtable, _hash_set, _hash_map}
   if (clear_no_resize(&x)) {
     // make sure x has to increase its number of buckets
-    int empty_bucket_count = x.bucket_count();
+    typename htint::size_type empty_bucket_count = x.bucket_count();
     int last_element = 0;
     while (x.bucket_count() == empty_bucket_count) {
       insert(&x, last_element);
@@ -403,12 +434,12 @@ void test_int() {
     // if clear_no_resize is supported (i.e. htint is a
     // dense{hashtable,_hash_set,_hash_map}), it should leave the bucket_count
     // as is.
-    int last_bucket_count = x.bucket_count();
+    typename htint::size_type last_bucket_count = x.bucket_count();
     clear_no_resize(&x);
     CHECK(last_bucket_count == x.bucket_count());
     CHECK(x.empty());
-    LOGF << "x has " << x.bucket_count() << " buckets";
-    LOGF << "x size " << x.size();
+    LOGF << "x has " << x.bucket_count() << " buckets\n";
+    LOGF << "x size " << x.size() << "\n";
     // when inserting the same number of elements again, no resize should be
     // necessary
     for (int i = 0; i < last_element; ++i) {
@@ -493,7 +524,11 @@ void test_charptr(bool read_write) {
     const char* file = filestr.c_str();
     FILE *fp = fopen(file, "rb");
     if ( fp == NULL ) {
-      LOGF << "Can't open " << file << " skipping dictionary hash...";
+      LOGF << "Can't open " << file << ", using small, built-in dict...\n";
+      for (int i = 0; i < sizeof(default_dict)/sizeof(*default_dict); ++i) {
+        insert(&x, strdup(default_dict[i]));
+        counts[default_dict[i]] = 0;
+      }
     } else {
       char line[1024];
       while ( read_line(fp, line, sizeof(line)) ) {
@@ -506,14 +541,14 @@ void test_charptr(bool read_write) {
       stat(file, &buf);
       dict_size = buf.st_size;
       LOGF << "Size of " << file << ": " << buf.st_size << " bytes\n";
-      for ( char **word = const_cast<char **>(words);
-            word < const_cast<char **>(words) + sizeof(words) / sizeof(*words);
-            ++word ) {
-        if (x.find(*word) == x.end()) {
-          CHECK(w.find(*word) != w.end());
-        } else {
-          CHECK(w.find(*word) == w.end());
-        }
+    }
+    for (char **word = const_cast<char **>(words);
+          word < const_cast<char **>(words) + sizeof(words) / sizeof(*words);
+          ++word ) {
+      if (x.find(*word) == x.end()) {
+        CHECK(w.find(*word) != w.end());
+      } else {
+        CHECK(w.find(*word) == w.end());
       }
     }
   }
@@ -521,7 +556,8 @@ void test_charptr(bool read_write) {
 
   // Save the hashtable.
   if (read_write) {
-    const char* file = "/tmp/#hashtable_unittest_dicthash";
+    const string file_string = TmpFile("#hashtable_unittest_dicthash");
+    const char* file = file_string.c_str();
     FILE *fp = fopen(file, "wb");
     if ( fp == NULL ) {
       // maybe we can't write to /tmp/.  Try the current directory
@@ -529,7 +565,7 @@ void test_charptr(bool read_write) {
       fp = fopen(file, "wb");
     }
     if ( fp == NULL ) {
-      LOGF << "Can't open " << file << " skipping hashtable save...";
+      LOGF << "Can't open " << file << " skipping hashtable save...\n";
     } else {
       x.write_metadata(fp);        // this only writes meta-information
       int count = 0;
@@ -554,7 +590,7 @@ void test_charptr(bool read_write) {
       // Load the hashtable
       fp = fopen(file, "rb");
       if ( fp == NULL ) {
-        LOGF << "Can't open " << file << " skipping hashtable reload...";
+        LOGF << "Can't open " << file << " skipping hashtable reload...\n";
       } else {
         x.read_metadata(fp);      // reads metainformation
         LOGF << "Hashtable size: " << x.size() << "\n";
@@ -597,7 +633,7 @@ void test_string(bool read_write) {
     nwords1[i] = nwords[i];
   insert(&w, nwords1, nwords1 + N);
   delete[] nwords1;
-  LOGF << "w has " << w.size() << " items";
+  LOGF << "w has " << w.size() << " items\n";
   CHECK(w.size() == 2);
   CHECK(w == w);
 
@@ -612,29 +648,33 @@ void test_string(bool read_write) {
     string filestr = (string(getenv("srcdir") ? getenv("srcdir") : ".") +
                       "/src/words");
     const char* file = filestr.c_str();
-    FILE *fp = fopen(file, "r");
+    FILE *fp = fopen(file, "rb");
     if ( fp == NULL ) {
-      LOGF << "Can't open " << file << ", skipping dictionary hash...";
+      LOGF << "Can't open " << file << ", using small, built-in dict...\n";
+      for (int i = 0; i < sizeof(default_dict)/sizeof(*default_dict); ++i) {
+        insert(&x, string(default_dict[i]));
+        counts[default_dict[i]] = 0;
+      }
     } else {
       char line[1024];
       while ( fgets(line, sizeof(line), fp) ) {
         insert(&x, string(line));
         counts[line] = 0;
       }
-      LOGF << "Read " << x.size() << " words from " << file;
+      LOGF << "Read " << x.size() << " words from " << file << "\n";
       fclose(fp);
       struct stat buf;
       stat(file, &buf);
       dict_size = buf.st_size;
-      LOGF << "Size of " << file << ": " << buf.st_size << " bytes";
-      for ( const char* const* word = words;
-            word < words + sizeof(words) / sizeof(*words);
-            ++word ) {
-        if (x.find(*word) == x.end()) {
-          CHECK(w.find(*word) != w.end());
-        } else {
-          CHECK(w.find(*word) == w.end());
-        }
+      LOGF << "Size of " << file << ": " << buf.st_size << " bytes\n";
+    }
+    for ( const char* const* word = words;
+          word < words + sizeof(words) / sizeof(*words);
+          ++word ) {
+      if (x.find(*word) == x.end()) {
+        CHECK(w.find(*word) != w.end());
+      } else {
+        CHECK(w.find(*word) == w.end());
       }
     }
   }
@@ -642,7 +682,8 @@ void test_string(bool read_write) {
 
   // Save the hashtable.
   if (read_write) {
-    const char* file = "/tmp/#hashtable_unittest_dicthash_str";
+    const string file_string = TmpFile("#hashtable_unittest_dicthash_str");
+    const char* file = file_string.c_str();
     FILE *fp = fopen(file, "wb");
     if ( fp == NULL ) {
       // maybe we can't write to /tmp/.  Try the current directory
@@ -650,7 +691,7 @@ void test_string(bool read_write) {
       fp = fopen(file, "wb");
     }
     if ( fp == NULL ) {
-      LOGF << "Can't open " << file << " skipping hashtable save...";
+      LOGF << "Can't open " << file << " skipping hashtable save...\n";
     } else {
       x.write_metadata(fp);        // this only writes meta-information
       int count = 0;
@@ -674,7 +715,7 @@ void test_string(bool read_write) {
       // Load the hashtable
       fp = fopen(file, "rb");
       if ( fp == NULL ) {
-        LOGF << "Can't open " << file << " skipping hashtable reload...";
+        LOGF << "Can't open " << file << " skipping hashtable reload...\n";
       } else {
         x.read_metadata(fp);      // reads metainformation
         LOGF << "Hashtable size: " << x.size() << "\n";
@@ -769,7 +810,7 @@ void TestSimpleDataTypeOptimizations() {
       nomemmove[i] = NoMemmove(i);
     }
     LOGF << "sparse_hash_map copies for unoptimized/optimized cases: "
-         << NoMemmove::num_copies_ << "/" << Memmove::num_copies_;
+         << NoMemmove::num_copies_ << "/" << Memmove::num_copies_ << "\n";
     CHECK(NoMemmove::num_copies_ > Memmove::num_copies_);
   }
   // Same should hold true for dense_hash_map
@@ -788,7 +829,7 @@ void TestSimpleDataTypeOptimizations() {
       nomemmove[i] = NoMemmove(i);
     }
     LOGF << "dense_hash_map copies for unoptimized/optimized cases: "
-         << NoMemmove::num_copies_ << "/" << Memmove::num_copies_;
+         << NoMemmove::num_copies_ << "/" << Memmove::num_copies_ << "\n";
     CHECK(NoMemmove::num_copies_ > Memmove::num_copies_);
   }
 }
@@ -796,7 +837,7 @@ void TestSimpleDataTypeOptimizations() {
 int main(int argc, char **argv) {
   // First try with the low-level hashtable interface
   LOGF << "\n\nTEST WITH DENSE_HASHTABLE\n\n";
-  test<dense_hashtable<char *, char *, HASH_NAMESPACE::hash<char *>,
+  test<dense_hashtable<char *, char *, HASH_NAMESPACE::hash<const char *>,
                        Identity<char *>, strcmp_fnc, allocator<char *> >,
        dense_hashtable<string, string, StrHash,
                        Identity<string>, equal_to<string>, allocator<string> >,
@@ -806,19 +847,19 @@ int main(int argc, char **argv) {
 
   // Now try with hash_set, which should be equivalent
   LOGF << "\n\nTEST WITH DENSE_HASH_SET\n\n";
-  test<dense_hash_set<char *, HASH_NAMESPACE::hash<char *>, strcmp_fnc>,
+  test<dense_hash_set<char *, HASH_NAMESPACE::hash<const char *>, strcmp_fnc>,
        dense_hash_set<string, StrHash>,
        dense_hash_set<int> >(false);
 
   // Now try with hash_map, which differs only in insert()
   LOGF << "\n\nTEST WITH DENSE_HASH_MAP\n\n";
-  test<dense_hash_map<char *, int, HASH_NAMESPACE::hash<char *>, strcmp_fnc>,
+  test<dense_hash_map<char *, int, HASH_NAMESPACE::hash<const char *>, strcmp_fnc>,
        dense_hash_map<string, int, StrHash>,
        dense_hash_map<int, int> >(false);
 
   // First try with the low-level hashtable interface
   LOGF << "\n\nTEST WITH SPARSE_HASHTABLE\n\n";
-  test<sparse_hashtable<char *, char *, HASH_NAMESPACE::hash<char *>,
+  test<sparse_hashtable<char *, char *, HASH_NAMESPACE::hash<const char *>,
                        Identity<char *>, strcmp_fnc, allocator<char *> >,
        sparse_hashtable<string, string, StrHash,
                        Identity<string>, equal_to<string>, allocator<string> >,
@@ -828,18 +869,18 @@ int main(int argc, char **argv) {
 
   // Now try with hash_set, which should be equivalent
   LOGF << "\n\nTEST WITH SPARSE_HASH_SET\n\n";
-  test<sparse_hash_set<char *, HASH_NAMESPACE::hash<char *>, strcmp_fnc>,
+  test<sparse_hash_set<char *, HASH_NAMESPACE::hash<const char *>, strcmp_fnc>,
        sparse_hash_set<string, StrHash>,
        sparse_hash_set<int> >(true);
 
   // Now try with hash_map, which differs only in insert()
   LOGF << "\n\nTEST WITH SPARSE_HASH_MAP\n\n";
-  test<sparse_hash_map<char *, int, HASH_NAMESPACE::hash<char *>, strcmp_fnc>,
+  test<sparse_hash_map<char *, int, HASH_NAMESPACE::hash<const char *>, strcmp_fnc>,
        sparse_hash_map<string, int, StrHash>,
        sparse_hash_map<int, int> >(true);
 
   // Test that we use the optimized routines for simple data types
-  LOGF << "\n\nTesting simple-data-type optimizations";
+  LOGF << "\n\nTesting simple-data-type optimizations\n";
   TestSimpleDataTypeOptimizations();
 
   LOGF << "\nAll tests pass.\n";

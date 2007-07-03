@@ -876,7 +876,7 @@ const float sparse_hashtable<V,K,HF,ExK,EqK,A>::HT_OCCUPANCY_FLT = 0.8f;
 // How empty we let the table get before we resize lower.
 // It should be less than OCCUPANCY_FLT / 2 or we thrash resizing
 template <class V, class K, class HF, class ExK, class EqK, class A>
-const float sparse_hashtable<V,K,HF,ExK,EqK,A>::HT_EMPTY_FLT = 0.4 *
+const float sparse_hashtable<V,K,HF,ExK,EqK,A>::HT_EMPTY_FLT = 0.4f *
 sparse_hashtable<V,K,HF,ExK,EqK,A>::HT_OCCUPANCY_FLT;
 
 _END_GOOGLE_NAMESPACE_

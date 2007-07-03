@@ -4,11 +4,11 @@
 # make sure we're interpreted by some minimal autoconf
 AC_PREREQ(2.57)
 
-AC_INIT(sparsehash, 0.7, opensource@google.com)
+AC_INIT(sparsehash, 0.8, opensource@google.com)
 # The argument here is just something that should be in the current directory
 # (for sanity checking)
 AC_CONFIG_SRCDIR(README)
-AM_INIT_AUTOMAKE
+AM_INIT_AUTOMAKE([dist-zip])
 AM_CONFIG_HEADER(src/config.h)
 
 # Checks for programs.

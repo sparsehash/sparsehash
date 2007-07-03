@@ -34,18 +34,24 @@ dist_doc_DATA = AUTHORS COPYING ChangeLog INSTALL NEWS README TODO \
 
 ## The libraries (.so's) you want to install
 lib_LTLIBRARIES =
+## The location of the windows project file for each binary we make
+WINDOWS_PROJECTS = google-sparsehash.sln
 
 ## unittests you want to run when people type 'make check'.
 ## TESTS is for binary unittests, check_SCRIPTS for script-based unittests.
 ## TESTS_ENVIRONMENT sets environment variables for when you run unittest,
 ## but it only seems to take effect for *binary* unittests (argh!)
 TESTS = type_traits_unittest sparsetable_unittest hashtable_unittest
+WINDOWS_PROJECTS += vsprojects/type_traits_unittest/type_traits_unittest.vcproj \
+                    vsprojects/sparsetable_unittest/sparsetable_unittest.vcproj \
+                    vsprojects/hashtable_unittest/hashtable_unittest.vcproj
 check_SCRIPTS =
 TESTS_ENVIRONMENT =
 
 ## This should always include $(TESTS), but may also include other
 ## binaries that you compile but don't want automatically installed.
 noinst_PROGRAMS = $(TESTS) time_hash_map
+WINDOWS_PROJECTS += vsprojects/time_hash_map/time_hash_map.vcproj
 
 
 ## vvvv RULES TO MAKE THE LIBRARIES, BINARIES, AND UNITTESTS
@@ -74,16 +80,13 @@ sparsehashinclude_HEADERS =			\
 
 type_traits_unittest_SOURCES =			\
    src/type_traits_unittest.cc			\
-   src/config.h					\
    $(sparsehashinclude_HEADERS)			\
    src/google/type_traits.h
 
 sparsetable_unittest_SOURCES =			\
    src/sparsetable_unittest.cc			\
-   src/config.h					\
    $(sparsehashinclude_HEADERS)			\
-   src/google/sparsetable			\
-   src/sparsetable_unittest.expected
+   src/google/sparsetable
 
 hashtable_unittest_SOURCES =			\
    src/hashtable_unittest.cc			\
@@ -94,7 +97,6 @@ hashtable_unittest_SOURCES =			\
 time_hash_map_SOURCES =				\
    src/time_hash_map.cc				\
    $(sparsehashinclude_HEADERS)			\
-   src/config.h					\
    $(googleinclude_HEADERS)
 
 # If tcmalloc is installed, use it with time_hash_map; it gives us
@@ -113,4 +115,4 @@ deb: dist-gzip packages/deb.sh packages/deb/*
 	@cd packages && ./deb.sh ${PACKAGE} ${VERSION}
 
 EXTRA_DIST = packages/rpm.sh packages/rpm/rpm.spec packages/deb.sh packages/deb \
-             src/config.h.include src/windows experimental
+             src/config.h.include src/windows $(WINDOWS_PROJECTS) experimental

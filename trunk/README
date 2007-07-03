@@ -14,7 +14,12 @@ COMPILING
 ---------
 To compile test applications with these classes, run ./configure
 followed by make.  To install these header files on your system, run
-'make install'.  See INSTALL for more details.
+'make install'.  (On Windows, the instructions are different; see
+README.windows.)  See INSTALL for more details.
+
+This code should work on any modern C++ system.  It has been tested on
+Linux (Ubuntu, Fedora, RedHat, Debian), Solaris 10 x86, FreeBSD 6.0,
+OS X 10.3 and 10.4, and Windows under both VC++7 and VC++8.
 
 USING
 -----
