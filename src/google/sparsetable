@@ -711,8 +711,11 @@ class sparsegroup {
   void* realloc_or_die(void* ptr, size_t num_bytes) {
     void* retval = realloc(ptr, num_bytes);
     if (retval == NULL) {
-      fprintf(stderr, "FATAL ERROR: failed to allocate %d bytes for ptr %p",
-              num_bytes, ptr);
+      // We really should use PRIuS here, but I don't want to have to add
+      // a whole new configure option, with concomitant macro namespace
+      // pollution, just to print this (unlikely) error message.  So I cast.
+      fprintf(stderr, "FATAL ERROR: failed to allocate %lu bytes for ptr %p",
+              static_cast<unsigned long>(num_bytes), ptr);
       exit(1);
     }
     return retval;

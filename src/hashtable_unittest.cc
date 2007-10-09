@@ -77,6 +77,7 @@ using GOOGLE_NAMESPACE::sparse_hashtable;
 using GOOGLE_NAMESPACE::dense_hashtable;
 using STL_NAMESPACE::map;
 using STL_NAMESPACE::pair;
+using STL_NAMESPACE::make_pair;
 using STL_NAMESPACE::string;
 using STL_NAMESPACE::insert_iterator;
 using STL_NAMESPACE::allocator;
@@ -158,98 +159,100 @@ struct strcmp_fnc {
   }
 };
 
+namespace {
+
 template <class T, class H, class I, class C, class A>
-static void set_empty_key(sparse_hashtable<T,T,H,I,C,A> *ht, T val) {
+void set_empty_key(sparse_hashtable<T,T,H,I,C,A> *ht, T val) {
 }
 
 template <class T, class H, class C>
-static void set_empty_key(sparse_hash_set<T,H,C> *ht, T val) {
+void set_empty_key(sparse_hash_set<T,H,C> *ht, T val) {
 }
 
 template <class K, class V, class H, class C>
-static void set_empty_key(sparse_hash_map<K,V,H,C> *ht, K val) {
+void set_empty_key(sparse_hash_map<K,V,H,C> *ht, K val) {
 }
 
 template <class T, class H, class I, class C, class A>
-static void set_empty_key(dense_hashtable<T,T,H,I,C,A> *ht, T val) {
+void set_empty_key(dense_hashtable<T,T,H,I,C,A> *ht, T val) {
   ht->set_empty_key(val);
 }
 
 template <class T, class H, class C>
-static void set_empty_key(dense_hash_set<T,H,C> *ht, T val) {
+void set_empty_key(dense_hash_set<T,H,C> *ht, T val) {
   ht->set_empty_key(val);
 }
 
 template <class K, class V, class H, class C>
-static void set_empty_key(dense_hash_map<K,V,H,C> *ht, K val) {
+void set_empty_key(dense_hash_map<K,V,H,C> *ht, K val) {
   ht->set_empty_key(val);
 }
 
 template <class T, class H, class I, class C, class A>
-static bool clear_no_resize(sparse_hashtable<T,T,H,I,C,A> *ht) {
+bool clear_no_resize(sparse_hashtable<T,T,H,I,C,A> *ht) {
   return false;
 }
 
 template <class T, class H, class C>
-static bool clear_no_resize(sparse_hash_set<T,H,C> *ht) {
+bool clear_no_resize(sparse_hash_set<T,H,C> *ht) {
   return false;
 }
 
 template <class K, class V, class H, class C>
-static bool clear_no_resize(sparse_hash_map<K,V,H,C> *ht) {
+bool clear_no_resize(sparse_hash_map<K,V,H,C> *ht) {
   return false;
 }
 
 template <class T, class H, class I, class C, class A>
-static bool clear_no_resize(dense_hashtable<T,T,H,I,C,A> *ht) {
+bool clear_no_resize(dense_hashtable<T,T,H,I,C,A> *ht) {
   ht->clear_no_resize();
   return true;
 }
 
 template <class T, class H, class C>
-static bool clear_no_resize(dense_hash_set<T,H,C> *ht) {
+bool clear_no_resize(dense_hash_set<T,H,C> *ht) {
   ht->clear_no_resize();
   return true;
 }
 
 template <class K, class V, class H, class C>
-static bool clear_no_resize(dense_hash_map<K,V,H,C> *ht) {
+bool clear_no_resize(dense_hash_map<K,V,H,C> *ht) {
   ht->clear_no_resize();
   return true;
 }
 
 template <class T, class H, class I, class C, class A>
-static void insert(dense_hashtable<T,T,H,I,C,A> *ht, T val) {
+void insert(dense_hashtable<T,T,H,I,C,A> *ht, T val) {
   ht->insert(val);
 }
 
 template <class T, class H, class C>
-static void insert(dense_hash_set<T,H,C> *ht, T val) {
+void insert(dense_hash_set<T,H,C> *ht, T val) {
   ht->insert(val);
 }
 
 template <class K, class V, class H, class C>
-static void insert(dense_hash_map<K,V,H,C> *ht, K val) {
+void insert(dense_hash_map<K,V,H,C> *ht, K val) {
   ht->insert(pair<K,V>(val,V()));
 }
 
 template <class T, class H, class I, class C, class A>
-static void insert(sparse_hashtable<T,T,H,I,C,A> *ht, T val) {
+void insert(sparse_hashtable<T,T,H,I,C,A> *ht, T val) {
   ht->insert(val);
 }
 
 template <class T, class H, class C>
-static void insert(sparse_hash_set<T,H,C> *ht, T val) {
+void insert(sparse_hash_set<T,H,C> *ht, T val) {
   ht->insert(val);
 }
 
 template <class K, class V, class H, class C>
-static void insert(sparse_hash_map<K,V,H,C> *ht, K val) {
+void insert(sparse_hash_map<K,V,H,C> *ht, K val) {
   ht->insert(pair<K,V>(val,V()));
 }
 
 template <class HT, class Iterator>
-static void insert(HT *ht, Iterator begin, Iterator end) {
+void insert(HT *ht, Iterator begin, Iterator end) {
   ht->insert(begin, end);
 }
 
@@ -259,7 +262,7 @@ static void insert(HT *ht, Iterator begin, Iterator end) {
 // on each element individually, the code below automatically expands
 // into inserting a pair.
 template <class K, class V, class H, class C, class Iterator>
-static void insert(dense_hash_map<K,V,H,C> *ht, Iterator begin, Iterator end) {
+void insert(dense_hash_map<K,V,H,C> *ht, Iterator begin, Iterator end) {
   while (begin != end) {
     insert(ht, *begin);
     ++begin;
@@ -267,7 +270,7 @@ static void insert(dense_hash_map<K,V,H,C> *ht, Iterator begin, Iterator end) {
 }
 
 template <class K, class V, class H, class C, class Iterator>
-static void insert(sparse_hash_map<K,V,H,C> *ht, Iterator begin, Iterator end) {
+void insert(sparse_hash_map<K,V,H,C> *ht, Iterator begin, Iterator end) {
   while (begin != end) {
     insert(ht, *begin);
     ++begin;
@@ -278,61 +281,61 @@ static void insert(sparse_hash_map<K,V,H,C> *ht, Iterator begin, Iterator end) {
 // isn't defined for the low level hashtable classes, so we just punt to insert.
 
 template <class T, class H, class I, class C, class A>
-static void iterator_insert(dense_hashtable<T,T,H,I,C,A>* ht, T val,
+void iterator_insert(dense_hashtable<T,T,H,I,C,A>* ht, T val,
                             insert_iterator<dense_hashtable<T,T,H,I,C,A> >* ) {
   ht->insert(val);
 }
 
 template <class T, class H, class C>
-static void iterator_insert(dense_hash_set<T,H,C>* , T val,
-                            insert_iterator<dense_hash_set<T,H,C> >* ii) {
+void iterator_insert(dense_hash_set<T,H,C>* , T val,
+                     insert_iterator<dense_hash_set<T,H,C> >* ii) {
   *(*ii)++ = val;
 }
 
 template <class K, class V, class H, class C>
-static void iterator_insert(dense_hash_map<K,V,H,C>* , K val,
-                            insert_iterator<dense_hash_map<K,V,H,C> >* ii) {
+void iterator_insert(dense_hash_map<K,V,H,C>* , K val,
+                     insert_iterator<dense_hash_map<K,V,H,C> >* ii) {
   *(*ii)++ = pair<K,V>(val,V());
 }
 
 template <class T, class H, class I, class C, class A>
-static void iterator_insert(sparse_hashtable<T,T,H,I,C,A>* ht, T val,
-                            insert_iterator<sparse_hashtable<T,T,H,I,C,A> >* ) {
+void iterator_insert(sparse_hashtable<T,T,H,I,C,A>* ht, T val,
+                     insert_iterator<sparse_hashtable<T,T,H,I,C,A> >* ) {
   ht->insert(val);
 }
 
 template <class T, class H, class C>
-static void iterator_insert(sparse_hash_set<T,H,C>* , T val,
-                            insert_iterator<sparse_hash_set<T,H,C> >* ii) {
+void iterator_insert(sparse_hash_set<T,H,C>* , T val,
+                     insert_iterator<sparse_hash_set<T,H,C> >* ii) {
   *(*ii)++ = val;
 }
 
 template <class K, class V, class H, class C>
-static void iterator_insert(sparse_hash_map<K,V,H,C> *, K val,
-                            insert_iterator<sparse_hash_map<K,V,H,C> >* ii) {
+void iterator_insert(sparse_hash_map<K,V,H,C> *, K val,
+                     insert_iterator<sparse_hash_map<K,V,H,C> >* ii) {
   *(*ii)++ = pair<K,V>(val,V());
 }
 
 
-static void write_item(FILE *fp, const char *val) {
+void write_item(FILE *fp, const char *val) {
   fwrite(val, strlen(val), 1, fp);   // \n serves to separate
 }
 
 // The weird 'const' declarations are desired by the compiler. Yucko.
-static void write_item(FILE *fp, const pair<char*const,int> &val) {
+void write_item(FILE *fp, const pair<char*const,int> &val) {
   fwrite(val.first, strlen(val.first), 1, fp);
 }
 
-static void write_item(FILE *fp, const string &val) {
+void write_item(FILE *fp, const string &val) {
   fwrite(val.data(), val.length(), 1, fp);   // \n serves to separate
 }
 
 // The weird 'const' declarations are desired by the compiler. Yucko.
-static void write_item(FILE *fp, const pair<const string,int> &val) {
+void write_item(FILE *fp, const pair<const string,int> &val) {
   fwrite(val.first.data(), val.first.length(), 1, fp);
 }
 
-static char* read_line(FILE* fp, char* line, int linesize) {
+char* read_line(FILE* fp, char* line, int linesize) {
   if ( fgets(line, linesize, fp) == NULL )
     return NULL;
   // normalize windows files :-(
@@ -344,53 +347,49 @@ static char* read_line(FILE* fp, char* line, int linesize) {
   return line;
 }
 
-static void read_item(FILE *fp, char*const* val) {
+void read_item(FILE *fp, char*const* val) {
   char line[1024];
   read_line(fp, line, sizeof(line));
   char **p = const_cast<char**>(val);
   *p = strdup(line);
 }
 
-static void read_item(FILE *fp, pair<char*const,int> *val) {
+void read_item(FILE *fp, pair<char*const,int> *val) {
   char line[1024];
   read_line(fp, line, sizeof(line));
   char **p = const_cast<char**>(&val->first);
   *p = strdup(line);
 }
 
-static void read_item(FILE *fp, const string* val) {
+void read_item(FILE *fp, const string* val) {
   char line[1024];
   read_line(fp, line, sizeof(line));
   new(const_cast<string*>(val)) string(line);   // need to use placement new
 }
 
-static void read_item(FILE *fp, pair<const string,int> *val) {
+void read_item(FILE *fp, pair<const string,int> *val) {
   char line[1024];
   read_line(fp, line, sizeof(line));
   new(const_cast<string*>(&val->first)) string(line);
 }
 
-static void free_item(char*const* val) {
+void free_item(char*const* val) {
   free(*val);
 }
 
-static void free_item(pair<char*const,int> *val) {
+void free_item(pair<char*const,int> *val) {
   free(val->first);
 }
 
-static int get_int_item(int int_item) {
+int get_int_item(int int_item) {
   return int_item;
 }
 
-static int get_int_item(pair<int, int> val) {
+int get_int_item(pair<int, int> val) {
   return val.first;
 }
 
-static const string& getstrkey(const string& str) { return str; }
-
-static const string& getstrkey(const pair<const string, int> &p) {
-  return p.first;
-}
+}  // end anonymous namespace
 
 // Performs tests where the hashtable's value type is assumed to be int.
 template <class htint>
@@ -414,7 +413,7 @@ void test_int() {
   insert(&y, 11111111);
   insert(&y, 111111111);
   insert(&y, 1111111111);  // 1B, more or less
-  for ( int i = 0; i < 32; ++i )
+  for ( int i = 0; i < 64; ++i )
     insert(&z, i);
   // test the second half of the insert with an insert_iterator
   insert_iterator<htint> insert_iter(z, z.begin());
@@ -449,11 +448,11 @@ void test_int() {
   }
 
   for ( typename htint::const_iterator it = y.begin(); it != y.end(); ++it )
-    LOGF << "y: " << *it << "\n";
+    LOGF << "y: " << get_int_item(*it) << "\n";
   z.insert(y.begin(), y.end());
   swap(y,z);
   for ( typename htint::iterator it = y.begin(); it != y.end(); ++it )
-    LOGF << "y+z: " << *it << "\n";
+    LOGF << "y+z: " << get_int_item(*it) << "\n";
   LOGF << "z has " << z.bucket_count() << " buckets\n";
   LOGF << "y has " << y.bucket_count() << " buckets\n";
   LOGF << "z size: " << z.size() << "\n";
@@ -483,10 +482,10 @@ void test_int() {
   z.erase(itdel);                     // shouldn't do anything
   CHECK(z.size() == 8);
   for ( typename htint::const_iterator it = z.begin(); it != z.end(); ++it )
-    LOGF << "y: " << *it << "\n";
+    LOGF << "y: " << get_int_item(*it) << "\n";
   z.set_deleted_key(1010101011);      // a different unused value
   for ( typename htint::const_iterator it = z.begin(); it != z.end(); ++it )
-    LOGF << "y: " << *it << "\n";
+    LOGF << "y: " << get_int_item(*it) << "\n";
   LOGF << "That's " << z.size() << " elements\n";
   z.erase(z.begin(), z.end());
   CHECK(z.empty());
@@ -679,6 +678,14 @@ void test_string(bool read_write) {
     }
   }
   CHECK(counts.size() == x.size());
+  {
+    // verify that size() works correctly
+    int count = 0;
+    for ( typename ht::iterator it = x.begin(); it != x.end(); ++it ) {
+      ++count;
+    }
+    CHECK(x.size() == count);
+  }
 
   // Save the hashtable.
   if (read_write) {
@@ -834,7 +841,50 @@ void TestSimpleDataTypeOptimizations() {
   }
 }
 
+static void TestOperatorEquals() {
+  {
+    dense_hash_set<int> sa, sb;
+    sa.set_empty_key(-1);
+    sb.set_empty_key(-1);
+    sa.set_deleted_key(-2);
+    sb.set_deleted_key(-2);
+    CHECK(sa == sb);
+    sa.insert(1);
+    CHECK(sa != sb);
+    sa.insert(2);
+    CHECK(sa != sb);
+    sb.insert(2);
+    CHECK(sa != sb);
+    sb.insert(1);
+    CHECK(sa == sb);
+    sb.erase(1);
+    CHECK(sa != sb);
+  }
+  {
+    dense_hash_map<int, string> sa, sb;
+    sa.set_empty_key(-1);
+    sb.set_empty_key(-1);
+    sa.set_deleted_key(-2);
+    sb.set_deleted_key(-2);
+    CHECK(sa == sb);
+    sa.insert(make_pair(1, "a"));
+    CHECK(sa != sb);
+    sa.insert(make_pair(2, "b"));
+    CHECK(sa != sb);
+    sb.insert(make_pair(2, "b"));
+    CHECK(sa != sb);
+    sb.insert(make_pair(1, "a"));
+    CHECK(sa == sb);
+    sa[1] = "goodbye";
+    CHECK(sa != sb);
+    sb.erase(1);
+    CHECK(sa != sb);
+  }
+}
+
 int main(int argc, char **argv) {
+  TestOperatorEquals();
+
   // First try with the low-level hashtable interface
   LOGF << "\n\nTEST WITH DENSE_HASHTABLE\n\n";
   test<dense_hashtable<char *, char *, HASH_NAMESPACE::hash<const char *>,

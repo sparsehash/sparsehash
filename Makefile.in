@@ -152,6 +152,8 @@ ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EXEEXT = @EXEEXT@
+GCC_FALSE = @GCC_FALSE@
+GCC_TRUE = @GCC_TRUE@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
@@ -225,6 +227,9 @@ ACLOCAL_AMFLAGS = -I m4
 
 # This is so we can #include <google/foo>
 AM_CPPFLAGS = -I$(top_srcdir)/src
+
+# These are good warnings to turn on by default
+@GCC_TRUE@AM_CXXFLAGS = -Wall -Wwrite-strings -Woverloaded-virtual -Wno-sign-compare
 googleincludedir = $(includedir)/google
 googleinclude_HEADERS = \
    src/google/dense_hash_map			\
@@ -235,7 +240,8 @@ googleinclude_HEADERS = \
    src/google/type_traits.h
 
 docdir = $(prefix)/share/doc/$(PACKAGE)-$(VERSION)
-dist_doc_DATA = AUTHORS COPYING ChangeLog INSTALL NEWS README TODO \
+dist_doc_DATA = AUTHORS COPYING ChangeLog INSTALL NEWS README README.windows \
+   TODO \
    doc/dense_hash_map.html			\
    doc/dense_hash_set.html			\
    doc/sparse_hash_map.html			\
@@ -288,7 +294,7 @@ time_hash_map_SOURCES = \
 
 # If tcmalloc is installed, use it with time_hash_map; it gives us
 # heap-usage statistics for the hash_map routines, which is very nice
-time_hash_map_CXXFLAGS = @tcmalloc_flags@
+time_hash_map_CXXFLAGS = @tcmalloc_flags@ $(AM_CXXFLAGS)
 time_hash_map_LDFLAGS = @tcmalloc_flags@
 time_hash_map_LDADD = @tcmalloc_libs@
 EXTRA_DIST = packages/rpm.sh packages/rpm/rpm.spec packages/deb.sh packages/deb \
@@ -676,6 +682,9 @@ distdir: $(DISTFILES)
 	    || exit 1; \
 	  fi; \
 	done
+	$(MAKE) $(AM_MAKEFLAGS) \
+	  top_distdir="$(top_distdir)" distdir="$(distdir)" \
+	  dist-hook
 	-find $(distdir) -type d ! -perm -777 -exec chmod a+rwx {} \; -o \
 	  ! -type d ! -perm -444 -links 1 -exec chmod a+r {} \; -o \
 	  ! -type d ! -perm -400 -exec chmod a+r {} \; -o \
@@ -869,8 +878,8 @@ uninstall-am: uninstall-dist_docDATA uninstall-googleincludeHEADERS \
 
 .PHONY: CTAGS GTAGS all all-am am--refresh check check-TESTS check-am \
 	clean clean-generic clean-libLTLIBRARIES clean-noinstPROGRAMS \
-	ctags dist dist-all dist-bzip2 dist-gzip dist-shar dist-tarZ \
-	dist-zip distcheck distclean distclean-compile \
+	ctags dist dist-all dist-bzip2 dist-gzip dist-hook dist-shar \
+	dist-tarZ dist-zip distcheck distclean distclean-compile \
 	distclean-generic distclean-hdr distclean-tags distcleancheck \
 	distdir distuninstallcheck dvi dvi-am html html-am info \
 	info-am install install-am install-data install-data-am \
@@ -891,19 +900,27 @@ uninstall-am: uninstall-dist_docDATA uninstall-googleincludeHEADERS \
 # might conflict with other config.h's an application might #include.
 # Thus, we create a "minimal" config.h, called sparseconfig.h, that
 # includes only the #defines we really need, and that are unlikely to
-# change from system to system.
-src/google/sparsehash/sparseconfig.h: $(top_srcdir)/src/config.h \
+# change from system to system.  NOTE: The awk command is equivalent to
+#    fgrep -B2 -f- $(top_builddir)/src/config.h \
+#    fgrep -vx -e -- > _sparsehash_config
+src/google/sparsehash/sparseconfig.h: $(top_builddir)/src/config.h \
                                       $(top_srcdir)/src/config.h.include
-	grep . $(top_srcdir)/src/config.h.include \
-          | fgrep -B2 -f- $(top_srcdir)/src/config.h \
-	  | fgrep -vx -e -- > _sparsehash_config
-	mv -f _sparsehash_config $@
+	[ -d $(@D) ] || mkdir -p $(@D)
+	$(AWK) 'ARGIND == 1 {if ($$0 !~ /^ *$$/) {inc[$$0]=0; next}}; { for (i in inc) { if (index($$0, i) != 0) {print "\n"prevline"\n"$$0; delete inc[i]} }; prevline=$$0; };' \
+	$(top_srcdir)/src/config.h.include $(top_builddir)/src/config.h \
+	> $(@D)/_sparsehash_config
+	mv -f $(@D)/_sparsehash_config $@
 
 rpm: dist-gzip packages/rpm.sh packages/rpm/rpm.spec
 	@cd packages && ./rpm.sh ${PACKAGE} ${VERSION}
 
 deb: dist-gzip packages/deb.sh packages/deb/*
 	@cd packages && ./deb.sh ${PACKAGE} ${VERSION}
+
+# Windows wants write permission to .vcproj files and maybe even sln files.
+dist-hook:
+	test -e "$(distdir)/vsprojects" \
+	   && chmod -R u+w $(distdir)/*.sln $(distdir)/vsprojects/
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
 .NOEXPORT:
