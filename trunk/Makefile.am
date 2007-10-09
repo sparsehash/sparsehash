@@ -6,6 +6,11 @@ ACLOCAL_AMFLAGS = -I m4
 # This is so we can #include <google/foo>
 AM_CPPFLAGS = -I$(top_srcdir)/src
 
+# These are good warnings to turn on by default
+if GCC
+AM_CXXFLAGS = -Wall -Wwrite-strings -Woverloaded-virtual -Wno-sign-compare
+endif
+
 googleincludedir = $(includedir)/google
 ## The .h files you want to install (that is, .h files that people
 ## who install this package can include in their own applications.)
@@ -21,7 +26,8 @@ docdir = $(prefix)/share/doc/$(PACKAGE)-$(VERSION)
 ## This is for HTML and other documentation you want to install.
 ## Add your documentation files (in doc/) in addition to these boilerplate
 ## Also add a TODO file if you have one
-dist_doc_DATA = AUTHORS COPYING ChangeLog INSTALL NEWS README TODO \
+dist_doc_DATA = AUTHORS COPYING ChangeLog INSTALL NEWS README README.windows \
+   TODO \
    doc/dense_hash_map.html			\
    doc/dense_hash_set.html			\
    doc/sparse_hash_map.html			\
@@ -61,13 +67,16 @@ WINDOWS_PROJECTS += vsprojects/time_hash_map/time_hash_map.vcproj
 # might conflict with other config.h's an application might #include.
 # Thus, we create a "minimal" config.h, called sparseconfig.h, that
 # includes only the #defines we really need, and that are unlikely to
-# change from system to system.
-src/google/sparsehash/sparseconfig.h: $(top_srcdir)/src/config.h \
+# change from system to system.  NOTE: The awk command is equivalent to
+#    fgrep -B2 -f- $(top_builddir)/src/config.h \
+#    fgrep -vx -e -- > _sparsehash_config
+src/google/sparsehash/sparseconfig.h: $(top_builddir)/src/config.h \
                                       $(top_srcdir)/src/config.h.include
-	grep . $(top_srcdir)/src/config.h.include \
-          | fgrep -B2 -f- $(top_srcdir)/src/config.h \
-	  | fgrep -vx -e -- > _sparsehash_config
-	mv -f _sparsehash_config $@
+	[ -d $(@D) ] || mkdir -p $(@D)
+	$(AWK) 'ARGIND == 1 {if ($$0 !~ /^ *$$/) {inc[$$0]=0; next}}; { for (i in inc) { if (index($$0, i) != 0) {print "\n"prevline"\n"$$0; delete inc[i]} }; prevline=$$0; };' \
+	$(top_srcdir)/src/config.h.include $(top_builddir)/src/config.h \
+	> $(@D)/_sparsehash_config
+	mv -f $(@D)/_sparsehash_config $@
 # This is how we tell automake about auto-generated .h files
 BUILT_SOURCES = src/google/sparsehash/sparseconfig.h
 CLEANFILES = src/google/sparsehash/sparseconfig.h
@@ -101,7 +110,7 @@ time_hash_map_SOURCES =				\
 
 # If tcmalloc is installed, use it with time_hash_map; it gives us
 # heap-usage statistics for the hash_map routines, which is very nice
-time_hash_map_CXXFLAGS = @tcmalloc_flags@
+time_hash_map_CXXFLAGS = @tcmalloc_flags@ $(AM_CXXFLAGS)
 time_hash_map_LDFLAGS = @tcmalloc_flags@
 time_hash_map_LDADD = @tcmalloc_libs@
 
@@ -113,6 +122,11 @@ rpm: dist-gzip packages/rpm.sh packages/rpm/rpm.spec
 
 deb: dist-gzip packages/deb.sh packages/deb/*
 	@cd packages && ./deb.sh ${PACKAGE} ${VERSION}
+
+# Windows wants write permission to .vcproj files and maybe even sln files.
+dist-hook:
+	test -e "$(distdir)/vsprojects" \
+	   && chmod -R u+w $(distdir)/*.sln $(distdir)/vsprojects/
 
 EXTRA_DIST = packages/rpm.sh packages/rpm/rpm.spec packages/deb.sh packages/deb \
              src/config.h.include src/windows $(WINDOWS_PROJECTS) experimental

@@ -4,7 +4,7 @@
 # make sure we're interpreted by some minimal autoconf
 AC_PREREQ(2.57)
 
-AC_INIT(sparsehash, 0.8, opensource@google.com)
+AC_INIT(sparsehash, 0.9, opensource@google.com)
 # The argument here is just something that should be in the current directory
 # (for sanity checking)
 AC_CONFIG_SRCDIR(README)
@@ -15,6 +15,7 @@ AM_CONFIG_HEADER(src/config.h)
 AC_PROG_CC
 AC_PROG_CPP
 AC_PROG_CXX
+AM_CONDITIONAL(GCC, test "$GCC" = yes)   # let the Makefile know if we're gcc
 
 # Check whether some low-level functions/files are available
 AC_HEADER_STDC

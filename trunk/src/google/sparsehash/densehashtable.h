@@ -806,9 +806,21 @@ class dense_hashtable {
 
   // COMPARISON
   bool operator==(const dense_hashtable& ht) const {
-    // We really want to check that the hash functions are the same
-    // but alas there's no way to do this.  We just hope.
-    return ( num_deleted == ht.num_deleted && table == ht.table );
+    if (size() != ht.size()) {
+      return false;
+    } else if (this == &ht) {
+      return true;
+    } else {
+      // Iterate through the elements in "this" and see if the
+      // corresponding element is in ht
+      for ( const_iterator it = begin(); it != end(); ++it ) {
+        const_iterator it2 = ht.find(get_key(*it));
+        if ((it2 == ht.end()) || (*it != *it2)) {
+          return false;
+        }
+      }
+      return true;
+    }
   }
   bool operator!=(const dense_hashtable& ht) const {
     return !(*this == ht);

@@ -51,7 +51,8 @@
 #include <string>
 
 // 4996: Yes, we're ok using the "unsafe" functions like _vsnprintf and fopen
-#pragma warning(disable:4996)
+// 4127: We use "while (1)" sometimes: yes, we know it's a constant
+#pragma warning(disable:4996 4127)
 
 
 // file I/O
