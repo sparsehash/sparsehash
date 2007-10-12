@@ -72,13 +72,17 @@ am__installdirs = "$(DESTDIR)$(libdir)" "$(DESTDIR)$(docdir)" \
 libLTLIBRARIES_INSTALL = $(INSTALL)
 LTLIBRARIES = $(lib_LTLIBRARIES)
 am__EXEEXT_1 = type_traits_unittest$(EXEEXT) \
-	sparsetable_unittest$(EXEEXT) hashtable_unittest$(EXEEXT)
+	sparsetable_unittest$(EXEEXT) hashtable_unittest$(EXEEXT) \
+	simple_test$(EXEEXT)
 PROGRAMS = $(noinst_PROGRAMS)
 am__objects_1 =
 am_hashtable_unittest_OBJECTS = hashtable_unittest.$(OBJEXT) \
 	$(am__objects_1) $(am__objects_1)
 hashtable_unittest_OBJECTS = $(am_hashtable_unittest_OBJECTS)
 hashtable_unittest_LDADD = $(LDADD)
+am_simple_test_OBJECTS = simple_test.$(OBJEXT) $(am__objects_1)
+simple_test_OBJECTS = $(am_simple_test_OBJECTS)
+simple_test_LDADD = $(LDADD)
 am_sparsetable_unittest_OBJECTS = sparsetable_unittest.$(OBJEXT) \
 	$(am__objects_1)
 sparsetable_unittest_OBJECTS = $(am_sparsetable_unittest_OBJECTS)
@@ -103,10 +107,10 @@ COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
 CCLD = $(CC)
 LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
-SOURCES = $(hashtable_unittest_SOURCES) \
+SOURCES = $(hashtable_unittest_SOURCES) $(simple_test_SOURCES) \
 	$(sparsetable_unittest_SOURCES) $(time_hash_map_SOURCES) \
 	$(type_traits_unittest_SOURCES)
-DIST_SOURCES = $(hashtable_unittest_SOURCES) \
+DIST_SOURCES = $(hashtable_unittest_SOURCES) $(simple_test_SOURCES) \
 	$(sparsetable_unittest_SOURCES) $(time_hash_map_SOURCES) \
 	$(type_traits_unittest_SOURCES)
 dist_docDATA_INSTALL = $(INSTALL_DATA)
@@ -253,12 +257,15 @@ dist_doc_DATA = AUTHORS COPYING ChangeLog INSTALL NEWS README README.windows \
    doc/designstyle.css
 
 lib_LTLIBRARIES = 
+# TODO(csilvers): get simple_test working on windows
 WINDOWS_PROJECTS = google-sparsehash.sln \
 	vsprojects/type_traits_unittest/type_traits_unittest.vcproj \
 	vsprojects/sparsetable_unittest/sparsetable_unittest.vcproj \
 	vsprojects/hashtable_unittest/hashtable_unittest.vcproj \
 	vsprojects/time_hash_map/time_hash_map.vcproj
-TESTS = type_traits_unittest sparsetable_unittest hashtable_unittest
+TESTS = type_traits_unittest sparsetable_unittest hashtable_unittest \
+        simple_test
+
 check_SCRIPTS = 
 TESTS_ENVIRONMENT = 
 # This is how we tell automake about auto-generated .h files
@@ -285,6 +292,10 @@ hashtable_unittest_SOURCES = \
    $(googleinclude_HEADERS)			\
    $(sparsehashinclude_HEADERS)			\
    src/words
+
+simple_test_SOURCES = \
+   src/simple_test.cc				\
+   $(sparsehashinclude_HEADERS)
 
 time_hash_map_SOURCES = \
    src/time_hash_map.cc				\
@@ -388,6 +399,9 @@ clean-noinstPROGRAMS:
 hashtable_unittest$(EXEEXT): $(hashtable_unittest_OBJECTS) $(hashtable_unittest_DEPENDENCIES) 
 	@rm -f hashtable_unittest$(EXEEXT)
 	$(CXXLINK) $(hashtable_unittest_LDFLAGS) $(hashtable_unittest_OBJECTS) $(hashtable_unittest_LDADD) $(LIBS)
+simple_test$(EXEEXT): $(simple_test_OBJECTS) $(simple_test_DEPENDENCIES) 
+	@rm -f simple_test$(EXEEXT)
+	$(CXXLINK) $(simple_test_LDFLAGS) $(simple_test_OBJECTS) $(simple_test_LDADD) $(LIBS)
 sparsetable_unittest$(EXEEXT): $(sparsetable_unittest_OBJECTS) $(sparsetable_unittest_DEPENDENCIES) 
 	@rm -f sparsetable_unittest$(EXEEXT)
 	$(CXXLINK) $(sparsetable_unittest_LDFLAGS) $(sparsetable_unittest_OBJECTS) $(sparsetable_unittest_LDADD) $(LIBS)
@@ -405,6 +419,7 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hashtable_unittest.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/simple_test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sparsetable_unittest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/time_hash_map-time_hash_map.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/type_traits_unittest.Po@am__quote@
@@ -436,6 +451,20 @@ hashtable_unittest.obj: src/hashtable_unittest.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/hashtable_unittest.cc' object='hashtable_unittest.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o hashtable_unittest.obj `if test -f 'src/hashtable_unittest.cc'; then $(CYGPATH_W) 'src/hashtable_unittest.cc'; else $(CYGPATH_W) '$(srcdir)/src/hashtable_unittest.cc'; fi`
+
+simple_test.o: src/simple_test.cc
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT simple_test.o -MD -MP -MF "$(DEPDIR)/simple_test.Tpo" -c -o simple_test.o `test -f 'src/simple_test.cc' || echo '$(srcdir)/'`src/simple_test.cc; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/simple_test.Tpo" "$(DEPDIR)/simple_test.Po"; else rm -f "$(DEPDIR)/simple_test.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/simple_test.cc' object='simple_test.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o simple_test.o `test -f 'src/simple_test.cc' || echo '$(srcdir)/'`src/simple_test.cc
+
+simple_test.obj: src/simple_test.cc
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT simple_test.obj -MD -MP -MF "$(DEPDIR)/simple_test.Tpo" -c -o simple_test.obj `if test -f 'src/simple_test.cc'; then $(CYGPATH_W) 'src/simple_test.cc'; else $(CYGPATH_W) '$(srcdir)/src/simple_test.cc'; fi`; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/simple_test.Tpo" "$(DEPDIR)/simple_test.Po"; else rm -f "$(DEPDIR)/simple_test.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/simple_test.cc' object='simple_test.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o simple_test.obj `if test -f 'src/simple_test.cc'; then $(CYGPATH_W) 'src/simple_test.cc'; else $(CYGPATH_W) '$(srcdir)/src/simple_test.cc'; fi`
 
 sparsetable_unittest.o: src/sparsetable_unittest.cc
 @am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT sparsetable_unittest.o -MD -MP -MF "$(DEPDIR)/sparsetable_unittest.Tpo" -c -o sparsetable_unittest.o `test -f 'src/sparsetable_unittest.cc' || echo '$(srcdir)/'`src/sparsetable_unittest.cc; \
@@ -906,7 +935,7 @@ uninstall-am: uninstall-dist_docDATA uninstall-googleincludeHEADERS \
 src/google/sparsehash/sparseconfig.h: $(top_builddir)/src/config.h \
                                       $(top_srcdir)/src/config.h.include
 	[ -d $(@D) ] || mkdir -p $(@D)
-	$(AWK) 'ARGIND == 1 {if ($$0 !~ /^ *$$/) {inc[$$0]=0; next}}; { for (i in inc) { if (index($$0, i) != 0) {print "\n"prevline"\n"$$0; delete inc[i]} }; prevline=$$0; };' \
+	$(AWK) '/^#/ {in_second_file=1;} !in_second_file {if ($$0 !~ /^ *$$/) {inc[$$0]=0}}; in_second_file { for (i in inc) { if (index($$0, i) != 0) {print "\n"prevline"\n"$$0; delete inc[i]} } }; {prevline=$$0;}' \
 	$(top_srcdir)/src/config.h.include $(top_builddir)/src/config.h \
 	> $(@D)/_sparsehash_config
 	mv -f $(@D)/_sparsehash_config $@

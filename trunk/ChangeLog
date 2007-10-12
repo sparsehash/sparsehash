@@ -1,3 +1,9 @@
+Fri Oct 12 12:35:24 2007  Google Inc. <opensource@google.com>
+
+	* sparsehash: version 0.9.1 release
+	* Fix Makefile awk script to work on more architectures (csilvers)
+	* Add test to test code in more 'real life' situations (csilvers)
+
 Tue Oct  9 14:15:21 2007  Google Inc. <opensource@google.com>
 
 	* sparsehash: version 0.9 release

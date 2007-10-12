@@ -47,7 +47,9 @@ WINDOWS_PROJECTS = google-sparsehash.sln
 ## TESTS is for binary unittests, check_SCRIPTS for script-based unittests.
 ## TESTS_ENVIRONMENT sets environment variables for when you run unittest,
 ## but it only seems to take effect for *binary* unittests (argh!)
-TESTS = type_traits_unittest sparsetable_unittest hashtable_unittest
+TESTS = type_traits_unittest sparsetable_unittest hashtable_unittest \
+        simple_test
+# TODO(csilvers): get simple_test working on windows
 WINDOWS_PROJECTS += vsprojects/type_traits_unittest/type_traits_unittest.vcproj \
                     vsprojects/sparsetable_unittest/sparsetable_unittest.vcproj \
                     vsprojects/hashtable_unittest/hashtable_unittest.vcproj
@@ -73,7 +75,7 @@ WINDOWS_PROJECTS += vsprojects/time_hash_map/time_hash_map.vcproj
 src/google/sparsehash/sparseconfig.h: $(top_builddir)/src/config.h \
                                       $(top_srcdir)/src/config.h.include
 	[ -d $(@D) ] || mkdir -p $(@D)
-	$(AWK) 'ARGIND == 1 {if ($$0 !~ /^ *$$/) {inc[$$0]=0; next}}; { for (i in inc) { if (index($$0, i) != 0) {print "\n"prevline"\n"$$0; delete inc[i]} }; prevline=$$0; };' \
+	$(AWK) '/^#/ {in_second_file=1;} !in_second_file {if ($$0 !~ /^ *$$/) {inc[$$0]=0}}; in_second_file { for (i in inc) { if (index($$0, i) != 0) {print "\n"prevline"\n"$$0; delete inc[i]} } }; {prevline=$$0;}' \
 	$(top_srcdir)/src/config.h.include $(top_builddir)/src/config.h \
 	> $(@D)/_sparsehash_config
 	mv -f $(@D)/_sparsehash_config $@
@@ -102,6 +104,10 @@ hashtable_unittest_SOURCES =			\
    $(googleinclude_HEADERS)			\
    $(sparsehashinclude_HEADERS)			\
    src/words
+
+simple_test_SOURCES =	   		        \
+   src/simple_test.cc				\
+   $(sparsehashinclude_HEADERS)
 
 time_hash_map_SOURCES =				\
    src/time_hash_map.cc				\
