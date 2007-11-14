@@ -141,7 +141,7 @@ struct Identity {
 // Likewise, it's not standard to hash a string.  Luckily, it is a char*
 struct StrHash {
   size_t operator()(const string& s) const {
-    return HASH_NAMESPACE::hash<const char*>()(s.c_str());
+    return SPARSEHASH_HASH<const char*>()(s.c_str());
   }
 };
 
@@ -885,47 +885,51 @@ static void TestOperatorEquals() {
 int main(int argc, char **argv) {
   TestOperatorEquals();
 
+  // SPARSEHASH_HASH is defined in sparseconfig.h.  It resolves to the
+  // system hash function (usually, but not always, named "hash") on
+  // whatever system we're on.
+
   // First try with the low-level hashtable interface
   LOGF << "\n\nTEST WITH DENSE_HASHTABLE\n\n";
-  test<dense_hashtable<char *, char *, HASH_NAMESPACE::hash<const char *>,
+  test<dense_hashtable<char *, char *, SPARSEHASH_HASH<const char *>,
                        Identity<char *>, strcmp_fnc, allocator<char *> >,
        dense_hashtable<string, string, StrHash,
                        Identity<string>, equal_to<string>, allocator<string> >,
-       dense_hashtable<int, int, HASH_NAMESPACE::hash<int>,
+       dense_hashtable<int, int, SPARSEHASH_HASH<int>,
                        Identity<int>, equal_to<int>, allocator<int> > >(
                          false);
 
   // Now try with hash_set, which should be equivalent
   LOGF << "\n\nTEST WITH DENSE_HASH_SET\n\n";
-  test<dense_hash_set<char *, HASH_NAMESPACE::hash<const char *>, strcmp_fnc>,
+  test<dense_hash_set<char *, SPARSEHASH_HASH<const char *>, strcmp_fnc>,
        dense_hash_set<string, StrHash>,
        dense_hash_set<int> >(false);
 
   // Now try with hash_map, which differs only in insert()
   LOGF << "\n\nTEST WITH DENSE_HASH_MAP\n\n";
-  test<dense_hash_map<char *, int, HASH_NAMESPACE::hash<const char *>, strcmp_fnc>,
+  test<dense_hash_map<char *, int, SPARSEHASH_HASH<const char *>, strcmp_fnc>,
        dense_hash_map<string, int, StrHash>,
        dense_hash_map<int, int> >(false);
 
   // First try with the low-level hashtable interface
   LOGF << "\n\nTEST WITH SPARSE_HASHTABLE\n\n";
-  test<sparse_hashtable<char *, char *, HASH_NAMESPACE::hash<const char *>,
+  test<sparse_hashtable<char *, char *, SPARSEHASH_HASH<const char *>,
                        Identity<char *>, strcmp_fnc, allocator<char *> >,
        sparse_hashtable<string, string, StrHash,
                        Identity<string>, equal_to<string>, allocator<string> >,
-       sparse_hashtable<int, int, HASH_NAMESPACE::hash<int>,
+       sparse_hashtable<int, int, SPARSEHASH_HASH<int>,
                        Identity<int>, equal_to<int>, allocator<int> > >(
                          true);
 
   // Now try with hash_set, which should be equivalent
   LOGF << "\n\nTEST WITH SPARSE_HASH_SET\n\n";
-  test<sparse_hash_set<char *, HASH_NAMESPACE::hash<const char *>, strcmp_fnc>,
+  test<sparse_hash_set<char *, SPARSEHASH_HASH<const char *>, strcmp_fnc>,
        sparse_hash_set<string, StrHash>,
        sparse_hash_set<int> >(true);
 
   // Now try with hash_map, which differs only in insert()
   LOGF << "\n\nTEST WITH SPARSE_HASH_MAP\n\n";
-  test<sparse_hash_map<char *, int, HASH_NAMESPACE::hash<const char *>, strcmp_fnc>,
+  test<sparse_hash_map<char *, int, SPARSEHASH_HASH<const char *>, strcmp_fnc>,
        sparse_hash_map<string, int, StrHash>,
        sparse_hash_map<int, int> >(true);
 

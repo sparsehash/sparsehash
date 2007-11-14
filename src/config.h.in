@@ -106,6 +106,9 @@
    your system. */
 #undef PTHREAD_CREATE_JOINABLE
 
+/* The system-provided hash function. */
+#undef SPARSEHASH_HASH
+
 /* Define to 1 if you have the ANSI C header files. */
 #undef STDC_HEADERS
 

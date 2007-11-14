@@ -103,7 +103,7 @@ _START_GOOGLE_NAMESPACE_
 using STL_NAMESPACE::pair;
 
 template <class Value,
-          class HashFcn = HASH_NAMESPACE::hash<Value>,
+          class HashFcn = SPARSEHASH_HASH<Value>,  // defined in sparseconfig.h
           class EqualKey = STL_NAMESPACE::equal_to<Value>, 
           class Alloc = STL_NAMESPACE::allocator<Value> >
 class dense_hash_set {

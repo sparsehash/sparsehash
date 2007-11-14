@@ -130,7 +130,7 @@ template<int Size, int Hashsize> class HashObject {
     for (int i = 0; i < Hashsize - sizeof(i_); ++i) {
       hashval += buffer_[i];
     }
-    return HASH_NAMESPACE::hash<int>()(hashval);
+    return SPARSEHASH_HASH<int>()(hashval);   // defined in sparseconfig.h
   }
 
   bool operator==(const class_type& that) const { return this->i_ == that.i_; }
@@ -149,7 +149,7 @@ template<> class HashObject<sizeof(int), sizeof(int)> {
   HashObject() {}
   HashObject(int i) : i_(i) {}
 
-  size_t Hash() const { return HASH_NAMESPACE::hash<int>()(i_); }
+  size_t Hash() const { return SPARSEHASH_HASH<int>()(i_); }
 
   bool operator==(const class_type& that) const { return this->i_ == that.i_; }
   bool operator< (const class_type& that) const { return this->i_ < that.i_; }

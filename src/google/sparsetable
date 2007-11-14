@@ -83,6 +83,8 @@
 #endif
 #endif
 
+_START_GOOGLE_NAMESPACE_
+
 #ifndef HAVE_U_INT16_T
 # if defined HAVE_UINT16_T
     typedef uint16_t u_int16_t;    // true on solaris, possibly other C99 libc's
@@ -95,8 +97,6 @@
     typedef unsigned short int u_int16_t;
 # endif
 #endif
-
-_START_GOOGLE_NAMESPACE_
 
 using STL_NAMESPACE::vector;
 using STL_NAMESPACE::uninitialized_copy;
