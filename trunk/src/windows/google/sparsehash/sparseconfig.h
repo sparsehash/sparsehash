@@ -32,7 +32,4 @@
 #define WIN32_LEAN_AND_MEAN  /* We always want minimal includes */
 #include <windows.h>         /* TODO(csilvers): do in every .h file instead? */
 
-// In windows-land, hash<> is called hash_compare<> (from xhash.h)
-#define hash  hash_compare
-
 #endif  /* SPARSEHASH_WINDOWS_SPARSECONFIG_H__ */
