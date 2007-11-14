@@ -932,10 +932,20 @@ uninstall-am: uninstall-dist_docDATA uninstall-googleincludeHEADERS \
 # change from system to system.  NOTE: The awk command is equivalent to
 #    fgrep -B2 -f- $(top_builddir)/src/config.h \
 #    fgrep -vx -e -- > _sparsehash_config
+# For correctness, it depends on the fact config.h.include does not have
+# any lines starting with #.
 src/google/sparsehash/sparseconfig.h: $(top_builddir)/src/config.h \
                                       $(top_srcdir)/src/config.h.include
 	[ -d $(@D) ] || mkdir -p $(@D)
-	$(AWK) '/^#/ {in_second_file=1;} !in_second_file {if ($$0 !~ /^ *$$/) {inc[$$0]=0}}; in_second_file { for (i in inc) { if (index($$0, i) != 0) {print "\n"prevline"\n"$$0; delete inc[i]} } }; {prevline=$$0;}' \
+	$(AWK) '{prevline=currline; currline=$$0;} \
+	        /^#/ {in_second_file = 1;} \
+	        !in_second_file {if (currline !~ /^ *$$/) {inc[currline]=0}}; \
+	       	in_second_file { for (i in inc) { \
+	       	                   if (index(currline, i) != 0) { \
+	       	                      print "\n"prevline"\n"currline; \
+	       	                      delete inc[i]; \
+	       	                   } \
+	       	                 } }' \
 	$(top_srcdir)/src/config.h.include $(top_builddir)/src/config.h \
 	> $(@D)/_sparsehash_config
 	mv -f $(@D)/_sparsehash_config $@
