@@ -4,7 +4,7 @@
 # make sure we're interpreted by some minimal autoconf
 AC_PREREQ(2.57)
 
-AC_INIT(sparsehash, 1.0.1, opensource@google.com)
+AC_INIT(sparsehash, 1.0.2, opensource@google.com)
 # The argument here is just something that should be in the current directory
 # (for sanity checking)
 AC_CONFIG_SRCDIR(README)
@@ -56,12 +56,18 @@ AC_CXX_STL_HASH_FUN
 AC_CXX_STL_NAMESPACE
 AC_DEFINE_GOOGLE_NAMESPACE(google)
 
-# In unix-based systems, hash is always defined as
-# HASH_NAMESPACE::hash<>.  So we can use a simple AC_DEFINE here.  On
+# In unix-based systems, hash is always defined as hash<> (in namespace.
+# HASH_NAMESPACE.)  So we can use a simple AC_DEFINE here.  On
 # windows, and possibly on future unix STL implementations, this
 # macro will evaluate to something different.)
+AC_DEFINE(SPARSEHASH_HASH_NO_NAMESPACE, hash,
+          [The system-provided hash function, in namespace HASH_NAMESPACE.])
+
+# Do *not* define this in terms of SPARSEHASH_HASH_NO_NAMESPACE, because
+# SPARSEHASH_HASH is exported to sparseconfig.h, but S_H_NO_NAMESPACE isn't.
 AC_DEFINE(SPARSEHASH_HASH, HASH_NAMESPACE::hash,
-          [The system-provided hash function.])
+          [The system-provided hash function including the namespace.])
+
 
 # Write generated configuration file
 AC_CONFIG_FILES([Makefile])

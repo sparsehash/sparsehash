@@ -172,7 +172,7 @@ _END_GOOGLE_NAMESPACE_
 
 namespace HASH_NAMESPACE {
 
-template<int Size, int Hashsize> struct hash< HashObject<Size,Hashsize> > {
+template<int Size, int Hashsize> struct SPARSEHASH_HASH_NO_NAMESPACE< HashObject<Size,Hashsize> > {
   size_t operator()(const HashObject<Size,Hashsize>& obj) const {
     return obj.Hash();
   }
