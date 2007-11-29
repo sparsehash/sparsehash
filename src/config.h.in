@@ -106,8 +106,11 @@
    your system. */
 #undef PTHREAD_CREATE_JOINABLE
 
-/* The system-provided hash function. */
+/* The system-provided hash function including the namespace. */
 #undef SPARSEHASH_HASH
+
+/* The system-provided hash function, in namespace HASH_NAMESPACE. */
+#undef SPARSEHASH_HASH_NO_NAMESPACE
 
 /* Define to 1 if you have the ANSI C header files. */
 #undef STDC_HEADERS

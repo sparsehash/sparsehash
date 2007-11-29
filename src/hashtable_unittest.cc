@@ -65,7 +65,7 @@
 #include <google/sparsehash/sparsehashtable.h>
 
 // Otherwise, VC++7 warns about size_t -> int in the cout logging lines
-#ifdef MSVC
+#ifdef _MSC_VER
 #pragma warning(disable:4267)
 #endif
 
