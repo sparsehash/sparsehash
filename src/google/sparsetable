@@ -728,8 +728,8 @@ class sparsegroup {
 
   void free_group() {
     // Valid even for empty group, because NULL+0 is defined to be NULL
-    value_type* end = group + num_buckets;
-    for (value_type* p = group; p != end; ++p)
+    value_type* end_it = group + num_buckets;
+    for (value_type* p = group; p != end_it; ++p)
       p->~value_type();
     free(group);
     group = NULL;
@@ -969,11 +969,11 @@ class sparsegroup {
     erase(pos.pos);
   }
 
-  void erase(iterator start, iterator end) {
+  void erase(iterator start_it, iterator end_it) {
     // This could be more efficient, but to do so we'd need to make
     // bmclear() clear a range of indices.  Doesn't seem worth it.
-    for ( ; start != end; ++start )
-      erase(start);
+    for ( ; start_it != end_it; ++start_it )
+      erase(start_it);
   }
 
 
@@ -1163,8 +1163,8 @@ class sparsetable {
 
  public:
   // Constructors -- default, normal (when you specify size), and copy
-  sparsetable(size_type size = 0)
-    : groups(num_groups(size)), table_size(size), num_buckets(0) { }
+  sparsetable(size_type sz = 0)
+    : groups(num_groups(sz)), table_size(sz), num_buckets(0) { }
   // We'll can get away with using the default copy constructor,
   // and default destructor, and hence the default operator=.  Huzzah!
 
@@ -1289,11 +1289,11 @@ class sparsetable {
     erase(pos.pos);
   }
 
-  void erase(iterator start, iterator end) {
+  void erase(iterator start_it, iterator end_it) {
     // This could be more efficient, but then we'd need to figure
     // out if we spanned groups or not.  Doesn't seem worth it.
-    for ( ; start != end; ++start )
-      erase(start);
+    for ( ; start_it != end_it; ++start_it )
+      erase(start_it);
   }
 
 

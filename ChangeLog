@@ -1,3 +1,9 @@
+Mon Feb 11 16:30:11 2008  Google Inc. <opensource@google.com>
+
+	* sparsehash: version 1.1 release
+	* Fix brown-paper-bag bug in some constructors (rafferty)
+	* Fix problem with variables shadowing member vars, add -Wshadow
+	
 Thu Nov 29 11:44:38 2007  Google Inc. <opensource@google.com>
 
 	* sparsehash: version 1.0.2 release

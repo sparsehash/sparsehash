@@ -8,7 +8,7 @@ AM_CPPFLAGS = -I$(top_srcdir)/src
 
 # These are good warnings to turn on by default
 if GCC
-AM_CXXFLAGS = -Wall -Wwrite-strings -Woverloaded-virtual -Wno-sign-compare
+AM_CXXFLAGS = -Wall -Wwrite-strings -Woverloaded-virtual -Wno-sign-compare -Wshadow
 endif
 
 googleincludedir = $(includedir)/google

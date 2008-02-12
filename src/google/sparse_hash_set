@@ -145,7 +145,8 @@ class sparse_hash_set {
   sparse_hash_set(InputIterator f, InputIterator l,
                   size_type n = 0,
                   const hasher& hf = hasher(),
-                  const key_equal& eql = key_equal()) {
+                  const key_equal& eql = key_equal())
+      : rep(n, hf, eql) {
     rep.insert(f, l);
   }
   // We use the default copy constructor
