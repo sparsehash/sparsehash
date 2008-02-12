@@ -51,6 +51,7 @@
 #include <time.h>              // for silly random-number-seed generator
 #include <math.h>              // for sqrt()
 #include <map>
+#include <set>
 #include <iterator>            // for insert_iterator
 #include <iostream>
 #include <iomanip>             // for setprecision()
@@ -76,6 +77,7 @@ using GOOGLE_NAMESPACE::dense_hash_set;
 using GOOGLE_NAMESPACE::sparse_hashtable;
 using GOOGLE_NAMESPACE::dense_hashtable;
 using STL_NAMESPACE::map;
+using STL_NAMESPACE::set;
 using STL_NAMESPACE::pair;
 using STL_NAMESPACE::make_pair;
 using STL_NAMESPACE::string;
@@ -567,13 +569,13 @@ void test_charptr(bool read_write) {
       LOGF << "Can't open " << file << " skipping hashtable save...\n";
     } else {
       x.write_metadata(fp);        // this only writes meta-information
-      int count = 0;
+      int write_count = 0;
       for ( typename ht::iterator it = x.begin(); it != x.end(); ++it ) {
         write_item(fp, *it);
         free_item(&(*it));
-        ++count;
+        ++write_count;
       }
-      LOGF << "Wrote " << count << " words to " << file << "\n";
+      LOGF << "Wrote " << write_count << " words to " << file << "\n";
       fclose(fp);
       struct stat buf;
       stat(file, &buf);
@@ -582,7 +584,7 @@ void test_charptr(bool read_write) {
            << "Hashtable overhead "
            << (buf.st_size - dict_size) * 100.0 / dict_size
            << "% ("
-           << (buf.st_size - dict_size) * 8.0 / count
+           << (buf.st_size - dict_size) * 8.0 / write_count
            << " bits/entry)\n";
       x.clear();
 
@@ -593,12 +595,12 @@ void test_charptr(bool read_write) {
       } else {
         x.read_metadata(fp);      // reads metainformation
         LOGF << "Hashtable size: " << x.size() << "\n";
-        int count = 0;
+        int read_count = 0;
         for ( typename ht::iterator it = x.begin(); it != x.end(); ++it ) {
           read_item(fp, &(*it));
-          ++count;
+          ++read_count;
         }
-        LOGF << "Read " << count << " words from " << file << "\n";
+        LOGF << "Read " << read_count << " words from " << file << "\n";
         fclose(fp);
         unlink(file);
         for ( char **word = const_cast<char **>(words);
@@ -680,11 +682,11 @@ void test_string(bool read_write) {
   CHECK(counts.size() == x.size());
   {
     // verify that size() works correctly
-    int count = 0;
+    int xcount = 0;
     for ( typename ht::iterator it = x.begin(); it != x.end(); ++it ) {
-      ++count;
+      ++xcount;
     }
-    CHECK(x.size() == count);
+    CHECK(x.size() == xcount);
   }
 
   // Save the hashtable.
@@ -701,12 +703,12 @@ void test_string(bool read_write) {
       LOGF << "Can't open " << file << " skipping hashtable save...\n";
     } else {
       x.write_metadata(fp);        // this only writes meta-information
-      int count = 0;
+      int write_count = 0;
       for ( typename ht::iterator it = x.begin(); it != x.end(); ++it ) {
         write_item(fp, *it);
-        ++count;
+        ++write_count;
       }
-      LOGF << "Wrote " << count << " words to " << file << "\n";
+      LOGF << "Wrote " << write_count << " words to " << file << "\n";
       fclose(fp);
       struct stat buf;
       stat(file, &buf);
@@ -715,7 +717,7 @@ void test_string(bool read_write) {
            << "Hashtable overhead "
            << (buf.st_size - dict_size) * 100.0 / dict_size
            << "% ("
-           << (buf.st_size - dict_size) * 8.0 / count
+           << (buf.st_size - dict_size) * 8.0 / write_count
            << " bits/entry)\n";
       x.clear();
 
@@ -841,6 +843,80 @@ void TestSimpleDataTypeOptimizations() {
   }
 }
 
+class TestHashFcn : public HASH_NAMESPACE::hash<int> {
+ public:
+  explicit TestHashFcn(int i)
+      : id_(i) {
+  }
+
+  int id() const {
+    return id_;
+  }
+
+ private:
+  int id_;
+};
+
+class TestEqualTo : public equal_to<int> {
+ public:
+  explicit TestEqualTo(int i)
+      : id_(i) {
+  }
+
+  int id() const {
+    return id_;
+  }
+
+ private:
+  int id_;
+};
+
+template <template <class V, class H, class E, class A> class Hash>
+void TestHash() {
+  typedef Hash<int, TestHashFcn, TestEqualTo, allocator<int> > TheHash;
+  const TestHashFcn fcn(1);
+  const TestEqualTo eqt(2);
+  {
+    const TheHash simple(0, fcn, eqt);
+    CHECK(fcn.id() == simple.hash_funct().id());
+    CHECK(eqt.id() == simple.key_eq().id());
+  }
+  {
+    const set<int> input;
+    const TheHash iterated(input.begin(), input.end(), 0, fcn, eqt);
+    CHECK(fcn.id() == iterated.hash_funct().id());
+    CHECK(eqt.id() == iterated.key_eq().id());
+  }
+}
+
+static void TestHashes() {
+  TestHash<sparse_hash_set>();
+  TestHash<dense_hash_set>();
+}
+
+template <template <class K, class T, class H, class E, class A> class Map>
+void TestMap() {
+  typedef Map<int, int, TestHashFcn, TestEqualTo, allocator<int> > TheMap;
+  const TestHashFcn fcn(1);
+  const TestEqualTo eqt(2);
+  {
+    const TheMap simple(0, fcn, eqt);
+    CHECK(fcn.id() == simple.hash_funct().id());
+    CHECK(eqt.id() == simple.key_eq().id());
+  }
+  {
+    const map<int, int> input;
+    const TheMap iterated(input.begin(), input.end(), 0, fcn, eqt);
+    CHECK(fcn.id() == iterated.hash_funct().id());
+    CHECK(eqt.id() == iterated.key_eq().id());
+  }
+}
+
+static void TestMaps() {
+  TestMap<sparse_hash_map>();
+  TestMap<dense_hash_map>();
+}
+
 static void TestOperatorEquals() {
   {
     dense_hash_set<int> sa, sb;
@@ -936,6 +1012,12 @@ int main(int argc, char **argv) {
   // Test that we use the optimized routines for simple data types
   LOGF << "\n\nTesting simple-data-type optimizations\n";
   TestSimpleDataTypeOptimizations();
+
+  // Test that the hashers and key_equals are used properly in hash tables and
+  // hash maps.
+  LOGF << "\n\nTesting hashers and key_equals\n";
+  TestHashes();
+  TestMaps();
 
   LOGF << "\nAll tests pass.\n";
   return 0;

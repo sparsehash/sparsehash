@@ -178,6 +178,20 @@ class TypeTraitsTest {
     ASSERT_FALSE((GOOGLE_NAMESPACE::is_floating_point<pair<int, int> >::value));
   }
 
+  static void TestIsReference() {
+    // Verifies that is_reference is true for all reference types.
+    ASSERT_TRUE(GOOGLE_NAMESPACE::is_reference<float&>::value);
+    ASSERT_TRUE(GOOGLE_NAMESPACE::is_reference<const int&>::value);
+    ASSERT_TRUE(GOOGLE_NAMESPACE::is_reference<const int*&>::value);
+    ASSERT_TRUE(GOOGLE_NAMESPACE::is_reference<int (&)(bool)>::value);
+
+    // Verifies that is_reference is false for all non-reference types.
+    ASSERT_FALSE(GOOGLE_NAMESPACE::is_reference<float>::value);
+    ASSERT_FALSE(GOOGLE_NAMESPACE::is_reference<const int*>::value);
+    ASSERT_FALSE(GOOGLE_NAMESPACE::is_reference<int()>::value);
+    ASSERT_FALSE(GOOGLE_NAMESPACE::is_reference<void(*)(const char&)>::value);
+  }
+
   static void TestIsPod() {
     // Verify that arithmetic types and pointers are marked as PODs.
     ASSERT_TRUE(GOOGLE_NAMESPACE::is_pod<bool>::value);
@@ -412,6 +426,7 @@ class TypeTraitsTest {
 int main(int argc, char **argv) {
   TypeTraitsTest::TestIsInteger();
   TypeTraitsTest::TestIsFloating();
+  TypeTraitsTest::TestIsReference();
   TypeTraitsTest::TestIsPod();
   TypeTraitsTest::TestHasTrivialCopy();
   TypeTraitsTest::TestHasTrivialConstructor();

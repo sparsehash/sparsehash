@@ -233,7 +233,7 @@ ACLOCAL_AMFLAGS = -I m4
 AM_CPPFLAGS = -I$(top_srcdir)/src
 
 # These are good warnings to turn on by default
-@GCC_TRUE@AM_CXXFLAGS = -Wall -Wwrite-strings -Woverloaded-virtual -Wno-sign-compare
+@GCC_TRUE@AM_CXXFLAGS = -Wall -Wwrite-strings -Woverloaded-virtual -Wno-sign-compare -Wshadow
 googleincludedir = $(includedir)/google
 googleinclude_HEADERS = \
    src/google/dense_hash_map			\

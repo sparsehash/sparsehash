@@ -35,6 +35,7 @@
 //   is_floating_point
 //   is_pointer
 //   is_pod
+//   is_reference
 //   has_trivial_copy
 //   has_trivial_assign
 // We can add more type traits as required.
@@ -102,6 +103,11 @@ template<> struct is_floating_point<long double> : true_type { };
 // is_pointer is false except for pointer types.
 template <class T> struct is_pointer : false_type { };
 template <class T> struct is_pointer<T*> : true_type { };
+
+
+// is_reference is false except for reference types.
+template<typename T> struct is_reference : false_type {};
+template<typename T> struct is_reference<T&> : true_type {};
 
 
 // We can't get is_pod right without compiler help, so fail conservatively.
