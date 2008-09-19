@@ -76,6 +76,15 @@ HREF="#io">[implementation note]</A>)</p>
 
 <h3>Example</h3>
 
+(Note: this example uses SGI semantics for <code>hash&lt;&gt;</code>
+-- the kind used by gcc and most Unix compiler suites -- and not
+Dinkumware semantics -- the kind used by Microsoft Visual Studio.  If
+you are using MSVC, this example will not compile as-is: you'll need
+to change <code>hash</code> to <code>hash_compare</code>, and you
+won't use <code>eqstr</code> at all.  See the MSVC documentation for
+<code>hash_map</code> and <code>hash_compare</code>, for more
+details.)
+
 <pre>
 #include &lt;iostream&gt;
 #include &lt;google/dense_hash_set&gt;
@@ -83,6 +92,7 @@ HREF="#io">[implementation note]</A>)</p>
 using google::dense_hash_set;      // namespace where class lives by default
 using std::cout;
 using std::endl;
+using ext::hash;  // or __gnu_cxx::hash, or maybe tr1::hash, depending on your OS
 
 struct eqstr
 {

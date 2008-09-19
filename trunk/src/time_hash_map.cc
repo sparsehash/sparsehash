@@ -172,11 +172,12 @@ _END_GOOGLE_NAMESPACE_
 
 namespace HASH_NAMESPACE {
 
-template<int Size, int Hashsize> struct SPARSEHASH_HASH_NO_NAMESPACE< HashObject<Size,Hashsize> > {
+#ifdef _MSC_VER
+template<int Size, int Hashsize> class hash_compare< HashObject<Size,Hashsize> > {
+ public:
   size_t operator()(const HashObject<Size,Hashsize>& obj) const {
     return obj.Hash();
   }
-  // Less operator for MSVC's hash containers
   bool operator()(const HashObject<Size,Hashsize>& a,
                   const HashObject<Size,Hashsize>& b) const {
     return a < b;
@@ -185,6 +186,13 @@ template<int Size, int Hashsize> struct SPARSEHASH_HASH_NO_NAMESPACE< HashObject
   static const size_t bucket_size = 4;
   static const size_t min_buckets = 8;
 };
+#else  // #ifdef _MSC_VER
+template<int Size, int Hashsize> struct SPARSEHASH_HASH_NO_NAMESPACE< HashObject<Size,Hashsize> > {
+  size_t operator()(const HashObject<Size,Hashsize>& obj) const {
+    return obj.Hash();
+  }
+};
+#endif  // #ifdef _MSC_VER
 
 }
 
@@ -420,6 +428,27 @@ static void time_map_remove(int iters) {
 }
 
 template<class MapType>
+static void time_map_toggle(int iters) {
+  MapType set;
+  Rusage t;
+  int i;
+
+  const size_t start = CurrentMemoryUsage();
+  t.Reset();
+  SET_DELETED_KEY(set, -1);
+  SET_EMPTY_KEY(set, -2);
+  for (i = 0; i < iters; i++) {
+    set[i] = i+1;
+    set.erase(i);
+  }
+
+  double ut = t.UserTime();
+  const size_t finish = CurrentMemoryUsage();
+
+  report("map_toggle", ut, iters, finish - start);
+}
+
+template<class MapType>
 static void measure_map(const char* label, int iters) {
   printf("\n%s:\n", label);
   if (1) time_map_grow<MapType>(iters);
@@ -428,6 +457,7 @@ static void measure_map(const char* label, int iters) {
   if (1) time_map_fetch<MapType>(iters);
   if (1) time_map_fetch_empty<MapType>(iters);
   if (1) time_map_remove<MapType>(iters);
+  if (1) time_map_toggle<MapType>(iters);
 }
 
 int main(int argc, char** argv) {

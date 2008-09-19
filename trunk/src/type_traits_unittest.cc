@@ -131,6 +131,16 @@ template<typename A>
 struct type_equals_<A, A> : public GOOGLE_NAMESPACE::true_type {
 };
 
+// A base class and a derived class that inherits from it, used for
+// testing conversion type traits.
+class Base {
+ public:
+  virtual ~Base() { }
+};
+
+class Derived : public Base {
+};
+
 // This assertion produces errors like "error: invalid use of
 // undefined type 'struct <unnamed>::AssertTypesEq<const int, int>'"
 // when it fails.
@@ -411,11 +421,50 @@ class TypeTraitsTest {
                             GOOGLE_NAMESPACE::remove_const<const volatile int>::type);
   }
 
+  static void TestRemoveVolatile() {
+    COMPILE_ASSERT_TYPES_EQ(int, GOOGLE_NAMESPACE::remove_volatile<int>::type);
+    COMPILE_ASSERT_TYPES_EQ(int, GOOGLE_NAMESPACE::remove_volatile<volatile int>::type);
+    COMPILE_ASSERT_TYPES_EQ(int *, GOOGLE_NAMESPACE::remove_volatile<int * volatile>::type);
+    // TR1 examples.
+    COMPILE_ASSERT_TYPES_EQ(volatile int *,
+                            GOOGLE_NAMESPACE::remove_volatile<volatile int *>::type);
+    COMPILE_ASSERT_TYPES_EQ(const int,
+                            GOOGLE_NAMESPACE::remove_volatile<const volatile int>::type);
+  }
+
   static void TestRemoveReference() {
     COMPILE_ASSERT_TYPES_EQ(int, GOOGLE_NAMESPACE::remove_reference<int>::type);
     COMPILE_ASSERT_TYPES_EQ(int, GOOGLE_NAMESPACE::remove_reference<int&>::type);
     COMPILE_ASSERT_TYPES_EQ(const int, GOOGLE_NAMESPACE::remove_reference<const int&>::type);
     COMPILE_ASSERT_TYPES_EQ(int*, GOOGLE_NAMESPACE::remove_reference<int * &>::type);
+  }
+
+  static void TestRemoveCV() {
+    COMPILE_ASSERT_TYPES_EQ(int, GOOGLE_NAMESPACE::remove_cv<int>::type);
+    COMPILE_ASSERT_TYPES_EQ(int, GOOGLE_NAMESPACE::remove_cv<volatile int>::type);
+    COMPILE_ASSERT_TYPES_EQ(int, GOOGLE_NAMESPACE::remove_cv<const int>::type);
+    COMPILE_ASSERT_TYPES_EQ(int *, GOOGLE_NAMESPACE::remove_cv<int * const volatile>::type);
+    // TR1 examples.
+    COMPILE_ASSERT_TYPES_EQ(const volatile int *,
+                            GOOGLE_NAMESPACE::remove_cv<const volatile int *>::type);
+    COMPILE_ASSERT_TYPES_EQ(int,
+                            GOOGLE_NAMESPACE::remove_cv<const volatile int>::type);
+  }
+
+  static void TestIsConvertible() {
+#ifndef _MSC_VER
+    ASSERT_TRUE((GOOGLE_NAMESPACE::is_convertible<int, int>::value));
+    ASSERT_TRUE((GOOGLE_NAMESPACE::is_convertible<int, long>::value));
+    ASSERT_TRUE((GOOGLE_NAMESPACE::is_convertible<long, int>::value));
+
+    ASSERT_TRUE((GOOGLE_NAMESPACE::is_convertible<int*, void*>::value));
+    ASSERT_FALSE((GOOGLE_NAMESPACE::is_convertible<void*, int*>::value));
+
+    ASSERT_TRUE((GOOGLE_NAMESPACE::is_convertible<Derived*, Base*>::value));
+    ASSERT_FALSE((GOOGLE_NAMESPACE::is_convertible<Base*, Derived*>::value));
+    ASSERT_TRUE((GOOGLE_NAMESPACE::is_convertible<Derived*, const Base*>::value));
+    ASSERT_FALSE((GOOGLE_NAMESPACE::is_convertible<const Derived*, Base*>::value));
+#endif  // #ifdef MSC_VER
   }
 
 };  // end class TypeTraitsTest
@@ -434,7 +483,10 @@ int main(int argc, char **argv) {
   TypeTraitsTest::TestHasTrivialDestructor();
   TypeTraitsTest::TestRemovePointer();
   TypeTraitsTest::TestRemoveConst();
+  TypeTraitsTest::TestRemoveVolatile();
   TypeTraitsTest::TestRemoveReference();
+  TypeTraitsTest::TestRemoveCV();
+  TypeTraitsTest::TestIsConvertible();
   printf("PASS\n");
   return 0;
 }

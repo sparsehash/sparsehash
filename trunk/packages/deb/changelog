@@ -1,6 +1,12 @@
+sparsehash (1.2-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Google Inc. <opensource@google.com>  Thu, 18 Sep 2008 13:53:20 -0700
+
 sparsehash (1.1-1) unstable; urgency=low
 
-  * New upstream release.  We are now out of beta.
+  * New upstream release.
 
  -- Google Inc. <opensource@google.com>  Mon, 11 Feb 2008 16:30:11 -0800
 

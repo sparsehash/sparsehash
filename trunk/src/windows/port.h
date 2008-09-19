@@ -38,8 +38,8 @@
  *    http://developer.gnome.org/doc/API/glib/glib-windows-compatability-functions.html
  */
 
-#ifndef SPARSEHASH_WINDOWS_PORT_H__
-#define SPARSEHASH_WINDOWS_PORT_H__
+#ifndef SPARSEHASH_WINDOWS_PORT_H_
+#define SPARSEHASH_WINDOWS_PORT_H_
 
 #include "config.h"
 
@@ -78,4 +78,4 @@ extern std::string TmpFile(const char* basename); // used in hashtable_unittest
 
 #endif  /* WIN32 */
 
-#endif  /* SPARSEHASH_WINDOWS_PORT_H__ */
+#endif  /* SPARSEHASH_WINDOWS_PORT_H_ */

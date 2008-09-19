@@ -460,9 +460,17 @@ class dense_hashtable {
          (num_elements + delta) <= enlarge_threshold )
       return;                                // we're ok as we are
 
-    const size_type resize_to = min_size(num_elements + delta,
-                                         min_buckets_wanted);
-    if ( resize_to > bucket_count() ) {      // we don't have enough buckets
+    // Sometimes, we need to resize just to get rid of all the
+    // "deleted" buckets that are clogging up the hashtable.  So when
+    // deciding whether to resize, count the deleted buckets (which
+    // are currently taking up room).  But later, when we decide what
+    // size to resize to, *don't* count deleted buckets, since they
+    // get discarded during the resize.
+    const size_type needed_size = min_size(num_elements + delta,
+                                           min_buckets_wanted);
+    if ( needed_size > bucket_count() ) {      // we don't have enough buckets
+      const size_type resize_to = min_size(num_elements - num_deleted + delta,
+                                           min_buckets_wanted);
       dense_hashtable tmp(*this, resize_to);
       swap(tmp);                             // now we are tmp
     }

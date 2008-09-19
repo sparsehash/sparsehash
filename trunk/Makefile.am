@@ -77,6 +77,10 @@ WINDOWS_PROJECTS += vsprojects/time_hash_map/time_hash_map.vcproj
 src/google/sparsehash/sparseconfig.h: $(top_builddir)/src/config.h \
                                       $(top_srcdir)/src/config.h.include
 	[ -d $(@D) ] || mkdir -p $(@D)
+	echo "/*" > $(@D)/_sparsehash_config
+	echo " * NOTE: This file is for internal use only." >> $(@D)/_sparsehash_config
+	echo " *       Do not use these #defines in your own program!" >> $(@D)/_sparsehash_config
+	echo " */" >> $(@D)/_sparsehash_config
 	$(AWK) '{prevline=currline; currline=$$0;} \
 	        /^#/ {in_second_file = 1;} \
 	        !in_second_file {if (currline !~ /^ *$$/) {inc[currline]=0}}; \
@@ -87,7 +91,7 @@ src/google/sparsehash/sparseconfig.h: $(top_builddir)/src/config.h \
 	       	                   } \
 	       	                 } }' \
 	$(top_srcdir)/src/config.h.include $(top_builddir)/src/config.h \
-	> $(@D)/_sparsehash_config
+	>> $(@D)/_sparsehash_config
 	mv -f $(@D)/_sparsehash_config $@
 # This is how we tell automake about auto-generated .h files
 BUILT_SOURCES = src/google/sparsehash/sparseconfig.h
@@ -96,33 +100,38 @@ CLEANFILES = src/google/sparsehash/sparseconfig.h
 sparsehashincludedir = $(googleincludedir)/sparsehash
 sparsehashinclude_HEADERS =			\
    src/google/sparsehash/densehashtable.h	\
-   src/google/sparsehash/sparsehashtable.h	\
-   src/google/sparsehash/sparseconfig.h
+   src/google/sparsehash/sparsehashtable.h
+nodist_sparsehashinclude_HEADERS = src/google/sparsehash/sparseconfig.h
 
 type_traits_unittest_SOURCES =			\
    src/type_traits_unittest.cc			\
    $(sparsehashinclude_HEADERS)			\
    src/google/type_traits.h
+nodist_type_traits_unittest_SOURCES = $(nodist_sparsehashinclude_HEADERS)
 
 sparsetable_unittest_SOURCES =			\
    src/sparsetable_unittest.cc			\
    $(sparsehashinclude_HEADERS)			\
    src/google/sparsetable
+nodist_sparsetable_unittest_SOURCES = $(nodist_sparsehashinclude_HEADERS)
 
 hashtable_unittest_SOURCES =			\
    src/hashtable_unittest.cc			\
    $(googleinclude_HEADERS)			\
    $(sparsehashinclude_HEADERS)			\
    src/words
+nodist_hashtable_unittest_SOURCES = $(nodist_sparsehashinclude_HEADERS)
 
 simple_test_SOURCES =	   		        \
    src/simple_test.cc				\
    $(sparsehashinclude_HEADERS)
+nodist_simple_test_SOURCES = $(nodist_sparsehashinclude_HEADERS)
 
 time_hash_map_SOURCES =				\
    src/time_hash_map.cc				\
    $(sparsehashinclude_HEADERS)			\
    $(googleinclude_HEADERS)
+nodist_time_hash_map_SOURCES = $(nodist_sparsehashinclude_HEADERS)
 
 # If tcmalloc is installed, use it with time_hash_map; it gives us
 # heap-usage statistics for the hash_map routines, which is very nice

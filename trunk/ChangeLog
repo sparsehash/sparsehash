@@ -1,3 +1,13 @@
+Thu Sep 18 13:53:20 2008  Google Inc. <opensource@google.com>
+
+	* sparsehash: version 1.2 release
+	* Augment documentation to better describe namespace issues (csilvers)
+	* BUG FIX: replace hash<> with SPARSEHASH_HASH, for windows (csilvers)
+	* Add timing test to unittest to test repeated add+delete (csilvers)
+	* Do better picking a new size when resizing (csilvers)
+	* Use ::google instead of google as a namespace (csilvers)
+	* Improve threading test at config time (csilvers)
+
 Mon Feb 11 16:30:11 2008  Google Inc. <opensource@google.com>
 
 	* sparsehash: version 1.1 release
