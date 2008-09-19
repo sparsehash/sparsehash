@@ -1,10 +1,10 @@
-#ifndef GOOGLE_SPARSEHASH_WINDOWS_CONFIG_H__
-#define GOOGLE_SPARSEHASH_WINDOWS_CONFIG_H__
+#ifndef GOOGLE_SPARSEHASH_WINDOWS_CONFIG_H_
+#define GOOGLE_SPARSEHASH_WINDOWS_CONFIG_H_
 
 /* src/config.h.in.  Generated from configure.ac by autoheader.  */
 
 /* Namespace for Google classes */
-#define GOOGLE_NAMESPACE  google
+#define GOOGLE_NAMESPACE  ::google
 
 /* the location of <hash_fun.h>/<stl_hash_fun.h> */
 #define HASH_FUN_H  <hash_map>
@@ -128,7 +128,7 @@
 #define _END_GOOGLE_NAMESPACE_  }
 
 /* Puts following code inside the Google namespace */
-#define _START_GOOGLE_NAMESPACE_   namespace GOOGLE_NAMESPACE {
+#define _START_GOOGLE_NAMESPACE_   namespace google {
 
 
 // ---------------------------------------------------------------------
@@ -143,4 +143,4 @@
 // TODO(csilvers): include windows/port.h in every relevant source file instead?
 #include "windows/port.h"
 
-#endif  /* GOOGLE_SPARSEHASH_WINDOWS_CONFIG_H__ */
+#endif  /* GOOGLE_SPARSEHASH_WINDOWS_CONFIG_H_ */

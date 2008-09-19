@@ -843,7 +843,7 @@ void TestSimpleDataTypeOptimizations() {
   }
 }
 
-class TestHashFcn : public HASH_NAMESPACE::hash<int> {
+class TestHashFcn : public SPARSEHASH_HASH<int> {
  public:
   explicit TestHashFcn(int i)
       : id_(i) {

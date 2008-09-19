@@ -76,6 +76,15 @@ HREF="#io">[implementation note]</A>)</p>
 
 <h3>Example</h3>
 
+(Note: this example uses SGI semantics for <code>hash&lt;&gt;</code>
+-- the kind used by gcc and most Unix compiler suites -- and not
+Dinkumware semantics -- the kind used by Microsoft Visual Studio.  If
+you are using MSVC, this example will not compile as-is: you'll need
+to change <code>hash</code> to <code>hash_compare</code>, and you
+won't use <code>eqstr</code> at all.  See the MSVC documentation for
+<code>hash_map</code> and <code>hash_compare</code>, for more
+details.)
+
 <pre>
 #include &lt;iostream&gt;
 #include &lt;google/dense_hash_map&gt;
@@ -83,6 +92,7 @@ HREF="#io">[implementation note]</A>)</p>
 using google::dense_hash_map;      // namespace where class lives by default
 using std::cout;
 using std::endl;
+using ext::hash;  // or __gnu_cxx::hash, or maybe tr1::hash, depending on your OS
 
 struct eqstr
 {
@@ -1263,8 +1273,9 @@ the <tt>dense_hash_map</tt> with an <tt>iterator</tt>; this operation
 is sensical because the metadata has already been set up.  For each
 iterator item, you can read the key and value from disk, and set it
 appropriately.  You will need to do a <tt>const_cast</tt> on the
-iterator, since <tt>it-&gt;first</tt> is always <tt>const</tt>.  The
-code might look like this:</p>
+iterator, since <tt>it-&gt;first</tt> is always <tt>const</tt>.  You
+will also need to use placement-new if the key or value is a C++
+object.  The code might look like this:</p>
 <pre>
    for (dense_hash_map&lt;int*, ComplicatedClass&gt;::iterator it = ht.begin();
         it != ht.end(); ++it) {

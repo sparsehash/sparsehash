@@ -1,18 +1,17 @@
-%define	ver	%VERSION
 %define	RELEASE	1
 %define rel     %{?CUSTOM_RELEASE} %{!?CUSTOM_RELEASE:%RELEASE}
 %define	prefix	/usr
 
 Name: %NAME
 Summary: hash_map and hash_set classes with minimal space overhead
-Version: %ver
+Version: %VERSION
 Release: %rel
 Group: Development/Libraries
-URL: http://goog-sparsehash.sourceforge.net
+URL: http://code.google.com/p/google-sparsehash
 License: BSD
 Vendor: Google
 Packager: Google <opensource@google.com>
-Source: http://goog-sparsehash.sourceforge.net/%{NAME}-%{PACKAGE_VERSION}.tar.gz
+Source: http://%{NAME}.googlecode.com/files/%{NAME}-%{VERSION}.tar.gz
 Distribution: Redhat 7 and above.
 Buildroot: %{_tmppath}/%{name}-root
 Prefix: %prefix

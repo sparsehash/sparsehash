@@ -34,14 +34,22 @@
 //   is_integral
 //   is_floating_point
 //   is_pointer
-//   is_pod
 //   is_reference
+//   is_pod
+//   has_trivial_constructor
 //   has_trivial_copy
 //   has_trivial_assign
+//   has_trivial_destructor
+//   remove_const
+//   remove_volatile
+//   remove_cv
+//   remove_reference
+//   remove_pointer
+//   is_convertible
 // We can add more type traits as required.
 
-#ifndef BASE_TYPE_TRAITS_H__
-#define BASE_TYPE_TRAITS_H__
+#ifndef BASE_TYPE_TRAITS_H_
+#define BASE_TYPE_TRAITS_H_
 
 #include <google/sparsehash/sparseconfig.h>
 #include <utility>                  // For pair
@@ -66,6 +74,14 @@ template <class T, T v> const T integral_constant<T, v>::value;
 // boolean true and false values.
 typedef integral_constant<bool, true>  true_type;
 typedef integral_constant<bool, false> false_type;
+
+// Types small_ and big_ are guaranteed such that sizeof(small_) <
+// sizeof(big_)
+typedef char small_;
+
+struct big_ {
+  char dummy[2];
+};
 
 // is_integral is false except for the built-in integer types.
 template <class T> struct is_integral : false_type { };
@@ -179,6 +195,12 @@ template <class T> struct has_trivial_destructor<const T>
 // Specified by TR1 [4.7.1]
 template<typename T> struct remove_const { typedef T type; };
 template<typename T> struct remove_const<T const> { typedef T type; };
+template<typename T> struct remove_volatile { typedef T type; };
+template<typename T> struct remove_volatile<T volatile> { typedef T type; };
+template<typename T> struct remove_cv {
+  typedef typename remove_const<typename remove_volatile<T>::type>::type type;
+};
+
 
 // Specified by TR1 [4.7.2]
 template<typename T> struct remove_reference { typedef T type; };
@@ -192,6 +214,37 @@ template<typename T> struct remove_pointer<T* volatile> { typedef T type; };
 template<typename T> struct remove_pointer<T* const volatile> {
   typedef T type; };
 
+// Specified by TR1 [4.6] Relationships between types
+#ifndef _MSC_VER
+namespace internal {
+
+// This class is an implementation detail for is_convertible, and you
+// don't need to know how it works to use is_convertible. For those
+// who care: we declare two different functions, one whose argument is
+// of type To and one with a variadic argument list. We give them
+// return types of different size, so we can use sizeof to trick the
+// compiler into telling us which function it would have chosen if we
+// had called it with an argument of type From.  See Alexandrescu's
+// _Modern C++ Design_ for more details on this sort of trick.
+
+template <typename From, typename To>
+struct ConvertHelper {
+  static small_ Test(To);
+  static big_ Test(...);
+  static From Create();
+};
+}  // namespace internal
+
+// Inherits from true_type if From is convertible to To, false_type otherwise.
+template <typename From, typename To>
+struct is_convertible
+    : integral_constant<bool,
+                        sizeof(internal::ConvertHelper<From, To>::Test(
+                                  internal::ConvertHelper<From, To>::Create()))
+                        == sizeof(small_)> {
+};
+#endif
+
 _END_GOOGLE_NAMESPACE_
 
-#endif  // BASE_TYPE_TRAITS_H__
+#endif  // BASE_TYPE_TRAITS_H_
