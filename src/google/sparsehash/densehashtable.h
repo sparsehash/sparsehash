@@ -61,11 +61,15 @@
 // HT_EMPTY_FLT          -- how empty before we halve size
 // HT_MIN_BUCKETS        -- default smallest bucket size
 //
+// You can also change enlarge_resize_percent (which defaults to
+// HT_OCCUPANCY_FLT), and shrink_resize_percent (which defaults to
+// HT_EMPTY_FLT) with set_resizing_parameters().
+//
 // How to decide what values to use?
-// HT_EMPTY_FLT's default of .4 * OCCUPANCY_FLT, is probably good.
+// shrink_resize_percent's default of .4 * OCCUPANCY_FLT, is probably good.
 // HT_MIN_BUCKETS is probably unnecessary since you can specify
 // (indirectly) the starting number of buckets at construct-time.
-// For HT_OCCUPANCY_FLT, you can use this chart to try to trade-off
+// For enlarge_resize_percent, you can use this chart to try to trade-off
 // expected lookup time to the space taken up.  By default, this
 // code uses quadratic probing, though you can change it to linear
 // via _JUMP below if you really want to.
@@ -75,7 +79,7 @@
 // Quadratic collision resolution   1 - ln(1-L) - L/2    1/(1-L) - L - ln(1-L)
 // Linear collision resolution     [1+1/(1-L)]/2         [1+1/(1-L)2]/2
 //
-// -- HT_OCCUPANCY_FLT --         0.10  0.50  0.60  0.75  0.80  0.90  0.99
+// -- enlarge_resize_percent --         0.10  0.50  0.60  0.75  0.80  0.90  0.99
 // QUADRATIC COLLISION RES.
 //    probes/successful lookup    1.05  1.44  1.62  2.01  2.21  2.85  5.11
 //    probes/unsuccessful lookup  1.11  2.19  2.82  4.64  5.81  11.4  103.6
@@ -428,7 +432,7 @@ class dense_hashtable {
   // If you like, you can give a min #buckets as well as a min #elts
   size_type min_size(size_type num_elts, size_type min_buckets_wanted) {
     size_type sz = HT_MIN_BUCKETS;             // min buckets allowed
-    while ( sz < min_buckets_wanted || num_elts >= sz * HT_OCCUPANCY_FLT )
+    while ( sz < min_buckets_wanted || num_elts >= sz * enlarge_resize_percent )
       sz *= 2;
     return sz;
   }
@@ -439,11 +443,12 @@ class dense_hashtable {
     assert((bucket_count() & (bucket_count()-1)) == 0); // is a power of two
     assert(bucket_count() >= HT_MIN_BUCKETS);
 
-    if ( (num_elements-num_deleted) < shrink_threshold &&
-         bucket_count() > HT_MIN_BUCKETS ) {
+    if (shrink_threshold > 0 &&
+        (num_elements-num_deleted) < shrink_threshold &&
+        bucket_count() > HT_MIN_BUCKETS ) {
       size_type sz = bucket_count() / 2;    // find how much we should shrink
       while ( sz > HT_MIN_BUCKETS &&
-              (num_elements - num_deleted) < sz * HT_EMPTY_FLT )
+              (num_elements - num_deleted) < sz * shrink_resize_percent )
         sz /= 2;                            // stay a power of 2
       dense_hashtable tmp(*this, sz);       // Do the actual resizing
       swap(tmp);                            // now we are tmp
@@ -549,6 +554,18 @@ class dense_hashtable {
       return resize_delta(req_elements - num_elements, 0);
   }
 
+  // Change the value of shrink_resize_percent and
+  // enlarge_resize_percent.  The description at the beginning of this
+  // file explains how to choose the values.  Setting the shrink
+  // parameter to 0.0 ensures that the table never shrinks.
+  void set_resizing_parameters(float shrink, float grow) {
+    assert(shrink >= 0.0);
+    assert(grow <= 1.0);
+    assert(shrink <= grow/2.0);
+    shrink_resize_percent = shrink;
+    enlarge_resize_percent = grow;
+    reset_thresholds();
+  }
 
   // CONSTRUCTORS -- as required by the specs, we take a size,
   // but also let you specify a hashfunction, key comparator,
@@ -560,8 +577,9 @@ class dense_hashtable {
                            const ExtractKey& ext = ExtractKey())
     : hash(hf), equals(eql), get_key(ext), num_deleted(0),
       use_deleted(false), use_empty(false),
-      delval(), emptyval(),
-      table(NULL), num_buckets(min_size(0, n)), num_elements(0) {
+      delval(), emptyval(), enlarge_resize_percent(HT_OCCUPANCY_FLT),
+      shrink_resize_percent(HT_EMPTY_FLT), table(NULL),
+      num_buckets(min_size(0, n)), num_elements(0) {
     // table is NULL until emptyval is set.  However, we set num_buckets
     // here so we know how much space to allocate once emptyval is set
     reset_thresholds();
@@ -573,8 +591,9 @@ class dense_hashtable {
     : hash(ht.hash), equals(ht.equals), get_key(ht.get_key), num_deleted(0),
       use_deleted(ht.use_deleted), use_empty(ht.use_empty),
       delval(ht.delval), emptyval(ht.emptyval),
-      table(NULL), num_buckets(0),
-      num_elements(0) {
+      enlarge_resize_percent(ht.enlarge_resize_percent),
+      shrink_resize_percent(ht.shrink_resize_percent), table(NULL),
+      num_buckets(0), num_elements(0) {
     reset_thresholds();
     copy_from(ht, min_buckets_wanted);   // copy_from() ignores deleted entries
   }
@@ -589,6 +608,8 @@ class dense_hashtable {
     use_empty = ht.use_empty;
     set_value(&delval, ht.delval);
     set_value(&emptyval, ht.emptyval);
+    enlarge_resize_percent = ht.enlarge_resize_percent;
+    shrink_resize_percent = ht.shrink_resize_percent;
     copy_from(ht);                         // sets num_deleted to 0 too
     return *this;
   }
@@ -608,6 +629,8 @@ class dense_hashtable {
     STL_NAMESPACE::swap(num_deleted, ht.num_deleted);
     STL_NAMESPACE::swap(use_deleted, ht.use_deleted);
     STL_NAMESPACE::swap(use_empty, ht.use_empty);
+    STL_NAMESPACE::swap(enlarge_resize_percent, ht.enlarge_resize_percent);
+    STL_NAMESPACE::swap(shrink_resize_percent, ht.shrink_resize_percent);
     { value_type tmp;     // for annoying reasons, swap() doesn't work
       set_value(&tmp, delval);
       set_value(&delval, ht.delval);
@@ -896,16 +919,20 @@ class dense_hashtable {
   bool use_empty;                          // you must do this before you start
   value_type delval;                         // which key marks deleted entries
   value_type emptyval;                        // which key marks unused entries
+  float enlarge_resize_percent;                       // how full before resize
+  float shrink_resize_percent;                       // how empty before resize
+  size_type shrink_threshold;            // num_buckets * shrink_resize_percent
+  size_type enlarge_threshold;          // num_buckets * enlarge_resize_percent
   value_type *table;
   size_type num_buckets;
   size_type num_elements;
-  size_type shrink_threshold;                     // num_buckets * HT_EMPTY_FLT
-  size_type enlarge_threshold;                // num_buckets * HT_OCCUPANCY_FLT
   bool consider_shrink;   // true if we should try to shrink before next insert
 
   void reset_thresholds() {
-    enlarge_threshold = static_cast<size_type>(num_buckets*HT_OCCUPANCY_FLT);
-    shrink_threshold = static_cast<size_type>(num_buckets*HT_EMPTY_FLT);
+    enlarge_threshold = static_cast<size_type>(num_buckets
+                                               * enlarge_resize_percent);
+    shrink_threshold = static_cast<size_type>(num_buckets
+                                              * shrink_resize_percent);
     consider_shrink = false;   // whatever caused us to reset already considered
   }
 };

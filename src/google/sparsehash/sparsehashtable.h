@@ -57,17 +57,21 @@
 //
 // You probably shouldn't use this code directly.  Use
 // <google/sparse_hash_table> or <google/sparse_hash_set> instead.
-
-// You can change the following below:
+//
+// You can following below:
 // HT_OCCUPANCY_FLT      -- how full before we double size
 // HT_EMPTY_FLT          -- how empty before  we halve size
 // HT_MIN_BUCKETS        -- smallest bucket size
 //
+// You can also change enlarge_resize_percent (which defaults to
+// HT_OCCUPANCY_FLT), and shrink_resize_percent (which defaults to
+// HT_EMPTY_FLT) with set_resizing_parameters().
+//
 // How to decide what values to use?
-// HT_EMPTY_FLT's default of .4 * OCCUPANCY_FLT, is probably good.
+// shrink_resize_percent's default of .4 * OCCUPANCY_FLT, is probably good.
 // HT_MIN_BUCKETS is probably unnecessary since you can specify
 // (indirectly) the starting number of buckets at construct-time.
-// For HT_OCCUPANCY_FLT, you can use this chart to try to trade-off
+// For enlarge_resize_percent, you can use this chart to try to trade-off
 // expected lookup time to the space taken up.  By default, this
 // code uses quadratic probing, though you can change it to linear
 // via _JUMP below if you really want to.
@@ -77,7 +81,7 @@
 // Quadratic collision resolution   1 - ln(1-L) - L/2    1/(1-L) - L - ln(1-L)
 // Linear collision resolution     [1+1/(1-L)]/2         [1+1/(1-L)2]/2
 //
-// -- HT_OCCUPANCY_FLT --         0.10  0.50  0.60  0.75  0.80  0.90  0.99
+// -- enlarge_resize_percent --         0.10  0.50  0.60  0.75  0.80  0.90  0.99
 // QUADRATIC COLLISION RES.
 //    probes/successful lookup    1.05  1.44  1.62  2.01  2.21  2.85  5.11
 //    probes/unsuccessful lookup  1.11  2.19  2.82  4.64  5.81  11.4  103.6
@@ -306,6 +310,7 @@ class sparse_hashtable {
                                                 ExtractKey, EqualKey, Alloc>
   destructive_iterator;
 
+
   // How full we let the table get before we resize.  Knuth says .8 is
   // good -- higher causes us to probe too much, though saves memory
   static const float HT_OCCUPANCY_FLT; // = 0.8f;
@@ -319,7 +324,6 @@ class sparse_hashtable {
   // Note, however, that for a given hashtable, the minimum size is
   // determined by the first constructor arg, and may be >HT_MIN_BUCKETS.
   static const size_t HT_MIN_BUCKETS = 32;
-
 
   // ITERATOR FUNCTIONS
   iterator begin()             { return iterator(this, table.nonempty_begin(),
@@ -447,7 +451,7 @@ class sparse_hashtable {
   // If you like, you can give a min #buckets as well as a min #elts
   size_type min_size(size_type num_elts, size_type min_buckets_wanted) {
     size_type sz = HT_MIN_BUCKETS;
-    while ( sz < min_buckets_wanted || num_elts >= sz * HT_OCCUPANCY_FLT )
+    while ( sz < min_buckets_wanted || num_elts >= sz * enlarge_resize_percent )
       sz *= 2;
     return sz;
   }
@@ -458,11 +462,13 @@ class sparse_hashtable {
     assert((bucket_count() & (bucket_count()-1)) == 0); // is a power of two
     assert(bucket_count() >= HT_MIN_BUCKETS);
 
-    if ( (table.num_nonempty()-num_deleted) <= shrink_threshold &&
-         bucket_count() > HT_MIN_BUCKETS ) {
+    if (shrink_threshold > 0
+        && (table.num_nonempty()-num_deleted) < shrink_threshold &&
+        bucket_count() > HT_MIN_BUCKETS ) {
       size_type sz = bucket_count() / 2;    // find how much we should shrink
       while ( sz > HT_MIN_BUCKETS &&
-              (table.num_nonempty() - num_deleted) <= sz * HT_EMPTY_FLT )
+              (table.num_nonempty() - num_deleted) <= sz *
+              shrink_resize_percent )
         sz /= 2;                            // stay a power of 2
       sparse_hashtable tmp(MoveDontCopy, *this, sz);
       swap(tmp);                            // now we are tmp
@@ -574,6 +580,18 @@ class sparse_hashtable {
       resize_delta(req_elements - table.num_nonempty(), 0);
   }
 
+  // Change the value of shrink_resize_percent and
+  // enlarge_resize_percent.  The description at the beginning of this
+  // file explains how to choose the values.  Setting the shrink
+  // parameter to 0.0 ensures that the table never shrinks.
+  void set_resizing_parameters(float shrink, float grow) {
+    assert(shrink >= 0.0);
+    assert(grow <= 1.0);
+    assert(shrink <= grow/2.0);
+    shrink_resize_percent = shrink;
+    enlarge_resize_percent = grow;
+    reset_thresholds();
+  }
 
   // CONSTRUCTORS -- as required by the specs, we take a size,
   // but also let you specify a hashfunction, key comparator,
@@ -583,8 +601,10 @@ class sparse_hashtable {
                             const HashFcn& hf = HashFcn(),
                             const EqualKey& eql = EqualKey(),
                             const ExtractKey& ext = ExtractKey())
-    : hash(hf), equals(eql), get_key(ext), num_deleted(0),
-      use_deleted(false), delval(), table(min_size(0, n)) {    // start small
+    : hash(hf), equals(eql), get_key(ext), num_deleted(0), use_deleted(false),
+      delval(), enlarge_resize_percent(HT_OCCUPANCY_FLT),
+      shrink_resize_percent(HT_EMPTY_FLT),
+      table(min_size(0, n)) {  // start small
     reset_thresholds();
   }
 
@@ -594,14 +614,20 @@ class sparse_hashtable {
   // into us instead of copying.
   sparse_hashtable(const sparse_hashtable& ht, size_type min_buckets_wanted = 0)
     : hash(ht.hash), equals(ht.equals), get_key(ht.get_key),
-      num_deleted(0), use_deleted(ht.use_deleted), delval(ht.delval), table() {
+      num_deleted(0), use_deleted(ht.use_deleted), delval(ht.delval),
+      enlarge_resize_percent(ht.enlarge_resize_percent),
+      shrink_resize_percent(ht.shrink_resize_percent),
+      table() {
     reset_thresholds();
     copy_from(ht, min_buckets_wanted);   // copy_from() ignores deleted entries
   }
   sparse_hashtable(MoveDontCopyT mover, sparse_hashtable& ht,
                    size_type min_buckets_wanted=0)
     : hash(ht.hash), equals(ht.equals), get_key(ht.get_key),
-      num_deleted(0), use_deleted(ht.use_deleted), delval(ht.delval), table() {
+      num_deleted(0), use_deleted(ht.use_deleted), delval(ht.delval),
+      enlarge_resize_percent(ht.enlarge_resize_percent),
+      shrink_resize_percent(ht.shrink_resize_percent),
+      table() {
     reset_thresholds();
     move_from(mover, ht, min_buckets_wanted);  // ignores deleted entries
   }
@@ -625,6 +651,8 @@ class sparse_hashtable {
     STL_NAMESPACE::swap(get_key, ht.get_key);
     STL_NAMESPACE::swap(num_deleted, ht.num_deleted);
     STL_NAMESPACE::swap(use_deleted, ht.use_deleted);
+    STL_NAMESPACE::swap(enlarge_resize_percent, ht.enlarge_resize_percent);
+    STL_NAMESPACE::swap(shrink_resize_percent, ht.shrink_resize_percent);
     { value_type tmp;     // for annoying reasons, swap() doesn't work
       set_value(&tmp, delval);
       set_value(&delval, ht.delval);
@@ -851,14 +879,18 @@ class sparse_hashtable {
   size_type num_deleted;        // how many occupied buckets are marked deleted
   bool use_deleted;                          // false until delval has been set
   value_type delval;                         // which key marks deleted entries
+  float enlarge_resize_percent;                       // how full before resize
+  float shrink_resize_percent;                       // how empty before resize
+  size_type shrink_threshold;           // table.size() * shrink_resize_percent
+  size_type enlarge_threshold;         // table.size() * enlarge_resize_percent
   sparsetable<value_type> table;      // holds num_buckets and num_elements too
-  size_type shrink_threshold;                    // table.size() * HT_EMPTY_FLT
-  size_type enlarge_threshold;               // table.size() * HT_OCCUPANCY_FLT
   bool consider_shrink;   // true if we should try to shrink before next insert
 
   void reset_thresholds() {
-    enlarge_threshold = static_cast<size_type>(table.size()*HT_OCCUPANCY_FLT);
-    shrink_threshold = static_cast<size_type>(table.size()*HT_EMPTY_FLT);
+    enlarge_threshold = static_cast<size_type>(table.size()
+                                               * enlarge_resize_percent);
+    shrink_threshold = static_cast<size_type>(table.size()
+                                              * shrink_resize_percent);
     consider_shrink = false;   // whatever caused us to reset already considered
   }
 };

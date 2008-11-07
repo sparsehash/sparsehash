@@ -53,6 +53,10 @@
 //         and call erase() without invalidating the iterator.
 //         To force the memory to be freed, call resize(0).
 //
+//    3) set_resizing_parameters(0.0, 0.8):
+//         Setting the shrink_resize_percent to 0.0 guarantees
+//         that the hash table will never shrink.
+//
 // Guide to what kind of hash_map to use:
 //   (1) dense_hash_map: fastest, uses the most memory
 //   (2) sparse_hash_map: slowest, uses the least memory
@@ -168,6 +172,9 @@ class sparse_hash_map {
 
   void resize(size_type hint)         { rep.resize(hint); }
 
+  void set_resizing_parameters(float shrink, float grow) {
+    return rep.set_resizing_parameters(shrink, grow);
+  }
 
   // Lookup routines
   iterator find(const key_type& key)                 { return rep.find(key); }
