@@ -958,6 +958,58 @@ static void TestOperatorEquals() {
   }
 }
 
+// Test the interface for setting the resize parameters in a
+// sparse_hash_set or dense_hash_set.
+template<class HS>
+static void TestResizingParameters() {
+  const int kSize = 16536;
+  // Check growing past various thresholds and then shrinking below
+  // them.
+  for (float grow_threshold = 0.2;
+       grow_threshold <= 0.8;
+       grow_threshold += 0.2) {
+    HS hs;
+    hs.set_deleted_key(-1);
+    set_empty_key(&hs, -2);
+    hs.set_resizing_parameters(0.0, grow_threshold);
+    hs.resize(kSize);
+    size_t bucket_count = hs.bucket_count();
+    // Erase and insert an element to set consider_shrink = true,
+    // which should not cause a shrink because the threshold is 0.0.
+    hs.insert(1);
+    hs.erase(1);
+    for (int i = 0;; ++i) {
+      hs.insert(i);
+      if (static_cast<float>(hs.size())/bucket_count < grow_threshold) {
+        CHECK(hs.bucket_count() == bucket_count);
+      } else {
+        CHECK(hs.bucket_count() > bucket_count);
+        break;
+      }
+    }
+    // Now set a shrink threshold 1% below the current size and remove
+    // items until the size falls below that.
+    const float shrink_threshold = static_cast<float>(hs.size()) /
+        hs.bucket_count() - 0.01;
+    hs.set_resizing_parameters(shrink_threshold, 1.0);
+    bucket_count = hs.bucket_count();
+    for (int i = 0;; ++i) {
+      hs.erase(i);
+      // A resize is only triggered by an insert, so add and remove a
+      // value every iteration to trigger the shrink as soon as the
+      // threshold is passed.
+      hs.erase(i+1);
+      hs.insert(i+1);
+      if (static_cast<float>(hs.size())/bucket_count > shrink_threshold) {
+        CHECK(hs.bucket_count() == bucket_count);
+      } else {
+        CHECK(hs.bucket_count() < bucket_count);
+        break;
+      }
+    }
+  }
+}
+
 int main(int argc, char **argv) {
   TestOperatorEquals();
 
@@ -981,6 +1033,8 @@ int main(int argc, char **argv) {
        dense_hash_set<string, StrHash>,
        dense_hash_set<int> >(false);
 
+  TestResizingParameters<dense_hash_set<int> >();
+
   // Now try with hash_map, which differs only in insert()
   LOGF << "\n\nTEST WITH DENSE_HASH_MAP\n\n";
   test<dense_hash_map<char *, int, SPARSEHASH_HASH<const char *>, strcmp_fnc>,
@@ -1002,6 +1056,8 @@ int main(int argc, char **argv) {
   test<sparse_hash_set<char *, SPARSEHASH_HASH<const char *>, strcmp_fnc>,
        sparse_hash_set<string, StrHash>,
        sparse_hash_set<int> >(true);
+
+  TestResizingParameters<sparse_hash_set<int> >();
 
   // Now try with hash_map, which differs only in insert()
   LOGF << "\n\nTEST WITH SPARSE_HASH_MAP\n\n";

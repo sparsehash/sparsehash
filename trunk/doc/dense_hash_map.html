@@ -534,6 +534,18 @@ None.
 
 <TR>
 <TD VAlign=top>
+   <tt>void set_resizing_parameters(float shrink, float grow)</tt>
+</TD>
+<TD VAlign=top>
+   <tt>dense_hash_map</tt>
+</TD>
+<TD VAlign=top>
+   <A HREF="#new">See below</A>.
+</TD>
+</TR>
+
+<TR>
+<TD VAlign=top>
    <tt>hasher hash_funct() const</tt>
 </TD>
 <TD VAlign=top>
@@ -1030,6 +1042,24 @@ Associative Container</A> requirements, but are specific to
 
 <table border>
 <TR><TH>Member</TH><TH>Description</TH></TR>
+
+<TR>
+<TD VAlign=top>
+   <tt>void set_resizing_parameters(float shrink, float grow)</tt>
+</TD>
+<TD VAlign=top>
+   Instructs the <tt>sparse_hash_map</tt> class to halve the internal
+   hashtable size when less than <tt>shrink</tt> fraction of buckets
+   are occupied, and to double the hashtable size when more than
+   <tt>grow</tt> fraction of buckets are occupied.  <tt>shrink</tt>
+   and <tt>grow</tt> must be between <tt>0</tt> and <tt>1</tt>; to
+   avoid ping-ponging, <tt>shrink</tt> must be less than half of
+   <tt>grow</tt>.  If you set <tt>shrink</tt> to 0, the hashtable will
+   never resize smaller, no matter how many buckets are unoccupied.
+   By default, <tt>shrink</tt> is <tt>0.32</tt> and <tt>grow</tt> is
+   <tt>0.8</tt>.
+</TD>
+</TR>
 
 <TR>
 <TD VAlign=top>
