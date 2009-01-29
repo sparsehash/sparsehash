@@ -151,17 +151,17 @@ class dense_hash_map {
 
 
   // Constructors
-  explicit dense_hash_map(size_type n = 0,
+  explicit dense_hash_map(size_type expected_max_items_in_table = 0,
                           const hasher& hf = hasher(),
                           const key_equal& eql = key_equal())
-    : rep(n, hf, eql) { }
+    : rep(expected_max_items_in_table, hf, eql) { }
 
   template <class InputIterator>
   dense_hash_map(InputIterator f, InputIterator l,
-                 size_type n = 0,
+                 size_type expected_max_items_in_table = 0,
                  const hasher& hf = hasher(),
                  const key_equal& eql = key_equal())
-    : rep(n, hf, eql) {
+    : rep(expected_max_items_in_table, hf, eql) {
     rep.insert(f, l);
   }
   // We use the default copy constructor

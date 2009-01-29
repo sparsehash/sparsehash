@@ -1,3 +1,12 @@
+Wed Jan 28 17:11:31 2009  Google Inc. <opensource@google.com>
+
+	* sparsehash: version 1.4 release
+	* Allow hashtables to be <32 buckets (csilvers)
+	* Fix initial-sizing bug: was sizing tables too small (csilvers)
+	* Add asserts that clients don't abuse deleted/empty key (csilvers)
+	* Improve determination of 32/64 bit for C code (csilvers)
+	* Small fix for doc files in rpm (csilvers)
+
 Thu Nov  6 15:06:09 2008  Google Inc. <opensource@google.com>
 
 	* sparsehash: version 1.3 release

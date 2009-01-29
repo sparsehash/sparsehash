@@ -121,7 +121,7 @@
 #define MAGIC_KEY             "CHsh"   /* when we save the file */
 
 #ifndef LOG_WORD_SIZE                  /* 5 for 32 bit words, 6 for 64 */
-#ifdef __alpha                         /* only way I know of determining */
+#if defined (__LP64__) || defined (_LP64)
 #define LOG_WORD_SIZE          6       /* log_2(sizeof(ulong)) [in bits] */
 #else
 #define LOG_WORD_SIZE          5       /* log_2(sizeof(ulong)) [in bits] */

@@ -19,7 +19,7 @@ Buildarch: noarch
 
 %description
 The %name package contains several hash-map implementations, similar
-in API to SGI's hash_map class, but with different performance
+in API to the SGI hash_map class, but with different performance
 characteristics.  sparse_hash_map uses very little space overhead: 1-2
 bits per entry.  dense_hash_map is typically faster than the default
 SGI STL implementation.  This package also includes hash-set analogues
@@ -46,7 +46,10 @@ rm -rf $RPM_BUILD_ROOT
 %files
 %defattr(-,root,root)
 
-%doc AUTHORS COPYING ChangeLog INSTALL NEWS README TODO doc/dense_hash_map.html doc/dense_hash_set.html doc/sparse_hash_map.html doc/sparse_hash_set.html doc/sparsetable.html doc/implementation.html doc/performance.html doc/index.html doc/designstyle.css
-
+%doc AUTHORS COPYING ChangeLog INSTALL NEWS README README.windows TODO
+%doc doc/index.html doc/designstyle.css
+%doc doc/dense_hash_map.html doc/dense_hash_set.html
+%doc doc/sparse_hash_map.html doc/sparse_hash_set.html doc/sparsetable.html
+%doc doc/implementation.html doc/performance.html
 
 %{prefix}/include/google

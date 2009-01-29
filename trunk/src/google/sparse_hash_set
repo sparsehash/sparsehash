@@ -140,17 +140,17 @@ class sparse_hash_set {
 
 
   // Constructors
-  explicit sparse_hash_set(size_type n = 0,
+  explicit sparse_hash_set(size_type expected_max_items_in_table = 0,
                            const hasher& hf = hasher(),
                            const key_equal& eql = key_equal())
-    : rep(n, hf, eql) { }
+    : rep(expected_max_items_in_table, hf, eql) { }
 
   template <class InputIterator>
   sparse_hash_set(InputIterator f, InputIterator l,
-                  size_type n = 0,
+                  size_type expected_max_items_in_table = 0,
                   const hasher& hf = hasher(),
                   const key_equal& eql = key_equal())
-      : rep(n, hf, eql) {
+      : rep(expected_max_items_in_table, hf, eql) {
     rep.insert(f, l);
   }
   // We use the default copy constructor
