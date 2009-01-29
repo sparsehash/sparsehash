@@ -95,6 +95,9 @@ using STL_NAMESPACE::ostream;
   }                                             \
 } while (0)
 
+#define CHECK_EQ(a, b)  CHECK((a) == (b))
+#define CHECK_LT(a, b)  CHECK((a) < (b))
+
 #ifndef WIN32   // windows defines its own version
 static string TmpFile(const char* basename) {
   return string("/tmp/") + basename;
@@ -843,6 +846,56 @@ void TestSimpleDataTypeOptimizations() {
   }
 }
 
+void TestShrinking() {
+  // We want to make sure that when we create a hashtable, and then
+  // add and delete one element, the size of the hashtable doesn't
+  // change.
+  {
+    sparse_hash_set<int> s;
+    s.set_deleted_key(0);
+    const int old_bucket_count = s.bucket_count();
+    s.insert(4);
+    s.erase(4);
+    s.insert(4);
+    s.erase(4);
+    CHECK_EQ(old_bucket_count, s.bucket_count());
+  }
+  {
+    dense_hash_set<int> s;
+    s.set_deleted_key(0);
+    s.set_empty_key(1);
+    const int old_bucket_count = s.bucket_count();
+    s.insert(4);
+    s.erase(4);
+    s.insert(4);
+    s.erase(4);
+    CHECK_EQ(old_bucket_count, s.bucket_count());
+  }
+  {
+    sparse_hash_set<int> s(2);        // start small: only expects 2 items
+    CHECK_LT(s.bucket_count(), 32);   // verify we actually do start small
+    s.set_deleted_key(0);
+    const int old_bucket_count = s.bucket_count();
+    s.insert(4);
+    s.erase(4);
+    s.insert(4);
+    s.erase(4);
+    CHECK_EQ(old_bucket_count, s.bucket_count());
+  }
+  {
+    dense_hash_set<int> s(2);   // start small: only expects 2 items
+    CHECK_LT(s.bucket_count(), 32);   // verify we actually do start small
+    s.set_deleted_key(0);
+    s.set_empty_key(1);
+    const int old_bucket_count = s.bucket_count();
+    s.insert(4);
+    s.erase(4);
+    s.insert(4);
+    s.erase(4);
+    CHECK_EQ(old_bucket_count, s.bucket_count());
+  }
+}
+
 class TestHashFcn : public SPARSEHASH_HASH<int> {
  public:
   explicit TestHashFcn(int i)
@@ -1068,6 +1121,10 @@ int main(int argc, char **argv) {
   // Test that we use the optimized routines for simple data types
   LOGF << "\n\nTesting simple-data-type optimizations\n";
   TestSimpleDataTypeOptimizations();
+
+  // Test shrinking to very small sizes
+  LOGF << "\n\nTesting shrinking behavior";
+  TestShrinking();
 
   // Test that the hashers and key_equals are used properly in hash tables and
   // hash maps.

@@ -102,6 +102,7 @@
 
 #include <google/sparsehash/sparseconfig.h>
 #include <assert.h>
+#include <stdio.h>
 #include <stdlib.h>             // for abort()
 #include <algorithm>            // For swap(), eg
 #include <iostream>             // For cerr
@@ -262,7 +263,12 @@ class dense_hashtable {
   // Must be a power of two, and at least 4.
   // Note, however, that for a given hashtable, the initial size is a
   // function of the first constructor arg, and may be >HT_MIN_BUCKETS.
-  static const size_t HT_MIN_BUCKETS  = 32;
+  static const size_t HT_MIN_BUCKETS = 4;
+
+  // By default, if you don't specify a hashtable size at
+  // construction-time, we use this size.  Must be a power of two, and
+  // at least HT_MIN_BUCKETS.
+  static const size_t HT_DEFAULT_STARTING_BUCKETS = 32;
 
 
   // ITERATOR FUNCTIONS
@@ -443,11 +449,16 @@ class dense_hashtable {
     assert((bucket_count() & (bucket_count()-1)) == 0); // is a power of two
     assert(bucket_count() >= HT_MIN_BUCKETS);
 
+    // If you construct a hashtable with < HT_DEFAULT_STARTING_BUCKETS,
+    // we'll never shrink until you get relatively big, and we'll never
+    // shrink below HT_DEFAULT_STARTING_BUCKETS.  Otherwise, something
+    // like "dense_hash_set<int> x; x.insert(4); x.erase(4);" will
+    // shrink us down to HT_MIN_BUCKETS buckets, which is too small.
     if (shrink_threshold > 0 &&
         (num_elements-num_deleted) < shrink_threshold &&
-        bucket_count() > HT_MIN_BUCKETS ) {
+        bucket_count() > HT_DEFAULT_STARTING_BUCKETS ) {
       size_type sz = bucket_count() / 2;    // find how much we should shrink
-      while ( sz > HT_MIN_BUCKETS &&
+      while ( sz > HT_DEFAULT_STARTING_BUCKETS &&
               (num_elements - num_deleted) < sz * shrink_resize_percent )
         sz /= 2;                            // stay a power of 2
       dense_hashtable tmp(*this, sz);       // Do the actual resizing
@@ -458,10 +469,10 @@ class dense_hashtable {
 
   // We'll let you resize a hashtable -- though this makes us copy all!
   // When you resize, you say, "make it big enough for this many more elements"
-  void resize_delta(size_type delta, size_type min_buckets_wanted = 0) {
+  void resize_delta(size_type delta) {
     if ( consider_shrink )                   // see if lots of deletes happened
       maybe_shrink();
-    if ( bucket_count() > min_buckets_wanted &&
+    if ( bucket_count() > HT_MIN_BUCKETS &&
          (num_elements + delta) <= enlarge_threshold )
       return;                                // we're ok as we are
 
@@ -471,11 +482,10 @@ class dense_hashtable {
     // are currently taking up room).  But later, when we decide what
     // size to resize to, *don't* count deleted buckets, since they
     // get discarded during the resize.
-    const size_type needed_size = min_size(num_elements + delta,
-                                           min_buckets_wanted);
+    const size_type needed_size = min_size(num_elements + delta, 0);
     if ( needed_size > bucket_count() ) {      // we don't have enough buckets
       const size_type resize_to = min_size(num_elements - num_deleted + delta,
-                                           min_buckets_wanted);
+                                           0);
       dense_hashtable tmp(*this, resize_to);
       swap(tmp);                             // now we are tmp
     }
@@ -508,7 +518,7 @@ class dense_hashtable {
   }
 
   // Used to actually do the rehashing when we grow/shrink a hashtable
-  void copy_from(const dense_hashtable &ht, size_type min_buckets_wanted = 0) {
+  void copy_from(const dense_hashtable &ht, size_type min_buckets_wanted) {
     clear();            // clear table, set num_deleted to 0
 
     // If we need to change the size of our table, do it now
@@ -551,7 +561,7 @@ class dense_hashtable {
     if ( consider_shrink || req_elements == 0 )
       maybe_shrink();
     if ( req_elements > num_elements )
-      return resize_delta(req_elements - num_elements, 0);
+      return resize_delta(req_elements - num_elements);
   }
 
   // Change the value of shrink_resize_percent and
@@ -571,7 +581,7 @@ class dense_hashtable {
   // but also let you specify a hashfunction, key comparator,
   // and key extractor.  We also define a copy constructor and =.
   // DESTRUCTOR -- needs to free the table
-  explicit dense_hashtable(size_type n = 0,
+  explicit dense_hashtable(size_type expected_max_items_in_table = 0,
                            const HashFcn& hf = HashFcn(),
                            const EqualKey& eql = EqualKey(),
                            const ExtractKey& ext = ExtractKey())
@@ -579,7 +589,10 @@ class dense_hashtable {
       use_deleted(false), use_empty(false),
       delval(), emptyval(), enlarge_resize_percent(HT_OCCUPANCY_FLT),
       shrink_resize_percent(HT_EMPTY_FLT), table(NULL),
-      num_buckets(min_size(0, n)), num_elements(0) {
+      num_buckets(expected_max_items_in_table == 0
+                  ? HT_DEFAULT_STARTING_BUCKETS
+                  : min_size(expected_max_items_in_table, 0)),
+      num_elements(0) {
     // table is NULL until emptyval is set.  However, we set num_buckets
     // here so we know how much space to allocate once emptyval is set
     reset_thresholds();
@@ -587,7 +600,8 @@ class dense_hashtable {
 
   // As a convenience for resize(), we allow an optional second argument
   // which lets you make this new hashtable a different size than ht
-  dense_hashtable(const dense_hashtable& ht, size_type min_buckets_wanted = 0)
+  dense_hashtable(const dense_hashtable& ht,
+                  size_type min_buckets_wanted = HT_DEFAULT_STARTING_BUCKETS)
     : hash(ht.hash), equals(ht.equals), get_key(ht.get_key), num_deleted(0),
       use_deleted(ht.use_deleted), use_empty(ht.use_empty),
       delval(ht.delval), emptyval(ht.emptyval),
@@ -610,7 +624,7 @@ class dense_hashtable {
     set_value(&emptyval, ht.emptyval);
     enlarge_resize_percent = ht.enlarge_resize_percent;
     shrink_resize_percent = ht.shrink_resize_percent;
-    copy_from(ht);                         // sets num_deleted to 0 too
+    copy_from(ht, HT_MIN_BUCKETS);         // sets num_deleted to 0 too
     return *this;
   }
 
@@ -746,6 +760,9 @@ class dense_hashtable {
  private:
   // If you know *this is big enough to hold obj, use this routine
   pair<iterator, bool> insert_noresize(const value_type& obj) {
+    // First, double-check we're not inserting delval or emptyval
+    assert(!use_empty || !equals(get_key(obj), get_key(emptyval)));
+    assert(!use_deleted || !equals(get_key(obj), get_key(delval)));
     const pair<size_type,size_type> pos = find_position(get_key(obj));
     if ( pos.first != ILLEGAL_BUCKET) {      // object was already there
       return pair<iterator,bool>(iterator(this, table + pos.first,
@@ -803,6 +820,9 @@ class dense_hashtable {
 
   // DELETION ROUTINES
   size_type erase(const key_type& key) {
+    // First, double-check we're not trying to erase delval or emptyval
+    assert(!use_empty || !equals(key, get_key(emptyval)));
+    assert(!use_deleted || !equals(key, get_key(delval)));
     const_iterator pos = find(key);   // shrug: shouldn't need to be const
     if ( pos != end() ) {
       assert(!test_deleted(pos));  // or find() shouldn't have returned it
