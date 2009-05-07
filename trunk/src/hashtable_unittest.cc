@@ -97,6 +97,7 @@ using STL_NAMESPACE::ostream;
 
 #define CHECK_EQ(a, b)  CHECK((a) == (b))
 #define CHECK_LT(a, b)  CHECK((a) < (b))
+#define CHECK_GE(a, b)  CHECK((a) >= (b))
 
 #ifndef WIN32   // windows defines its own version
 static string TmpFile(const char* basename) {
@@ -143,12 +144,22 @@ struct Identity {
   const Value& operator()(const Value& v) const { return v; }
 };
 
-// Likewise, it's not standard to hash a string.  Luckily, it is a char*
+// Likewise, it's not standard to hash a string pre-tr1.  Luckily, it is a char*
+#ifdef HAVE_UNORDERED_MAP
+typedef SPARSEHASH_HASH<string> StrHash;
+struct CharStarHash {
+  size_t operator()(const char* s) const {
+    return StrHash()(string(s));
+  }
+};
+#else
+typedef SPARSEHASH_HASH<const char*> CharStarHash;
 struct StrHash {
   size_t operator()(const string& s) const {
     return SPARSEHASH_HASH<const char*>()(s.c_str());
   }
 };
+#endif
 
 // Let us log the pairs that make up a hash_map
 template<class P1, class P2>
@@ -166,8 +177,8 @@ struct strcmp_fnc {
 
 namespace {
 
-template <class T, class H, class I, class C, class A>
-void set_empty_key(sparse_hashtable<T,T,H,I,C,A> *ht, T val) {
+template <class T, class H, class I, class S, class C, class A>
+void set_empty_key(sparse_hashtable<T,T,H,I,S,C,A> *ht, T val) {
 }
 
 template <class T, class H, class C>
@@ -178,8 +189,8 @@ template <class K, class V, class H, class C>
 void set_empty_key(sparse_hash_map<K,V,H,C> *ht, K val) {
 }
 
-template <class T, class H, class I, class C, class A>
-void set_empty_key(dense_hashtable<T,T,H,I,C,A> *ht, T val) {
+template <class T, class H, class I, class S, class C, class A>
+void set_empty_key(dense_hashtable<T,T,H,I,S,C,A> *ht, T val) {
   ht->set_empty_key(val);
 }
 
@@ -193,8 +204,8 @@ void set_empty_key(dense_hash_map<K,V,H,C> *ht, K val) {
   ht->set_empty_key(val);
 }
 
-template <class T, class H, class I, class C, class A>
-bool clear_no_resize(sparse_hashtable<T,T,H,I,C,A> *ht) {
+template <class T, class H, class I, class S, class C, class A>
+bool clear_no_resize(sparse_hashtable<T,T,H,I,S,C,A> *ht) {
   return false;
 }
 
@@ -208,8 +219,8 @@ bool clear_no_resize(sparse_hash_map<K,V,H,C> *ht) {
   return false;
 }
 
-template <class T, class H, class I, class C, class A>
-bool clear_no_resize(dense_hashtable<T,T,H,I,C,A> *ht) {
+template <class T, class H, class I, class S, class C, class A>
+bool clear_no_resize(dense_hashtable<T,T,H,I,S,C,A> *ht) {
   ht->clear_no_resize();
   return true;
 }
@@ -226,8 +237,8 @@ bool clear_no_resize(dense_hash_map<K,V,H,C> *ht) {
   return true;
 }
 
-template <class T, class H, class I, class C, class A>
-void insert(dense_hashtable<T,T,H,I,C,A> *ht, T val) {
+template <class T, class H, class I, class S, class C, class A>
+void insert(dense_hashtable<T,T,H,I,S,C,A> *ht, T val) {
   ht->insert(val);
 }
 
@@ -241,8 +252,8 @@ void insert(dense_hash_map<K,V,H,C> *ht, K val) {
   ht->insert(pair<K,V>(val,V()));
 }
 
-template <class T, class H, class I, class C, class A>
-void insert(sparse_hashtable<T,T,H,I,C,A> *ht, T val) {
+template <class T, class H, class I, class S, class C, class A>
+void insert(sparse_hashtable<T,T,H,I,S,C,A> *ht, T val) {
   ht->insert(val);
 }
 
@@ -285,9 +296,9 @@ void insert(sparse_hash_map<K,V,H,C> *ht, Iterator begin, Iterator end) {
 // A version of insert that uses the insert_iterator.  But insert_iterator
 // isn't defined for the low level hashtable classes, so we just punt to insert.
 
-template <class T, class H, class I, class C, class A>
-void iterator_insert(dense_hashtable<T,T,H,I,C,A>* ht, T val,
-                            insert_iterator<dense_hashtable<T,T,H,I,C,A> >* ) {
+template <class T, class H, class I, class S, class C, class A>
+void iterator_insert(dense_hashtable<T,T,H,I,S,C,A>* ht, T val,
+                     insert_iterator<dense_hashtable<T,T,H,I,S,C,A> >* ) {
   ht->insert(val);
 }
 
@@ -303,9 +314,9 @@ void iterator_insert(dense_hash_map<K,V,H,C>* , K val,
   *(*ii)++ = pair<K,V>(val,V());
 }
 
-template <class T, class H, class I, class C, class A>
-void iterator_insert(sparse_hashtable<T,T,H,I,C,A>* ht, T val,
-                     insert_iterator<sparse_hashtable<T,T,H,I,C,A> >* ) {
+template <class T, class H, class I, class S, class C, class A>
+void iterator_insert(sparse_hashtable<T,T,H,I,S,C,A>* ht, T val,
+                     insert_iterator<sparse_hashtable<T,T,H,I,S,C,A> >* ) {
   ht->insert(val);
 }
 
@@ -394,7 +405,11 @@ int get_int_item(pair<int, int> val) {
   return val.first;
 }
 
-}  // end anonymous namespace
+int getintkey(int i) { return i; }
+
+int getintkey(const pair<int, int> &p) { return p.first; }
+
+}   // end anonymous namespace
 
 // Performs tests where the hashtable's value type is assumed to be int.
 template <class htint>
@@ -1012,27 +1027,34 @@ static void TestOperatorEquals() {
 }
 
 // Test the interface for setting the resize parameters in a
-// sparse_hash_set or dense_hash_set.
-template<class HS>
+// sparse_hash_set or dense_hash_set.  If use_tr1_api is true,
+// we use the newer tr1-inspired functions to set resize_parameters,
+// rather than my old, home-grown API
+template<class HS, bool USE_TR1_API>
 static void TestResizingParameters() {
   const int kSize = 16536;
   // Check growing past various thresholds and then shrinking below
   // them.
-  for (float grow_threshold = 0.2;
-       grow_threshold <= 0.8;
-       grow_threshold += 0.2) {
+  for (float grow_threshold = 0.2f;
+       grow_threshold <= 0.8f;
+       grow_threshold += 0.2f) {
     HS hs;
     hs.set_deleted_key(-1);
     set_empty_key(&hs, -2);
-    hs.set_resizing_parameters(0.0, grow_threshold);
+    if (USE_TR1_API) {
+      hs.max_load_factor(grow_threshold);
+      hs.min_load_factor(0.0);
+    } else {
+      hs.set_resizing_parameters(0.0, grow_threshold);
+    }
     hs.resize(kSize);
     size_t bucket_count = hs.bucket_count();
     // Erase and insert an element to set consider_shrink = true,
     // which should not cause a shrink because the threshold is 0.0.
-    hs.insert(1);
+    insert(&hs, 1);
     hs.erase(1);
     for (int i = 0;; ++i) {
-      hs.insert(i);
+      insert(&hs, i);
       if (static_cast<float>(hs.size())/bucket_count < grow_threshold) {
         CHECK(hs.bucket_count() == bucket_count);
       } else {
@@ -1043,8 +1065,13 @@ static void TestResizingParameters() {
     // Now set a shrink threshold 1% below the current size and remove
     // items until the size falls below that.
     const float shrink_threshold = static_cast<float>(hs.size()) /
-        hs.bucket_count() - 0.01;
-    hs.set_resizing_parameters(shrink_threshold, 1.0);
+        hs.bucket_count() - 0.01f;
+    if (USE_TR1_API) {
+      hs.max_load_factor(1.0);
+      hs.min_load_factor(shrink_threshold);
+    } else {
+      hs.set_resizing_parameters(shrink_threshold, 1.0);
+    }
     bucket_count = hs.bucket_count();
     for (int i = 0;; ++i) {
       hs.erase(i);
@@ -1052,7 +1079,7 @@ static void TestResizingParameters() {
       // value every iteration to trigger the shrink as soon as the
       // threshold is passed.
       hs.erase(i+1);
-      hs.insert(i+1);
+      insert(&hs, i+1);
       if (static_cast<float>(hs.size())/bucket_count > shrink_threshold) {
         CHECK(hs.bucket_count() == bucket_count);
       } else {
@@ -1063,6 +1090,179 @@ static void TestResizingParameters() {
   }
 }
 
+// Tests the some of the tr1-inspired API features.
+template<class HS>
+static void TestTR1API() {
+    HS hs;
+    hs.set_deleted_key(-1);
+    set_empty_key(&hs, -2);
+
+    typename HS::size_type expected_bucknum = hs.bucket(1);
+    insert(&hs, 1);
+    typename HS::size_type bucknum = hs.bucket(1);
+    CHECK(expected_bucknum == bucknum);
+    typename HS::const_local_iterator b = hs.begin(bucknum);
+    typename HS::const_local_iterator e = hs.end(bucknum);
+    CHECK(b != e);
+    CHECK(getintkey(*b) == 1);
+    b++;
+    CHECK(b == e);
+
+    hs.erase(1);
+    bucknum = hs.bucket(1);
+    CHECK(expected_bucknum == bucknum);
+    b = hs.begin(bucknum);
+    e = hs.end(bucknum);
+    CHECK(b == e);
+
+    // For very small sets, the min-bucket-size gets in the way, so
+    // let's make our hash_set bigger.
+    for (int i = 0; i < 10000; i++)
+      insert(&hs, i);
+    float f = hs.load_factor();
+    CHECK(f >= hs.min_load_factor());
+    CHECK(f <= hs.max_load_factor());
+}
+
+class MemUsingKey {
+ public:
+  // TODO(csilvers): nix this when requirement for zero-arg keys goes away
+  MemUsingKey() : data_(new int) {
+    net_allocations_++;
+  }
+  MemUsingKey(int i) : data_(new int(i)) {
+    net_allocations_++;
+  }
+  MemUsingKey(const MemUsingKey& that) : data_(new int(*that.data_)) {
+    net_allocations_++;
+  }
+  ~MemUsingKey() {
+    delete data_;
+    net_allocations_--;
+    CHECK_GE(net_allocations_, 0);
+  }
+  MemUsingKey& operator=(const MemUsingKey& that) {
+    delete data_;
+    data_ = new int(*that.data_);
+    return *this;
+  }
+  struct Hash {
+    size_t operator()(const MemUsingKey& x) const { return *x.data_; }
+  };
+  struct Equal {
+    bool operator()(const MemUsingKey& x, const MemUsingKey& y) const {
+      return *x.data_ == *y.data_;
+    }
+  };
+  static int net_allocations() { return net_allocations_; }
+ private:
+  int* data_;
+  static int net_allocations_;
+};
+
+class MemUsingValue {
+ public:
+  // This also tests that value does not need to have a zero-arg constructor
+  explicit MemUsingValue(const char* data) : data_(NULL) {
+    Strcpy(data);
+  }
+  MemUsingValue(const MemUsingValue& that) : data_(NULL) {
+    Strcpy(that.data_);
+  }
+  ~MemUsingValue() {
+    if (data_) {
+      free(data_);
+      net_allocations_--;
+      CHECK_GE(net_allocations_, 0);
+    }
+  }
+  MemUsingValue& operator=(const MemUsingValue& that) {
+    if (data_) {
+      free(data_);
+      net_allocations_--;
+      CHECK_GE(net_allocations_, 0);
+    }
+    Strcpy(that.data_);
+    return *this;
+  }
+  static int net_allocations() { return net_allocations_; }
+ private:
+  void Strcpy(const char* data) {
+    if (data) {
+      data_ = (char*)malloc(strlen(data) + 1);  // use malloc this time
+      strcpy(data_, data);                      // strdup isn't so portable
+      net_allocations_++;
+    } else {
+      data_ = NULL;
+    }
+  }
+  char* data_;
+  static int net_allocations_;
+};
+
+// TODO(csilvers): nix this when set_empty_key doesn't require zero-arg value
+class MemUsingValueWithZeroArgConstructor : public MemUsingValue {
+ public:
+  MemUsingValueWithZeroArgConstructor(const char* data=NULL)
+      : MemUsingValue(data) { }
+  MemUsingValueWithZeroArgConstructor(
+      const MemUsingValueWithZeroArgConstructor& that)
+      : MemUsingValue(that) { }
+  MemUsingValueWithZeroArgConstructor& operator=(
+      const MemUsingValueWithZeroArgConstructor& that) {
+    *static_cast<MemUsingValue*>(this)
+        = *static_cast<const MemUsingValue*>(&that);
+    return *this;
+  }
+};
+
+int MemUsingKey::net_allocations_ = 0;
+int MemUsingValue::net_allocations_ = 0;
+
+
+void TestMemoryManagement() {
+  MemUsingKey deleted_key(-1);
+  MemUsingKey empty_key(-2);
+
+  {
+    // TODO(csilvers): fix sparsetable to allow missing zero-arg value ctor
+    sparse_hash_map<MemUsingKey, MemUsingValueWithZeroArgConstructor,
+                    MemUsingKey::Hash, MemUsingKey::Equal> ht;
+    ht.set_deleted_key(deleted_key);
+    for (int i = 0; i < 1000; i++) {
+      ht.insert(pair<MemUsingKey,MemUsingValueWithZeroArgConstructor>(
+                    i, MemUsingValueWithZeroArgConstructor("hello!")));
+      ht.erase(i);
+      CHECK_EQ(0, MemUsingValue::net_allocations());
+    }
+  }
+  // Various copies of deleted_key will be hanging around until the
+  // hashtable is destroyed, so it's only safe to do this test now.
+  CHECK_EQ(2, MemUsingKey::net_allocations());  // for deleted+empty_key
+
+  {
+    dense_hash_map<MemUsingKey, MemUsingValueWithZeroArgConstructor,
+                   MemUsingKey::Hash, MemUsingKey::Equal> ht;
+    ht.set_empty_key(empty_key);
+    ht.set_deleted_key(deleted_key);
+    for (int i = 0; i < 1000; i++) {
+      // As long as we have a zero-arg constructor for the value anyway,
+      // use operator[] rather than the more verbose insert().
+      ht[i] = MemUsingValueWithZeroArgConstructor("hello!");
+      ht.erase(i);
+      CHECK_EQ(0, MemUsingValue::net_allocations());
+    }
+  }
+  CHECK_EQ(2, MemUsingKey::net_allocations());  // for deleted+empty_key
+}
+
+template<class Key>
+struct SetKey {
+  void operator()(Key* key, const Key& new_key) const {
+    *key = new_key;
+  }
+};
+
 int main(int argc, char **argv) {
   TestOperatorEquals();
 
@@ -1072,49 +1272,58 @@ int main(int argc, char **argv) {
 
   // First try with the low-level hashtable interface
   LOGF << "\n\nTEST WITH DENSE_HASHTABLE\n\n";
-  test<dense_hashtable<char *, char *, SPARSEHASH_HASH<const char *>,
-                       Identity<char *>, strcmp_fnc, allocator<char *> >,
+  test<dense_hashtable<char *, char *, CharStarHash,
+                       Identity<char *>, SetKey<char *>, strcmp_fnc,
+		       allocator<char *> >,
        dense_hashtable<string, string, StrHash,
-                       Identity<string>, equal_to<string>, allocator<string> >,
+                       Identity<string>, SetKey<string>,
+		       equal_to<string>,
+		       allocator<string> >,
        dense_hashtable<int, int, SPARSEHASH_HASH<int>,
-                       Identity<int>, equal_to<int>, allocator<int> > >(
+                       Identity<int>, SetKey<int>, equal_to<int>,
+		       allocator<int> > >(
                          false);
 
   // Now try with hash_set, which should be equivalent
   LOGF << "\n\nTEST WITH DENSE_HASH_SET\n\n";
-  test<dense_hash_set<char *, SPARSEHASH_HASH<const char *>, strcmp_fnc>,
+  test<dense_hash_set<char *, CharStarHash, strcmp_fnc>,
        dense_hash_set<string, StrHash>,
        dense_hash_set<int> >(false);
 
-  TestResizingParameters<dense_hash_set<int> >();
+  TestResizingParameters<dense_hash_set<int>, true>();    // use tr1 API
+  TestResizingParameters<dense_hash_set<int>, false>();   // use older API
 
   // Now try with hash_map, which differs only in insert()
   LOGF << "\n\nTEST WITH DENSE_HASH_MAP\n\n";
-  test<dense_hash_map<char *, int, SPARSEHASH_HASH<const char *>, strcmp_fnc>,
+  test<dense_hash_map<char *, int, CharStarHash, strcmp_fnc>,
        dense_hash_map<string, int, StrHash>,
        dense_hash_map<int, int> >(false);
 
   // First try with the low-level hashtable interface
   LOGF << "\n\nTEST WITH SPARSE_HASHTABLE\n\n";
-  test<sparse_hashtable<char *, char *, SPARSEHASH_HASH<const char *>,
-                       Identity<char *>, strcmp_fnc, allocator<char *> >,
+  test<sparse_hashtable<char *, char *, CharStarHash,
+                       Identity<char *>, SetKey<char *>, strcmp_fnc,
+		       allocator<char *> >,
        sparse_hashtable<string, string, StrHash,
-                       Identity<string>, equal_to<string>, allocator<string> >,
+                       Identity<string>, SetKey<string>, equal_to<string>,
+		       allocator<string> >,
        sparse_hashtable<int, int, SPARSEHASH_HASH<int>,
-                       Identity<int>, equal_to<int>, allocator<int> > >(
+                       Identity<int>, SetKey<int>, equal_to<int>,
+		       allocator<int> > >(
                          true);
 
   // Now try with hash_set, which should be equivalent
   LOGF << "\n\nTEST WITH SPARSE_HASH_SET\n\n";
-  test<sparse_hash_set<char *, SPARSEHASH_HASH<const char *>, strcmp_fnc>,
+  test<sparse_hash_set<char *, CharStarHash, strcmp_fnc>,
        sparse_hash_set<string, StrHash>,
        sparse_hash_set<int> >(true);
 
-  TestResizingParameters<sparse_hash_set<int> >();
+  TestResizingParameters<sparse_hash_set<int>, true>();
+  TestResizingParameters<sparse_hash_set<int>, false>();
 
   // Now try with hash_map, which differs only in insert()
   LOGF << "\n\nTEST WITH SPARSE_HASH_MAP\n\n";
-  test<sparse_hash_map<char *, int, SPARSEHASH_HASH<const char *>, strcmp_fnc>,
+  test<sparse_hash_map<char *, int, CharStarHash, strcmp_fnc>,
        sparse_hash_map<string, int, StrHash>,
        sparse_hash_map<int, int> >(true);
 
@@ -1131,6 +1340,16 @@ int main(int argc, char **argv) {
   LOGF << "\n\nTesting hashers and key_equals\n";
   TestHashes();
   TestMaps();
+
+  LOGF << "\n\nTesting tr1 API\n";
+  TestTR1API<sparse_hash_map<int, int> >();
+  TestTR1API<dense_hash_map<int, int> >();
+  TestTR1API<sparse_hash_set<int> >();
+  TestTR1API<dense_hash_set<int> >();
+
+  // Test memory management when the keys and values are non-trivial
+  LOGF << "\n\nTesting memory management\n";
+  TestMemoryManagement();
 
   LOGF << "\nAll tests pass.\n";
   return 0;

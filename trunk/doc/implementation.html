@@ -125,6 +125,8 @@ iterate over the various group vectors.</p>
 
 <p>The space overhead for an sparsetable of size N is N + 48N/M bits.
 For the default value of M, this is exactly 2 bits per array entry.
+(That's for 32-bit pointers; for machines with 64-bit pointers, it's N
++ 80N/M bits, or 2.67 bits per entry.)
 A larger M would use less overhead -- approaching 1 bit per array
 entry -- but take longer for inserts, deletes, and lookups.  A smaller
 M would use more overhead but make operations somewhat faster.</p>

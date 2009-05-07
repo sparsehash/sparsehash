@@ -838,6 +838,14 @@ class sparsegroup {
   }
 
   // TODO(csilvers): make protected + friend
+  // This is used by sparse_hashtable to get an element from the table
+  // when we know it exists.
+  const_reference unsafe_get(size_type i) const {
+    assert(bmtest(i));
+    return group[pos_to_offset(bitmap, i)];
+  }
+
+  // TODO(csilvers): make protected + friend
   reference mutating_get(size_type i) {    // fills bucket i before getting
     if ( !bmtest(i) )
       set(i, default_value());
@@ -1226,6 +1234,15 @@ class sparsetable {
   const_reference get(size_type i) const {
     assert(i < table_size);
     return which_group(i).get(pos_in_group(i));
+  }
+
+  // TODO(csilvers): make protected + friend
+  // This is used by sparse_hashtable to get an element from the table
+  // when we know it exists (because the caller has called test(i)).
+  const_reference unsafe_get(size_type i) const {
+    assert(i < table_size);
+    assert(test(i));
+    return which_group(i).unsafe_get(pos_in_group(i));
   }
 
   // TODO(csilvers): make protected + friend element_adaptor

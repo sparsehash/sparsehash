@@ -1,6 +1,7 @@
 <HTML>
 <!-- The API of this class and the documentation -- but not the
-     implementation! -- are based on that for SGI's hash_map class:
+     implementation! -- are based on that for SGI's hash_map class,
+     augmented with tr1 support.
   -->
 <!--
   -- Copyright (c) 1996-1999
@@ -131,7 +132,8 @@ int main()
 <h3>Definition</h3>
 
 Defined in the header <A href="dense_hash_map">dense_hash_map</A>.
-This class is not part of the C++ standard.
+This class is not part of the C++ standard, though it is mostly
+compatible with the tr1 class <code>unordered_map</code>.
 
 
 <h3>Template parameters</h3>
@@ -158,7 +160,7 @@ This class is not part of the C++ standard.
 </TD>
 <TD VAlign=top>
    The hash_map's data type.  This is also defined as
-   <tt>dense_hash_map::data_type</tt>.
+   <tt>dense_hash_map::data_type</tt>. <A href="#1">[7]</A>
 </TD>
 <TD VAlign=top>
    &nbsp;
@@ -202,10 +204,9 @@ This class is not part of the C++ standard.
 </TD>
 <TD VAlign=top>
    <b>Ignored</b>; this is included only for API-compatibility
-   with SGI's STL implementation.
+   with SGI's (and tr1's) STL implementation.
 </TD>
 <TD VAlign=top>
-    <tt><A href="http://www.sgi.com/tech/stl/Allocators.html">alloc</A></tt>
 </TD>
 </TR>
 
@@ -318,6 +319,18 @@ None.
 
 <TR>
 <TD VAlign=top>
+   <tt>allocator_type</tt>
+</TD>
+<TD VAlign=top>
+    <tt>Unordered Associative Container</tt> (tr1)
+</TD>
+<TD VAlign=top>
+   The type of the Allocator given as a template parameter.
+</TD>
+</TR>
+
+<TR>
+<TD VAlign=top>
    <tt>pointer</tt>
 </TD>
 <TD VAlign=top>
@@ -403,6 +416,32 @@ None.
 
 <TR>
 <TD VAlign=top>
+   <tt>local_iterator</tt>
+</TD>
+<TD VAlign=top>
+   <tt>Unordered Associative Container</tt> (tr1)
+</TD>
+<TD VAlign=top>
+   Iterator used to iterate through a subset of
+   <tt>dense_hash_map</tt>. <A href="#1">[1]</A>
+</TD>
+</TR>
+
+<TR>
+<TD VAlign=top>
+   <tt>const_local_iterator</tt>
+</TD>
+<TD VAlign=top>
+   <tt>Unordered Associative Container</tt> (tr1)
+</TD>
+<TD VAlign=top>
+   Const iterator used to iterate through a subset of
+   <tt>dense_hash_map</tt>.
+</TD>
+</TR>
+
+<TR>
+<TD VAlign=top>
    <tt>iterator begin()</tt>
 </TD>
 <TD VAlign=top>
@@ -450,6 +489,60 @@ None.
 <TD VAlign=top>
    Returns an <tt>const_iterator</tt> pointing to the end of the
    <tt>dense_hash_map</tt>.
+</TD>
+</TR>
+
+<TR>
+<TD VAlign=top>
+   <tt>local_iterator begin(size_type i)</tt>
+</TD>
+<TD VAlign=top>
+   <tt>Unordered Associative Container</tt> (tr1)
+</TD>
+<TD VAlign=top>
+   Returns a <tt>local_iterator</tt> pointing to the beginning of bucket
+   <tt>i</tt> in the <tt>dense_hash_map</tt>.
+</TD>
+</TR>
+
+<TR>
+<TD VAlign=top>
+   <tt>local_iterator end(size_type i)</tt>
+</TD>
+<TD VAlign=top>
+   <tt>Unordered Associative Container</tt> (tr1)
+</TD>
+<TD VAlign=top>
+   Returns a <tt>local_iterator</tt> pointing to the end of bucket
+   <tt>i</tt> in the <tt>dense_hash_map</tt>.  For
+   <tt>dense_hash_map</tt>, each bucket contains either 0 or 1 item.
+</TD>
+</TR>
+
+<TR>
+<TD VAlign=top>
+   <tt>const_local_iterator begin(size_type i) const</tt>
+</TD>
+<TD VAlign=top>
+   <tt>Unordered Associative Container</tt> (tr1)
+</TD>
+<TD VAlign=top>
+   Returns a <tt>const_local_iterator</tt> pointing to the beginning of bucket
+   <tt>i</tt> in the <tt>dense_hash_map</tt>.
+</TD>
+</TR>
+
+<TR>
+<TD VAlign=top>
+   <tt>const_local_iterator end(size_type i) const</tt>
+</TD>
+<TD VAlign=top>
+   <tt>Unordered Associative Container</tt> (tr1)
+</TD>
+<TD VAlign=top>
+   Returns a <tt>const_local_iterator</tt> pointing to the end of bucket
+   <tt>i</tt> in the <tt>dense_hash_map</tt>.  For
+   <tt>dense_hash_map</tt>, each bucket contains either 0 or 1 item.
 </TD>
 </TR>
 
@@ -519,16 +612,95 @@ None.
 
 <TR>
 <TD VAlign=top>
-   <tt>void resize(size_type n)</tt>
+   <tt>size_type bucket_size(size_type i) const</tt>
 </TD>
 <TD VAlign=top>
-    <A
-    href="http://www.sgi.com/tech/stl/HashedAssociativeContainer.html">Hashed
-    Associative Container</A>
+   <tt>Unordered Associative Container</tt> (tr1)
 </TD>
 <TD VAlign=top>
-   Increases the bucket count to at least <tt>n</tt>.
-   <A href="#4">[4]</A>
+   Returns the number of elements in bucket <tt>i</tt>.  For
+   <tt>dense_hash_map</tt>, this will be either 0 or 1.
+</TD>
+</TR>
+
+<TR>
+<TD VAlign=top>
+   <tt>size_type bucket(const key_type& key) const</tt>
+</TD>
+<TD VAlign=top>
+   <tt>Unordered Associative Container</tt> (tr1)
+</TD>
+<TD VAlign=top>
+   If the key exists in the map, returns the index of the bucket
+   containing the given key, otherwise, return the bucket the key
+   would be inserted into.
+   This value may be passed to <tt>begin(size_type)</tt> and
+   <tt>end(size_type)</tt>.
+</TD>
+</TR>
+
+<TR>
+<TD VAlign=top>
+   <tt>float load_factor() const</tt>
+</TD>
+<TD VAlign=top>
+   <tt>Unordered Associative Container</tt> (tr1)
+</TD>
+<TD VAlign=top>
+   The number of elements in the <tt>dense_hash_map</tt> divided by
+   the number of buckets.
+</TD>
+</TR>
+
+<TR>
+<TD VAlign=top>
+   <tt>float max_load_factor() const</tt>
+</TD>
+<TD VAlign=top>
+   <tt>Unordered Associative Container</tt> (tr1)
+</TD>
+<TD VAlign=top>
+   The maximum load factor before increasing the number of buckets in
+   the <tt>dense_hash_map</tt>.
+</TD>
+</TR>
+
+<TR>
+<TD VAlign=top>
+   <tt>float max_load_factor(size_t new_grow)</tt>
+</TD>
+<TD VAlign=top>
+   <tt>Unordered Associative Container</tt> (tr1)
+</TD>
+<TD VAlign=top>
+   Sets the maximum load factor before increasing the number of
+   buckets in the <tt>dense_hash_map</tt>.
+</TD>
+</TR>
+
+<TR>
+<TD VAlign=top>
+   <tt>float min_load_factor() const</tt>
+</TD>
+<TD VAlign=top>
+   <tt>dense_hash_map</tt>
+</TD>
+<TD VAlign=top>
+   The minimum load factor before decreasing the number of buckets in
+   the <tt>dense_hash_map</tt>.
+</TD>
+</TR>
+
+<TR>
+<TD VAlign=top>
+   <tt>float min_load_factor(size_t new_grow)</tt>
+</TD>
+<TD VAlign=top>
+   <tt>dense_hash_map</tt>
+</TD>
+<TD VAlign=top>
+   Sets the minimum load factor before decreasing the number of
+   buckets in the <tt>dense_hash_map</tt>.
 </TD>
 </TR>
 
@@ -540,7 +712,36 @@ None.
    <tt>dense_hash_map</tt>
 </TD>
 <TD VAlign=top>
-   <A HREF="#new">See below</A>.
+   DEPRECATED.  <A HREF="#new">See below</A>.
+</TD>
+</TR>
+
+<TR>
+<TD VAlign=top>
+   <tt>void resize(size_type n)</tt>
+</TD>
+<TD VAlign=top>
+    <A
+    href="http://www.sgi.com/tech/stl/HashedAssociativeContainer.html">Hashed
+    Associative Container</A>
+</TD>
+<TD VAlign=top>
+   Increases the bucket count to hold at least <tt>n</tt> items.
+   <A href="#4">[4]</A>  <A href="#5">[5]</A>
+</TD>
+</TR>
+
+<TR>
+<TD VAlign=top>
+   <tt>void rehash(size_type n)</tt>
+</TD>
+<TD VAlign=top>
+    <tt>Unordered Associative Container</tt> (tr1)
+</TD>
+<TD VAlign=top>
+   Increases the bucket count to hold at least <tt>n</tt> items.
+   This is identical to <tt>resize</tt>.
+   <A href="#4">[4]</A>  <A href="#5">[5]</A>
 </TD>
 </TR>
 
@@ -555,6 +756,19 @@ None.
 </TD>
 <TD VAlign=top>
    Returns the <tt>hasher</tt> object used by the <tt>dense_hash_map</tt>.
+</TD>
+</TR>
+
+<TR>
+<TD VAlign=top>
+   <tt>hasher hash_function() const</tt>
+</TD>
+<TD VAlign=top>
+   <tt>Unordered Associative Container</tt> (tr1)
+</TD>
+<TD VAlign=top>
+   Returns the <tt>hasher</tt> object used by the <tt>dense_hash_map</tt>.
+   This is idential to <tt>hash_funct</tt>.
 </TD>
 </TR>
 
@@ -1035,31 +1249,14 @@ key_type&amp; k) </pre>
 
 These members are not defined in the <A
 href="http://www.sgi.com/tech/stl/UniqueHashedAssociativeContainer.html">Unique
-Hashed Associative Container</A> and <A
+Hashed Associative Container</A>, <A
 href="http://www.sgi.com/tech/stl/PairAssociativeContainer.html">Pair
-Associative Container</A> requirements, but are specific to
+Associative Container</A>, or tr1's +<tt>Unordered Associative
+Container</tt> requirements, but are specific to
 <tt>dense_hash_map</tt>.
 
 <table border>
 <TR><TH>Member</TH><TH>Description</TH></TR>
-
-<TR>
-<TD VAlign=top>
-   <tt>void set_resizing_parameters(float shrink, float grow)</tt>
-</TD>
-<TD VAlign=top>
-   Instructs the <tt>sparse_hash_map</tt> class to halve the internal
-   hashtable size when less than <tt>shrink</tt> fraction of buckets
-   are occupied, and to double the hashtable size when more than
-   <tt>grow</tt> fraction of buckets are occupied.  <tt>shrink</tt>
-   and <tt>grow</tt> must be between <tt>0</tt> and <tt>1</tt>; to
-   avoid ping-ponging, <tt>shrink</tt> must be less than half of
-   <tt>grow</tt>.  If you set <tt>shrink</tt> to 0, the hashtable will
-   never resize smaller, no matter how many buckets are unoccupied.
-   By default, <tt>shrink</tt> is <tt>0.32</tt> and <tt>grow</tt> is
-   <tt>0.8</tt>.
-</TD>
-</TR>
 
 <TR>
 <TD VAlign=top>
@@ -1121,6 +1318,15 @@ href="http://www.sgi.com/tech/stl/#3">[3]</A>
    contain such an object, <tt>operator[]</tt> inserts the default
    object <tt>data_type()</tt>. <A
    href="http://www.sgi.com/tech/stl/#3">[3]</A>
+</TD>
+</TR>
+
+<TD VAlign=top>
+   <tt>void set_resizing_parameters(float shrink, float grow)</tt>
+</TD>
+<TD VAlign=top>
+   This function is DEPRECATED.  It is equivalent to calling
+   <tt>min_load_factor(shrink); max_load_factor(grow)</tt>.
 </TD>
 </TR>
 
@@ -1209,18 +1415,19 @@ required.  At a cost of invalidating all current iterators, you can
 call <tt>resize()</tt> to manually compact the hashtable.  The
 hashtable promotes too-small <tt>resize()</tt> arguments to the
 smallest legal value, so to compact a hashtable, it's sufficient to
-call <tt>resize(0)</tt>.
+call <tt>resize(0)</tt>.</p>
 
 <P><A name="5">[5]</A>
 
 Unlike some other hashtable implementations, the optional <i>n</i> in
-the constructor size indicates not the desired number of buckets that
+the calls to the constructor, <tt>resize</tt>, and <tt>rehash</tt>
+indicates not the desired number of buckets that
 should be allocated, but instead the expected number of items to be
 inserted.  The class then sizes the hash-map appropriately for the
 number of items specified.  It's not an error to actually insert more
 or fewer items into the hashtable, but the implementation is most
 efficient -- does the fewest hashtable resizes -- if the number of
-inserted items is close to <i>n</i>.</p>
+inserted items is <i>n</i> or slightly less.</p>
 
 <P><A name="6">[6]</A>
 
@@ -1253,6 +1460,26 @@ wish to call <tt>erase()</tt> on the hash-map.</p>
 <tt>clear_deleted_key()</tt>, at which point all keys become valid for
 insertion but no hashtable entries can be deleted until
 <tt>set_deleted_key()</tt> is called again.</p>
+
+<P><A name="7">[7]</A>
+
+<tt>dense_hash_map</tt> <b>requires</b> that <tt>data_type</tt> has a
+zero-argument default constructor.  This is because
+<tt>dense_hash_map</tt> uses the special value <tt>pair(empty_key,
+data_type())</tt> to denote empty buckets, and thus needs to be able
+to create <tt>data_type</tt> using a zero-argument constructor.</p>
+
+<p>If your <tt>data_type</tt> does not have a zero-argument default
+constructor, there are several workarounds:</p>
+<ul>
+  <li> Store a pointer to <tt>data_type</tt> in the map, instead of
+       <tt>data_type</tt> directly.  This may yield faster code as
+       well, since hashtable-resizes will just have to move pointers
+       around, rather than copying the entire <tt>data_type</tt>.
+  <li> Add a zero-argument default constructor to <tt>data_type</tt>.
+  <li> Subclass <tt>data_type</tt> and add a zero-argument default
+       constructor to the subclass.
+</ul>
 
 
 <h3><A NAME=io>Input/Output</A></h3>
@@ -1356,8 +1583,8 @@ classes related to <tt>dense_hash_map</tt>.</p>
 <tt><A href="http://www.sgi.com/tech/stl/hash_set.html">hash_set</A></tt>, 
 <tt><A href="http://www.sgi.com/tech/stl/hash_multiset.html">hash_multiset</A></tt>,
 <tt><A href="http://www.sgi.com/tech/stl/hash_multimap.html">hash_multimap</A></tt>,
-<tt><A href="sparse_hash_set.html">sparse_hash_set</A></tt>,
 <tt><A href="sparse_hash_map.html">sparse_hash_map</A></tt>,
+<tt><A href="sparse_hash_set.html">sparse_hash_set</A></tt>,
 <tt><A href="dense_hash_set.html">dense_hash_set</A></tt>
 
 </BODY>

@@ -45,27 +45,27 @@
 //
 //    1) set_deleted_key():
 //         Unlike STL's hash_map, if you want to use erase() you
-//         must call set_deleted_key() after construction.
+//         *must* call set_deleted_key() after construction.
 //
 //    2) resize(0):
 //         When an item is deleted, its memory isn't freed right
 //         away.  This is what allows you to iterate over a hashtable
 //         and call erase() without invalidating the iterator.
 //         To force the memory to be freed, call resize(0).
+//         For tr1 compatibility, this can also be called as rehash(0).
 //
-//    3) set_resizing_parameters(0.0, 0.8):
-//         Setting the shrink_resize_percent to 0.0 guarantees
-//         that the hash table will never shrink.
+//    3) min_load_factor(0.0)
+//         Setting the minimum load factor to 0.0 guarantees that
+//         the hash table will never shrink.
 //
 // Guide to what kind of hash_map to use:
 //   (1) dense_hash_map: fastest, uses the most memory
 //   (2) sparse_hash_map: slowest, uses the least memory
-//   (3) hash_map (STL): in the middle
+//   (3) hash_map / unordered_map (STL): in the middle
 // Typically I use sparse_hash_map when I care about space and/or when
 // I need to save the hashtable on disk.  I use hash_map otherwise.  I
-// don't personally use dense_hash_map ever; the only use of
-// dense_hash_map I know of is to work around malloc() bugs in some
-// systems (dense_hash_map has a particularly simple allocation scheme).
+// don't personally use dense_hash_map ever; some people use it for
+// small maps with lots of lookups.
 //
 // - dense_hash_map has, typically, a factor of 2 memory overhead (if your
 //   data takes up X bytes, the hash_map uses X more bytes in overhead).
@@ -73,7 +73,7 @@
 // - sparse_hash_map can be 3-7 times slower than the others for lookup and,
 //   especially, inserts.  See time_hash_map.cc for details.
 //
-// See /usr/(local/)?doc/sparsehash-0.1/sparse_hash_map.html
+// See /usr/(local/)?doc/sparsehash-*/sparse_hash_map.html
 // for information about how to use this class.
 
 #ifndef _SPARSE_HASH_MAP_H_
@@ -105,10 +105,19 @@ class sparse_hash_map {
       return p.first;
     }
   };
+  struct SetKey {
+    void operator()(pair<const Key, T>* value, const Key& new_key) const {
+      *const_cast<Key*>(&value->first) = new_key;
+      // It would be nice to clear the rest of value here as well, in
+      // case it's taking up a lot of memory.  We do this by clearing
+      // the value.  This assumes T has a zero-arg constructor!
+      value->second = T();
+    }
+  };
 
   // The actual data
   typedef sparse_hashtable<pair<const Key, T>, Key, HashFcn,
-                           SelectKey, EqualKey, Alloc> ht;
+                           SelectKey, SetKey, EqualKey, Alloc> ht;
   ht rep;
 
  public:
@@ -118,6 +127,7 @@ class sparse_hash_map {
   typedef typename ht::value_type value_type;
   typedef typename ht::hasher hasher;
   typedef typename ht::key_equal key_equal;
+  typedef Alloc allocator_type;
 
   typedef typename ht::size_type size_type;
   typedef typename ht::difference_type difference_type;
@@ -128,17 +138,26 @@ class sparse_hash_map {
 
   typedef typename ht::iterator iterator;
   typedef typename ht::const_iterator const_iterator;
+  typedef typename ht::local_iterator local_iterator;
+  typedef typename ht::const_local_iterator const_local_iterator;
 
   // Iterator functions
-  iterator begin()                    { return rep.begin(); }
-  iterator end()                      { return rep.end(); }
-  const_iterator begin() const        { return rep.begin(); }
-  const_iterator end() const          { return rep.end(); }
+  iterator begin()                               { return rep.begin(); }
+  iterator end()                                 { return rep.end(); }
+  const_iterator begin() const                   { return rep.begin(); }
+  const_iterator end() const                     { return rep.end(); }
 
+  // These come from tr1's unordered_map. For us, a bucket has 0 or 1 elements.
+  local_iterator begin(size_type i)              { return rep.begin(i); }
+  local_iterator end(size_type i)                { return rep.end(i); }
+  const_local_iterator begin(size_type i) const  { return rep.begin(i); }
+  const_local_iterator end(size_type i) const    { return rep.end(i); }
 
   // Accessor functions
-  hasher hash_funct() const { return rep.hash_funct(); }
-  key_equal key_eq() const  { return rep.key_eq(); }
+  // TODO(csilvers): implement Alloc get_allocator() const;
+  hasher hash_funct() const                      { return rep.hash_funct(); }
+  hasher hash_function() const                   { return hash_funct(); }
+  key_equal key_eq() const                       { return rep.key_eq(); }
 
 
   // Constructors
@@ -170,11 +189,40 @@ class sparse_hash_map {
   size_type bucket_count() const      { return rep.bucket_count(); }
   size_type max_bucket_count() const  { return rep.max_bucket_count(); }
 
-  void resize(size_type hint)         { rep.resize(hint); }
-
+  // These are tr1 methods.  bucket() is the bucket the key is or would be in.
+  size_type bucket_size(size_type i) const    { return rep.bucket_size(i); }
+  size_type bucket(const key_type& key) const { return rep.bucket(key); }
+  float load_factor() const {
+    return size() * 1.0f / bucket_count();
+  }
+  float max_load_factor() const {
+    float shrink, grow;
+    rep.get_resizing_parameters(&shrink, &grow);
+    return grow;
+  }
+  void max_load_factor(float new_grow) {
+    float shrink, grow;
+    rep.get_resizing_parameters(&shrink, &grow);
+    rep.set_resizing_parameters(shrink, new_grow);
+  }
+  // These aren't tr1 methods but perhaps ought to be.
+  float min_load_factor() const {
+    float shrink, grow;
+    rep.get_resizing_parameters(&shrink, &grow);
+    return shrink;
+  }
+  void min_load_factor(float new_shrink) {
+    float shrink, grow;
+    rep.get_resizing_parameters(&shrink, &grow);
+    rep.set_resizing_parameters(new_shrink, grow);
+  }
+  // Deprecated; use min_load_factor() or max_load_factor() instead.
   void set_resizing_parameters(float shrink, float grow) {
     return rep.set_resizing_parameters(shrink, grow);
   }
+
+  void resize(size_type hint)         { rep.resize(hint); }
+  void rehash(size_type hint)         { resize(hint); }      // the tr1 name
 
   // Lookup routines
   iterator find(const key_type& key)                 { return rep.find(key); }
@@ -212,7 +260,7 @@ class sparse_hash_map {
   // value to identify deleted buckets.  You can change the key as
   // time goes on, or get rid of it entirely to be insert-only.
   void set_deleted_key(const key_type& key)   {
-    rep.set_deleted_key(value_type(key, data_type()));  // rep wants a value
+    rep.set_deleted_key(key);
   }
   void clear_deleted_key()                    { rep.clear_deleted_key(); }
 

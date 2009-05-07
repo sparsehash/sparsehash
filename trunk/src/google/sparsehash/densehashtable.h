@@ -97,9 +97,6 @@
 #define JUMP_(key, num_probes)    ( num_probes )
 
 
-// Hashtable class, used to implement the hashed associative containers
-// hash_set and hash_map.
-
 #include <google/sparsehash/sparseconfig.h>
 #include <assert.h>
 #include <stdio.h>
@@ -115,22 +112,37 @@ _START_GOOGLE_NAMESPACE_
 
 using STL_NAMESPACE::pair;
 
+// Hashtable class, used to implement the hashed associative containers
+// hash_set and hash_map.
+
+// Value: what is stored in the table (each bucket is a Value).
+// Key: something in a 1-to-1 correspondence to a Value, that can be used
+//      to search for a Value in the table (find() takes a Key).
+// HashFcn: Takes a Key and returns an integer, the more unique the better.
+// ExtractKey: given a Value, returns the unique Key associated with it.
+// SetKey: given a Value* and a Key, modifies the value such that
+//         ExtractKey(value) == key.  We guarantee this is only called
+//         with key == deleted_key or key == empty_key.
+// EqualKey: Given two Keys, says whether they are the same (that is,
+//           if they are both associated with the same Value).
+// Alloc: STL allocator to use to allocate memory.  Currently ignored.
+
 template <class Value, class Key, class HashFcn,
-          class ExtractKey, class EqualKey, class Alloc>
+          class ExtractKey, class SetKey, class EqualKey, class Alloc>
 class dense_hashtable;
 
-template <class V, class K, class HF, class ExK, class EqK, class A>
+template <class V, class K, class HF, class ExK, class SetK, class EqK, class A>
 struct dense_hashtable_iterator;
 
-template <class V, class K, class HF, class ExK, class EqK, class A>
+template <class V, class K, class HF, class ExK, class SetK, class EqK, class A>
 struct dense_hashtable_const_iterator;
 
 // We're just an array, but we need to skip over empty and deleted elements
-template <class V, class K, class HF, class ExK, class EqK, class A>
+template <class V, class K, class HF, class ExK, class SetK, class EqK, class A>
 struct dense_hashtable_iterator {
  public:
-  typedef dense_hashtable_iterator<V,K,HF,ExK,EqK,A>       iterator;
-  typedef dense_hashtable_const_iterator<V,K,HF,ExK,EqK,A> const_iterator;
+  typedef dense_hashtable_iterator<V,K,HF,ExK,SetK,EqK,A>       iterator;
+  typedef dense_hashtable_const_iterator<V,K,HF,ExK,SetK,EqK,A> const_iterator;
 
   typedef STL_NAMESPACE::forward_iterator_tag iterator_category;
   typedef V value_type;
@@ -140,7 +152,7 @@ struct dense_hashtable_iterator {
   typedef V* pointer;
 
   // "Real" constructor and default constructor
-  dense_hashtable_iterator(const dense_hashtable<V,K,HF,ExK,EqK,A> *h,
+  dense_hashtable_iterator(const dense_hashtable<V,K,HF,ExK,SetK,EqK,A> *h,
                            pointer it, pointer it_end, bool advance)
     : ht(h), pos(it), end(it_end)   {
     if (advance)  advance_past_empty_and_deleted();
@@ -170,17 +182,17 @@ struct dense_hashtable_iterator {
 
 
   // The actual data
-  const dense_hashtable<V,K,HF,ExK,EqK,A> *ht;
+  const dense_hashtable<V,K,HF,ExK,SetK,EqK,A> *ht;
   pointer pos, end;
 };
 
 
 // Now do it all again, but with const-ness!
-template <class V, class K, class HF, class ExK, class EqK, class A>
+template <class V, class K, class HF, class ExK, class SetK, class EqK, class A>
 struct dense_hashtable_const_iterator {
  public:
-  typedef dense_hashtable_iterator<V,K,HF,ExK,EqK,A>       iterator;
-  typedef dense_hashtable_const_iterator<V,K,HF,ExK,EqK,A> const_iterator;
+  typedef dense_hashtable_iterator<V,K,HF,ExK,SetK,EqK,A>       iterator;
+  typedef dense_hashtable_const_iterator<V,K,HF,ExK,SetK,EqK,A> const_iterator;
 
   typedef STL_NAMESPACE::forward_iterator_tag iterator_category;
   typedef V value_type;
@@ -190,8 +202,9 @@ struct dense_hashtable_const_iterator {
   typedef const V* pointer;
 
   // "Real" constructor and default constructor
-  dense_hashtable_const_iterator(const dense_hashtable<V,K,HF,ExK,EqK,A> *h,
-                                 pointer it, pointer it_end, bool advance)
+  dense_hashtable_const_iterator(
+      const dense_hashtable<V,K,HF,ExK,SetK,EqK,A> *h,
+      pointer it, pointer it_end, bool advance)
     : ht(h), pos(it), end(it_end)   {
     if (advance)  advance_past_empty_and_deleted();
   }
@@ -223,12 +236,12 @@ struct dense_hashtable_const_iterator {
 
 
   // The actual data
-  const dense_hashtable<V,K,HF,ExK,EqK,A> *ht;
+  const dense_hashtable<V,K,HF,ExK,SetK,EqK,A> *ht;
   pointer pos, end;
 };
 
 template <class Value, class Key, class HashFcn,
-          class ExtractKey, class EqualKey, class Alloc>
+          class ExtractKey, class SetKey, class EqualKey, class Alloc>
 class dense_hashtable {
  public:
   typedef Key key_type;
@@ -243,18 +256,23 @@ class dense_hashtable {
   typedef value_type&       reference;
   typedef const value_type& const_reference;
   typedef dense_hashtable_iterator<Value, Key, HashFcn,
-                                   ExtractKey, EqualKey, Alloc>
+                                   ExtractKey, SetKey, EqualKey, Alloc>
   iterator;
 
   typedef dense_hashtable_const_iterator<Value, Key, HashFcn,
-                                          ExtractKey, EqualKey, Alloc>
+                                         ExtractKey, SetKey, EqualKey, Alloc>
   const_iterator;
 
-  // How full we let the table get before we resize.  Knuth says .8 is
-  // good -- higher causes us to probe too much, though saves memory
-  static const float HT_OCCUPANCY_FLT; // = 0.8;
+  // These come from tr1.  For us they're the same as regular iterators.
+  typedef iterator local_iterator;
+  typedef const_iterator const_local_iterator;
 
-  // How empty we let the table get before we resize lower.
+  // How full we let the table get before we resize, by default.
+  // Knuth says .8 is good -- higher causes us to probe too much,
+  // though it saves memory.
+  static const float HT_OCCUPANCY_FLT; // = 0.5;
+
+  // How empty we let the table get before we resize lower, by default.
   // (0.0 means never resize lower.)
   // It should be less than OCCUPANCY_FLT / 2 or we thrash resizing
   static const float HT_EMPTY_FLT; // = 0.4 * HT_OCCUPANCY_FLT
@@ -281,15 +299,39 @@ class dense_hashtable {
   const_iterator end() const   { return const_iterator(this, table + num_buckets,
                                                        table+num_buckets,true);}
 
+  // These come from tr1 unordered_map.  They iterate over 'bucket' n.
+  // For sparsehashtable, we could consider each 'group' to be a bucket,
+  // I guess, but I don't really see the point.  We'll just consider
+  // bucket n to be the n-th element of the sparsetable, if it's occupied,
+  // or some empty element, otherwise.
+  local_iterator begin(size_type i) {
+    return local_iterator(this, table + i, table + i+1, false);
+  }
+  local_iterator end(size_type i) {
+    local_iterator it = begin(i);
+    if (!test_empty(i) && !test_deleted(i))
+      ++it;
+    return it;
+  }
+  const_local_iterator begin(size_type i) const {
+    return const_local_iterator(this, table + i, table + i+1, false);
+  }
+  const_local_iterator end(size_type i) const {
+    const_local_iterator it = begin(i);
+    if (!test_empty(i) && !test_deleted(i))
+      ++it;
+    return it;
+  }
+
   // ACCESSOR FUNCTIONS for the things we templatize on, basically
   hasher hash_funct() const { return hash; }
   key_equal key_eq() const  { return equals; }
 
+ private:
   // Annoyingly, we can't copy values around, because they might have
   // const components (they're probably pair<const X, Y>).  We use
   // explicit destructor invocation and placement new to get around
   // this.  Arg.
- private:
   void set_value(value_type* dst, const value_type& src) {
     dst->~value_type();
     new(dst) value_type(src);
@@ -316,14 +358,14 @@ class dense_hashtable {
   }
 
  public:
-  void set_deleted_key(const value_type &val) {
+  void set_deleted_key(const key_type &key) {
     // the empty indicator (if specified) and the deleted indicator
     // must be different
-    assert(!use_empty || !equals(get_key(val), get_key(emptyval)));
+    assert(!use_empty || !equals(key, get_key(emptyval)));
     // It's only safe to change what "deleted" means if we purge deleted guys
     squash_deleted();
     use_deleted = true;
-    set_value(&delval, val);
+    delkey = key;
   }
   void clear_deleted_key() {
     squash_deleted();
@@ -336,15 +378,15 @@ class dense_hashtable {
     // The num_deleted test is crucial for read(): after read(), the ht values
     // are garbage, and we don't want to think some of them are deleted.
     return (use_deleted && num_deleted > 0 &&
-            equals(get_key(delval), get_key(table[bucknum])));
+            equals(delkey, get_key(table[bucknum])));
   }
   bool test_deleted(const iterator &it) const {
     return (use_deleted && num_deleted > 0 &&
-            equals(get_key(delval), get_key(*it)));
+            equals(delkey, get_key(*it)));
   }
   bool test_deleted(const const_iterator &it) const {
     return (use_deleted && num_deleted > 0 &&
-            equals(get_key(delval), get_key(*it)));
+            equals(delkey, get_key(*it)));
   }
   // Set it so test_deleted is true.  true if object didn't used to be deleted
   // See below (at erase()) to explain why we allow const_iterators
@@ -352,7 +394,7 @@ class dense_hashtable {
     assert(use_deleted);             // bad if set_deleted_key() wasn't called
     bool retval = !test_deleted(it);
     // &* converts from iterator to value-type
-    set_value(const_cast<value_type*>(&(*it)), delval);
+    set_key(const_cast<value_type*>(&(*it)), delkey);
     return retval;
   }
   // Set it so test_deleted is false.  true if object used to be deleted
@@ -408,7 +450,7 @@ class dense_hashtable {
     assert(!use_empty);
     // The deleted indicator (if specified) and the empty indicator
     // must be different.
-    assert(!use_deleted || !equals(get_key(val), get_key(delval)));
+    assert(!use_deleted || !equals(get_key(val), delkey));
     use_empty = true;
     set_value(&emptyval, val);
 
@@ -428,6 +470,13 @@ class dense_hashtable {
   size_type bucket_count() const      { return num_buckets; }
   size_type max_bucket_count() const  { return max_size(); }
   size_type nonempty_bucket_count() const { return num_elements; }
+  // These are tr1 methods.  Their idea of 'bucket' doesn't map well to
+  // what we do.  We just say every bucket has 0 or 1 items in it.
+  size_type bucket_size(size_type i) const {
+    return begin(i) == end(i) ? 0 : 1;
+  }
+
+
 
  private:
   // Because of the above, size_type(-1) is never legal; use it for errors
@@ -564,14 +613,19 @@ class dense_hashtable {
       return resize_delta(req_elements - num_elements);
   }
 
-  // Change the value of shrink_resize_percent and
+  // Get and change the value of shrink_resize_percent and
   // enlarge_resize_percent.  The description at the beginning of this
   // file explains how to choose the values.  Setting the shrink
   // parameter to 0.0 ensures that the table never shrinks.
+  void get_resizing_parameters(float* shrink, float* grow) const {
+    *shrink = shrink_resize_percent;
+    *grow = enlarge_resize_percent;
+  }
   void set_resizing_parameters(float shrink, float grow) {
     assert(shrink >= 0.0);
     assert(grow <= 1.0);
-    assert(shrink <= grow/2.0);
+    if (shrink > grow/2.0f)
+      shrink = grow / 2.0f;     // otherwise we thrash hashtable size
     shrink_resize_percent = shrink;
     enlarge_resize_percent = grow;
     reset_thresholds();
@@ -584,10 +638,11 @@ class dense_hashtable {
   explicit dense_hashtable(size_type expected_max_items_in_table = 0,
                            const HashFcn& hf = HashFcn(),
                            const EqualKey& eql = EqualKey(),
-                           const ExtractKey& ext = ExtractKey())
-    : hash(hf), equals(eql), get_key(ext), num_deleted(0),
+                           const ExtractKey& ext = ExtractKey(),
+                           const SetKey& set = SetKey())
+    : hash(hf), equals(eql), get_key(ext), set_key(set), num_deleted(0),
       use_deleted(false), use_empty(false),
-      delval(), emptyval(), enlarge_resize_percent(HT_OCCUPANCY_FLT),
+      delkey(), emptyval(), enlarge_resize_percent(HT_OCCUPANCY_FLT),
       shrink_resize_percent(HT_EMPTY_FLT), table(NULL),
       num_buckets(expected_max_items_in_table == 0
                   ? HT_DEFAULT_STARTING_BUCKETS
@@ -602,9 +657,10 @@ class dense_hashtable {
   // which lets you make this new hashtable a different size than ht
   dense_hashtable(const dense_hashtable& ht,
                   size_type min_buckets_wanted = HT_DEFAULT_STARTING_BUCKETS)
-    : hash(ht.hash), equals(ht.equals), get_key(ht.get_key), num_deleted(0),
+    : hash(ht.hash), equals(ht.equals),
+      get_key(ht.get_key), set_key(ht.set_key), num_deleted(0),
       use_deleted(ht.use_deleted), use_empty(ht.use_empty),
-      delval(ht.delval), emptyval(ht.emptyval),
+      delkey(ht.delkey), emptyval(ht.emptyval),
       enlarge_resize_percent(ht.enlarge_resize_percent),
       shrink_resize_percent(ht.shrink_resize_percent), table(NULL),
       num_buckets(0), num_elements(0) {
@@ -618,9 +674,10 @@ class dense_hashtable {
     hash = ht.hash;
     equals = ht.equals;
     get_key = ht.get_key;
+    set_key = ht.set_key;
     use_deleted = ht.use_deleted;
     use_empty = ht.use_empty;
-    set_value(&delval, ht.delval);
+    delkey = ht.delkey;
     set_value(&emptyval, ht.emptyval);
     enlarge_resize_percent = ht.enlarge_resize_percent;
     shrink_resize_percent = ht.shrink_resize_percent;
@@ -640,16 +697,13 @@ class dense_hashtable {
     STL_NAMESPACE::swap(hash, ht.hash);
     STL_NAMESPACE::swap(equals, ht.equals);
     STL_NAMESPACE::swap(get_key, ht.get_key);
+    STL_NAMESPACE::swap(set_key, ht.set_key);
     STL_NAMESPACE::swap(num_deleted, ht.num_deleted);
     STL_NAMESPACE::swap(use_deleted, ht.use_deleted);
     STL_NAMESPACE::swap(use_empty, ht.use_empty);
     STL_NAMESPACE::swap(enlarge_resize_percent, ht.enlarge_resize_percent);
     STL_NAMESPACE::swap(shrink_resize_percent, ht.shrink_resize_percent);
-    { value_type tmp;     // for annoying reasons, swap() doesn't work
-      set_value(&tmp, delval);
-      set_value(&delval, ht.delval);
-      set_value(&ht.delval, tmp);
-    }
+    STL_NAMESPACE::swap(delkey, ht.delkey);
     { value_type tmp;     // for annoying reasons, swap() doesn't work
       set_value(&tmp, emptyval);
       set_value(&emptyval, ht.emptyval);
@@ -739,6 +793,13 @@ class dense_hashtable {
       return const_iterator(this, table + pos.first, table+num_buckets, false);
   }
 
+  // This is a tr1 method: the bucket a given key is in, or what bucket
+  // it would be put in, if it were to be inserted.  Shrug.
+  size_type bucket(const key_type& key) const {
+    pair<size_type, size_type> pos = find_position(key);
+    return pos.first == ILLEGAL_BUCKET ? pos.second : pos.first;
+  }
+
   // Counts how many elements have key key.  For maps, it's either 0 or 1.
   size_type count(const key_type &key) const {
     pair<size_type, size_type> pos = find_position(key);
@@ -760,9 +821,9 @@ class dense_hashtable {
  private:
   // If you know *this is big enough to hold obj, use this routine
   pair<iterator, bool> insert_noresize(const value_type& obj) {
-    // First, double-check we're not inserting delval or emptyval
+    // First, double-check we're not inserting delkey or emptyval
     assert(!use_empty || !equals(get_key(obj), get_key(emptyval)));
-    assert(!use_deleted || !equals(get_key(obj), get_key(delval)));
+    assert(!use_deleted || !equals(get_key(obj), delkey));
     const pair<size_type,size_type> pos = find_position(get_key(obj));
     if ( pos.first != ILLEGAL_BUCKET) {      // object was already there
       return pair<iterator,bool>(iterator(this, table + pos.first,
@@ -820,9 +881,9 @@ class dense_hashtable {
 
   // DELETION ROUTINES
   size_type erase(const key_type& key) {
-    // First, double-check we're not trying to erase delval or emptyval
+    // First, double-check we're not trying to erase delkey or emptyval
     assert(!use_empty || !equals(key, get_key(emptyval)));
-    assert(!use_deleted || !equals(key, get_key(delval)));
+    assert(!use_deleted || !equals(key, delkey));
     const_iterator pos = find(key);   // shrug: shouldn't need to be const
     if ( pos != end() ) {
       assert(!test_deleted(pos));  // or find() shouldn't have returned it
@@ -885,7 +946,7 @@ class dense_hashtable {
   //
   // NOTE: These functions are currently TODO.  They've not been implemented.
   bool write_metadata(FILE *fp) {
-    squash_deleted();           // so we don't have to worry about delval
+    squash_deleted();           // so we don't have to worry about delkey
     return false;               // TODO
   }
 
@@ -934,10 +995,12 @@ class dense_hashtable {
   hasher hash;                      // required by hashed_associative_container
   key_equal equals;
   ExtractKey get_key;
+  SetKey set_key;
   size_type num_deleted;        // how many occupied buckets are marked deleted
-  bool use_deleted;                          // false until delval has been set
+  bool use_deleted;                          // false until delkey has been set
   bool use_empty;                          // you must do this before you start
-  value_type delval;                         // which key marks deleted entries
+  // TODO(csilvers): make a pointer, and get rid of use_deleted (benchmark!)
+  key_type delkey;                           // which key marks deleted entries
   value_type emptyval;                        // which key marks unused entries
   float enlarge_resize_percent;                       // how full before resize
   float shrink_resize_percent;                       // how empty before resize
@@ -958,28 +1021,31 @@ class dense_hashtable {
 };
 
 // We need a global swap as well
-template <class V, class K, class HF, class ExK, class EqK, class A>
-inline void swap(dense_hashtable<V,K,HF,ExK,EqK,A> &x,
-                 dense_hashtable<V,K,HF,ExK,EqK,A> &y) {
+template <class V, class K, class HF, class ExK, class SetK, class EqK, class A>
+inline void swap(dense_hashtable<V,K,HF,ExK,SetK,EqK,A> &x,
+                 dense_hashtable<V,K,HF,ExK,SetK,EqK,A> &y) {
   x.swap(y);
 }
 
 #undef JUMP_
 
-template <class V, class K, class HF, class ExK, class EqK, class A>
-const typename dense_hashtable<V,K,HF,ExK,EqK,A>::size_type
-  dense_hashtable<V,K,HF,ExK,EqK,A>::ILLEGAL_BUCKET;
+template <class V, class K, class HF, class ExK, class SetK, class EqK, class A>
+const typename dense_hashtable<V,K,HF,ExK,SetK,EqK,A>::size_type
+dense_hashtable<V,K,HF,ExK,SetK,EqK,A>::ILLEGAL_BUCKET;
 
 // How full we let the table get before we resize.  Knuth says .8 is
-// good -- higher causes us to probe too much, though saves memory
-template <class V, class K, class HF, class ExK, class EqK, class A>
-const float dense_hashtable<V,K,HF,ExK,EqK,A>::HT_OCCUPANCY_FLT = 0.5f;
+// good -- higher causes us to probe too much, though saves memory.
+// However, we go with .5, getting better performance at the cost of
+// more space (a trade-off densehashtable explicitly chooses to make).
+// Feel free to play around with different values, though.
+template <class V, class K, class HF, class ExK, class SetK, class EqK, class A>
+const float dense_hashtable<V,K,HF,ExK,SetK,EqK,A>::HT_OCCUPANCY_FLT = 0.5f;
 
 // How empty we let the table get before we resize lower.
 // It should be less than OCCUPANCY_FLT / 2 or we thrash resizing
-template <class V, class K, class HF, class ExK, class EqK, class A>
-const float dense_hashtable<V,K,HF,ExK,EqK,A>::HT_EMPTY_FLT = 0.4f *
-dense_hashtable<V,K,HF,ExK,EqK,A>::HT_OCCUPANCY_FLT;
+template <class V, class K, class HF, class ExK, class SetK, class EqK, class A>
+const float dense_hashtable<V,K,HF,ExK,SetK,EqK,A>::HT_EMPTY_FLT
+    = 0.4f * dense_hashtable<V,K,HF,ExK,SetK,EqK,A>::HT_OCCUPANCY_FLT;
 
 _END_GOOGLE_NAMESPACE_
 

@@ -65,10 +65,11 @@
 //         away.  This allows you to iterate over a hashtable,
 //         and call erase(), without invalidating the iterator.
 //         To force the memory to be freed, call resize(0).
+//         For tr1 compatibility, this can also be called as rehash(0).
 //
-//    3) set_resizing_parameters(0.0, 0.8):
-//         Setting the shrink_resize_percent to 0.0 guarantees
-//         that the hash table will never shrink.
+//    3) min_load_factor(0.0)
+//         Setting the minimum load factor to 0.0 guarantees that
+//         the hash table will never shrink.
 //
 // Guide to what kind of hash_set to use:
 //   (1) dense_hash_set: fastest, uses the most memory
@@ -76,9 +77,8 @@
 //   (3) hash_set (STL): in the middle
 // Typically I use sparse_hash_set when I care about space and/or when
 // I need to save the hashtable on disk.  I use hash_set otherwise.  I
-// don't personally use dense_hash_set ever; the only use of
-// dense_hash_set I know of is to work around malloc() bugs in some
-// systems (dense_hash_set has a particularly simple allocation scheme).
+// don't personally use dense_hash_set ever; some people use it for
+// small sets with lots of lookups.
 //
 // - dense_hash_set has, typically, a factor of 2 memory overhead (if your
 //   data takes up X bytes, the hash_set uses X more bytes in overhead).
@@ -86,7 +86,7 @@
 // - sparse_hash_map can be 3-7 times slower than the others for lookup and,
 //   especially, inserts.  See time_hash_map.cc for details.
 //
-// See /usr/(local/)?doc/sparsehash-0.1/dense_hash_set.html
+// See /usr/(local/)?doc/sparsehash-*/dense_hash_set.html
 // for information about how to use this class.
 
 #ifndef _DENSE_HASH_SET_H_
@@ -117,9 +117,15 @@ class dense_hash_set {
     Value& operator()(Value& v) const { return v; }
     const Value& operator()(const Value& v) const { return v; }
   };
+  struct SetKey {
+    void operator()(Value* value, const Value& new_key) const {
+      *value = new_key;
+    }
+  };
 
   // The actual data
-  typedef dense_hashtable<Value, Value, HashFcn, Identity, EqualKey, Alloc> ht;
+  typedef dense_hashtable<Value, Value, HashFcn,
+                          Identity, SetKey, EqualKey, Alloc> ht;
   ht rep;
 
  public:
@@ -127,6 +133,7 @@ class dense_hash_set {
   typedef typename ht::value_type value_type;
   typedef typename ht::hasher hasher;
   typedef typename ht::key_equal key_equal;
+  typedef Alloc allocator_type;
 
   typedef typename ht::size_type size_type;
   typedef typename ht::difference_type difference_type;
@@ -137,16 +144,22 @@ class dense_hash_set {
 
   typedef typename ht::const_iterator iterator;
   typedef typename ht::const_iterator const_iterator;
+  typedef typename ht::const_local_iterator local_iterator;
+  typedef typename ht::const_local_iterator const_local_iterator;
 
 
   // Iterator functions -- recall all iterators are const
-  iterator begin() const              { return rep.begin(); }
-  iterator end() const                { return rep.end(); }
+  iterator begin() const                  { return rep.begin(); }
+  iterator end() const                    { return rep.end(); }
+
+  // These come from tr1's unordered_set. For us, a bucket has 0 or 1 elements.
+  local_iterator begin(size_type i) const { return rep.begin(i); }
+  local_iterator end(size_type i) const   { return rep.end(i); }
 
 
   // Accessor functions
-  hasher hash_funct() const { return rep.hash_funct(); }
-  key_equal key_eq() const  { return rep.key_eq(); }
+  hasher hash_funct() const               { return rep.hash_funct(); }
+  key_equal key_eq() const                { return rep.key_eq(); }
 
 
   // Constructors
@@ -181,11 +194,40 @@ class dense_hash_set {
   size_type bucket_count() const      { return rep.bucket_count(); }
   size_type max_bucket_count() const  { return rep.max_bucket_count(); }
 
-  void resize(size_type hint)         { rep.resize(hint); }
-
+  // These are tr1 methods.  bucket() is the bucket the key is or would be in.
+  size_type bucket_size(size_type i) const    { return rep.bucket_size(i); }
+  size_type bucket(const key_type& key) const { return rep.bucket(key); }
+  float load_factor() const {
+    return size() * 1.0f / bucket_count();
+  }
+  float max_load_factor() const {
+    float shrink, grow;
+    rep.get_resizing_parameters(&shrink, &grow);
+    return grow;
+  }
+  void max_load_factor(float new_grow) {
+    float shrink, grow;
+    rep.get_resizing_parameters(&shrink, &grow);
+    rep.set_resizing_parameters(shrink, new_grow);
+  }
+  // These aren't tr1 methods but perhaps ought to be.
+  float min_load_factor() const {
+    float shrink, grow;
+    rep.get_resizing_parameters(&shrink, &grow);
+    return shrink;
+  }
+  void min_load_factor(float new_shrink) {
+    float shrink, grow;
+    rep.get_resizing_parameters(&shrink, &grow);
+    rep.set_resizing_parameters(new_shrink, grow);
+  }
+  // Deprecated; use min_load_factor() or max_load_factor() instead.
   void set_resizing_parameters(float shrink, float grow) {
     return rep.set_resizing_parameters(shrink, grow);
   }
+
+  void resize(size_type hint)         { rep.resize(hint); }
+  void rehash(size_type hint)         { resize(hint); }     // the tr1 name
 
   // Lookup routines
   iterator find(const key_type& key) const           { return rep.find(key); }

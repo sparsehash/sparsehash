@@ -26,19 +26,28 @@ SGI STL implementation.  This package also includes hash-set analogues
 of these classes.
 
 %changelog
-    * Fri Jan 14 2005 <opensource@google.com>
-    - First draft
+	* Wed Apr 22 2009  <opensource@google.com>
+	- Change build rule to use %configure instead of ./configure
+	- Change install to use DESTDIR instead of prefix for make install
+	- Use wildcards for doc/ and lib/ directories
+        - Use {_includedir} instead of {prefix}/include
+
+	* Fri Jan 14 2005 <opensource@google.com>
+	- First draft
 
 %prep
 %setup
 
 %build
-./configure
-make prefix=%prefix
+# I can't use '% configure', because it defines -m32 which breaks on
+# my development environment for some reason.  But I do take
+# as much from % configure (in /usr/lib/rpm/macros) as I can.
+./configure --prefix=%{_prefix} --exec-prefix=%{_exec_prefix} --bindir=%{_bindir} --sbindir=%{_sbindir} --sysconfdir=%{_sysconfdir} --datadir=%{_datadir} --includedir=%{_includedir} --libdir=%{_libdir} --libexecdir=%{_libexecdir} --localstatedir=%{_localstatedir} --sharedstatedir=%{_sharedstatedir} --mandir=%{_mandir} --infodir=%{_infodir}
+make
 
 %install
 rm -rf $RPM_BUILD_ROOT
-make prefix=$RPM_BUILD_ROOT%{prefix} install
+make DESTDIR=$RPM_BUILD_ROOT install
 
 %clean
 rm -rf $RPM_BUILD_ROOT
@@ -46,10 +55,7 @@ rm -rf $RPM_BUILD_ROOT
 %files
 %defattr(-,root,root)
 
-%doc AUTHORS COPYING ChangeLog INSTALL NEWS README README.windows TODO
-%doc doc/index.html doc/designstyle.css
-%doc doc/dense_hash_map.html doc/dense_hash_set.html
-%doc doc/sparse_hash_map.html doc/sparse_hash_set.html doc/sparsetable.html
-%doc doc/implementation.html doc/performance.html
+%docdir %{prefix}/share/doc/%{NAME}-%{VERSION}
+%{prefix}/share/doc/%{NAME}-%{VERSION}/*
 
-%{prefix}/include/google
+%{_includedir}/google

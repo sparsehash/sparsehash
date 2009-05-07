@@ -29,10 +29,4 @@
 #define _START_GOOGLE_NAMESPACE_  namespace google {
 
 
-// ---------------------------------------------------------------------
-// Extra stuff not found in config.h.include
-
-#define WIN32_LEAN_AND_MEAN  /* We always want minimal includes */
-#include <windows.h>         /* TODO(csilvers): do in every .h file instead? */
-
 #endif  /* SPARSEHASH_WINDOWS_SPARSECONFIG_H_ */
