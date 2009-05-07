@@ -1,3 +1,13 @@
+Wed May  6 11:28:49 2009  Google Inc. <opensource@google.com>
+
+	* sparsehash: version 1.5 release
+	* Support the tr1 unordered_map (and unordered_set) API (csilvers)
+	* Store only key for delkey; reduces need for 0-arg c-tor (csilvers)
+	* Prefer unordered_map to hash_map for the timing test (csilvers)
+	* PORTING: update the resource use for 64-bit machines (csilvers)
+	* PORTING: fix MIN/MAX collisions by un-#including windows.h (csilvers)
+	* Updated autoconf version to 2.61 and libtool version to 1.5.26
+
 Wed Jan 28 17:11:31 2009  Google Inc. <opensource@google.com>
 
 	* sparsehash: version 1.4 release

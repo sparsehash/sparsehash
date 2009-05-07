@@ -58,9 +58,8 @@ extern "C" {
 // By default each is a noop, but we redefine them for types that need them.
 
 #include <map>
+#include HASH_MAP_H
 #include <google/type_traits.h>
-
-using STL_NAMESPACE::map;
 
 #include <google/sparse_hash_map>
 using GOOGLE_NAMESPACE::sparse_hash_map;
@@ -68,10 +67,6 @@ using GOOGLE_NAMESPACE::sparse_hash_map;
 #include <google/dense_hash_map>
 using GOOGLE_NAMESPACE::dense_hash_map;
 
-#ifdef HAVE_HASH_MAP    // hash_map is not a part of standard STL yet
-#include HASH_MAP_H     // defined in config.h
-using HASH_NAMESPACE::hash_map;
-#endif
 
 static const int kDefaultIters = 10000000;
 
@@ -83,34 +78,41 @@ template<class MapType> inline void SET_DELETED_KEY(MapType& m, int key) {}
 template<class MapType> inline void SET_EMPTY_KEY(MapType& m, int key) {}
 template<class MapType> inline void RESIZE(MapType& m, int iters) {}
 
-template<class K, class V> inline void SET_DELETED_KEY(sparse_hash_map<K,V>& m,
-                                                       int key) {
+template<class K, class V, class H>
+inline void SET_DELETED_KEY(sparse_hash_map<K,V,H>& m, int key) {
   m.set_deleted_key(key);
 }
-template<class K, class V> inline void SET_DELETED_KEY(dense_hash_map<K,V>& m,
-                                                       int key) {
+template<class K, class V, class H>
+inline void SET_DELETED_KEY(dense_hash_map<K,V,H>& m, int key) {
   m.set_deleted_key(key);
 }
 
-template<class K, class V> inline void SET_EMPTY_KEY(dense_hash_map<K,V>& m,
-                                                     int key) {
+template<class K, class V, class H>
+inline void SET_EMPTY_KEY(dense_hash_map<K,V,H>& m, int key) {
   m.set_empty_key(key);
 }
 
-template<class K, class V> inline void RESIZE(sparse_hash_map<K,V>& m,
-                                              int iters) {
+template<class K, class V, class H>
+inline void RESIZE(sparse_hash_map<K,V,H>& m, int iters) {
   m.resize(iters);
 }
-template<class K, class V> inline void RESIZE(dense_hash_map<K,V>& m,
-                                              int iters) {
+template<class K, class V, class H>
+inline void RESIZE(dense_hash_map<K,V,H>& m, int iters) {
   m.resize(iters);
 }
-template<class K, class V> inline void RESIZE(hash_map<K,V>& m,
-                                              int iters) {
-#ifndef WIN32    /* apparently windows hash_map doesn't support resizing */
-  m.resize(iters);
-#endif
+#if defined(HAVE_UNORDERED_MAP)
+template<class K, class V, class H>
+inline void RESIZE(HASH_NAMESPACE::unordered_map<K,V,H>& m, int iters) {
+  m.rehash(iters);   // the tr1 name for resize()
 }
+#elif defined(HAVE_HASH_MAP)
+template<class K, class V, class H>
+inline void RESIZE(HASH_NAMESPACE::hash_map<K,V,H>& m, int iters) {
+#ifndef _MSC_VER    /* apparently windows hash_map doesn't support resizing */
+  m.resize(iters);
+#endif  // _MSC_VER
+}
+#endif  // HAVE_HASH_MAP
 
 /*
  * These are the objects we hash.  Size is the size of the object
@@ -170,14 +172,14 @@ template<int Size, int Hashsize>
 struct has_trivial_destructor< HashObject<Size, Hashsize> > : true_type { };
 _END_GOOGLE_NAMESPACE_
 
-namespace HASH_NAMESPACE {
-
-#ifdef _MSC_VER
-template<int Size, int Hashsize> class hash_compare< HashObject<Size,Hashsize> > {
+class HashFn {
  public:
+  template<int Size, int Hashsize>
   size_t operator()(const HashObject<Size,Hashsize>& obj) const {
     return obj.Hash();
   }
+  // For windows
+  template<int Size, int Hashsize>
   bool operator()(const HashObject<Size,Hashsize>& a,
                   const HashObject<Size,Hashsize>& b) const {
     return a < b;
@@ -186,15 +188,6 @@ template<int Size, int Hashsize> class hash_compare< HashObject<Size,Hashsize> >
   static const size_t bucket_size = 4;
   static const size_t min_buckets = 8;
 };
-#else  // #ifdef _MSC_VER
-template<int Size, int Hashsize> struct SPARSEHASH_HASH_NO_NAMESPACE< HashObject<Size,Hashsize> > {
-  size_t operator()(const HashObject<Size,Hashsize>& obj) const {
-    return obj.Hash();
-  }
-};
-#endif  // #ifdef _MSC_VER
-
-}
 
 /*
  * Measure resource usage.
@@ -480,12 +473,16 @@ int main(int argc, char** argv) {
          "                 reported are wall-clock time, not user time\n");
 #endif
 
-  if (1) measure_map< sparse_hash_map<HashObj, int> >("SPARSE_HASH_MAP", iters);
-  if (1) measure_map< dense_hash_map<HashObj, int> >("DENSE_HASH_MAP", iters);
-#ifdef HAVE_HASH_MAP
-  if (1) measure_map< hash_map<HashObj, int> >("STANDARD HASH_MAP", iters);
+  measure_map< sparse_hash_map<HashObj,int,HashFn> >("SPARSE_HASH_MAP", iters);
+  measure_map< dense_hash_map<HashObj,int,HashFn> >("DENSE_HASH_MAP", iters);
+#if defined(HAVE_UNORDERED_MAP)
+  measure_map< HASH_NAMESPACE::unordered_map<HashObj,int,HashFn> >(
+      "TR1 UNORDERED_MAP", iters);
+#elif defined(HAVE_HASH_MAP)
+  measure_map< HASH_NAMESPACE::hash_map<HashObj,int,HashFn> >(
+      "STANDARD HASH_MAP", iters);
 #endif
-  if (1) measure_map< map<HashObj, int> >("STANDARD MAP", iters);
+  measure_map< STL_NAMESPACE::map<HashObj,int,HashFn> >("STANDARD MAP", iters);
 
   return 0;
 }

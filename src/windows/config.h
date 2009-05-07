@@ -6,16 +6,16 @@
 /* Namespace for Google classes */
 #define GOOGLE_NAMESPACE  ::google
 
-/* the location of <hash_fun.h>/<stl_hash_fun.h> */
+/* the location of the header defining hash functions */
 #define HASH_FUN_H  <hash_map>
 
-/* the location of <hash_map> */
+/* the location of <unordered_map> or <hash_map> */
 #define HASH_MAP_H  <hash_map>
 
-/* the namespace of hash_map/hash_set */
+/* the namespace of the hash<> function */
 #define HASH_NAMESPACE  stdext
 
-/* the location of <hash_set> */
+/* the location of <unordered_set> or <hash_set> */
 #define HASH_SET_H  <hash_set>
 
 /* Define to 1 if you have the <google/malloc_extension.h> header file. */
@@ -80,6 +80,9 @@
 
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
+
+/* define if the compiler supports unordered_{map,set} */
+#undef HAVE_UNORDERED_MAP
 
 /* Define to 1 if the system has the type `u_int16_t'. */
 #undef HAVE_U_INT16_T
