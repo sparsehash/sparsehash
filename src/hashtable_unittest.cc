@@ -495,9 +495,28 @@ void test_int() {
   CHECK(z.size() == 10);
   z.erase(1);
   CHECK(z.size() == 9);
+
   typename htint::iterator itdel = z.find(1111);
+  pair<typename htint::iterator,typename htint::iterator> itdel2
+      = z.equal_range(1111);
+  CHECK(itdel2.first != z.end());
+  CHECK(&*itdel2.first == &*itdel);   // while we're here, check equal_range()
+  CHECK(itdel2.second == ++itdel2.first);
+  pair<typename htint::const_iterator,typename htint::const_iterator> itdel3
+      = const_cast<const htint*>(&z)->equal_range(1111);
+  CHECK(itdel3.first != z.end());
+  CHECK(&*itdel3.first == &*itdel);
+  CHECK(itdel3.second == ++itdel3.first);
+
   z.erase(itdel);
   CHECK(z.size() == 8);
+  itdel2 = z.equal_range(1111);
+  CHECK(itdel2.first == z.end());
+  CHECK(itdel2.second == itdel2.first);
+  itdel3 = const_cast<const htint*>(&z)->equal_range(1111);
+  CHECK(itdel3.first == z.end());
+  CHECK(itdel3.second == itdel3.first);
+
   itdel = z.find(2222);               // should be end()
   z.erase(itdel);                     // shouldn't do anything
   CHECK(z.size() == 8);

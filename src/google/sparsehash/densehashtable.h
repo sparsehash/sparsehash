@@ -808,12 +808,22 @@ class dense_hashtable {
 
   // Likewise, equal_range doesn't really make sense for us.  Oh well.
   pair<iterator,iterator> equal_range(const key_type& key) {
-    const iterator pos = find(key);      // either an iterator or end
-    return pair<iterator,iterator>(pos, pos);
+    iterator pos = find(key);      // either an iterator or end
+    if (pos == end()) {
+      return pair<iterator,iterator>(pos, pos);
+    } else {
+      const iterator startpos = pos++;
+      return pair<iterator,iterator>(startpos, pos);
+    }
   }
   pair<const_iterator,const_iterator> equal_range(const key_type& key) const {
-    const const_iterator pos = find(key);      // either an iterator or end
-    return pair<iterator,iterator>(pos, pos);
+    const_iterator pos = find(key);      // either an iterator or end
+    if (pos == end()) {
+      return pair<const_iterator,const_iterator>(pos, pos);
+    } else {
+      const const_iterator startpos = pos++;
+      return pair<const_iterator,const_iterator>(startpos, pos);
+    }
   }
 
 
