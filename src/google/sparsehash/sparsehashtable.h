@@ -667,8 +667,8 @@ class sparse_hashtable {
                             const EqualKey& eql = EqualKey(),
                             const SetKey& set = SetKey(),
                             const ExtractKey& ext = ExtractKey())
-    : hash(hf), equals(eql), get_key(ext), num_deleted(0), use_deleted(false),
-      delkey(), enlarge_resize_percent(HT_OCCUPANCY_FLT),
+    : hash(hf), equals(eql), get_key(ext), set_key(set), num_deleted(0),
+      use_deleted(false), delkey(), enlarge_resize_percent(HT_OCCUPANCY_FLT),
       shrink_resize_percent(HT_EMPTY_FLT),
       table(expected_max_items_in_table == 0
             ? HT_DEFAULT_STARTING_BUCKETS
