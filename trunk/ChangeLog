@@ -1,3 +1,8 @@
+Tue May 12 14:16:38 2009  Google Inc. <opensource@google.com>
+
+	* sparsehash: version 1.5.2 release
+	* Fix compile error: not initializing set_key in all constructors
+
 Fri May  8 15:23:44 2009  Google Inc. <opensource@google.com>
 
 	* sparsehash: version 1.5.1 release
