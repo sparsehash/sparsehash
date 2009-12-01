@@ -327,6 +327,9 @@ class dense_hashtable {
   hasher hash_funct() const { return hash; }
   key_equal key_eq() const  { return equals; }
 
+  // Accessor function for statistics gathering.
+  int num_table_copies() const { return num_ht_copies; }
+
  private:
   // Annoyingly, we can't copy values around, because they might have
   // const components (they're probably pair<const X, Y>).  We use
@@ -357,6 +360,14 @@ class dense_hashtable {
     assert(num_deleted == 0);
   }
 
+  bool test_deleted_key(const key_type& key) const {
+    // The num_deleted test is crucial for read(): after read(), the ht values
+    // are garbage, and we don't want to think some of them are deleted.
+    // Invariant: !use_deleted implies num_deleted is 0.
+    assert(use_deleted || num_deleted == 0);
+    return num_deleted > 0 && equals(delkey, key);
+  }
+
  public:
   void set_deleted_key(const key_type &key) {
     // the empty indicator (if specified) and the deleted indicator
@@ -375,32 +386,44 @@ class dense_hashtable {
   // These are public so the iterators can use them
   // True if the item at position bucknum is "deleted" marker
   bool test_deleted(size_type bucknum) const {
-    // The num_deleted test is crucial for read(): after read(), the ht values
-    // are garbage, and we don't want to think some of them are deleted.
-    return (use_deleted && num_deleted > 0 &&
-            equals(delkey, get_key(table[bucknum])));
+    return test_deleted_key(get_key(table[bucknum]));
   }
   bool test_deleted(const iterator &it) const {
-    return (use_deleted && num_deleted > 0 &&
-            equals(delkey, get_key(*it)));
+    return test_deleted_key(get_key(*it));
   }
   bool test_deleted(const const_iterator &it) const {
-    return (use_deleted && num_deleted > 0 &&
-            equals(delkey, get_key(*it)));
+    return test_deleted_key(get_key(*it));
   }
-  // Set it so test_deleted is true.  true if object didn't used to be deleted
-  // See below (at erase()) to explain why we allow const_iterators
+
+  // Set it so test_deleted is true.  true if object didn't used to be deleted.
+  bool set_deleted(iterator &it) {
+    assert(use_deleted);             // bad if set_deleted_key() wasn't called
+    bool retval = !test_deleted(it);
+    // &* converts from iterator to value-type.
+    set_key(&(*it), delkey);
+    return retval;
+  }
+  // Set it so test_deleted is false.  true if object used to be deleted
+  bool clear_deleted(iterator &it) {
+    assert(use_deleted);             // bad if set_deleted_key() wasn't called
+    // Happens automatically when we assign something else in its place.
+    return test_deleted(it);
+  }
+
+  // We also allow to set/clear the deleted bit on a const iterator.
+  // We allow a const_iterator for the same reason you can delete a
+  // const pointer: it's convenient, and semantically you can't use
+  // 'it' after it's been deleted anyway, so its const-ness doesn't
+  // really matter.
   bool set_deleted(const_iterator &it) {
     assert(use_deleted);             // bad if set_deleted_key() wasn't called
     bool retval = !test_deleted(it);
-    // &* converts from iterator to value-type
     set_key(const_cast<value_type*>(&(*it)), delkey);
     return retval;
   }
   // Set it so test_deleted is false.  true if object used to be deleted
   bool clear_deleted(const_iterator &it) {
     assert(use_deleted);             // bad if set_deleted_key() wasn't called
-    // happens automatically when we assign something else in its place
     return test_deleted(it);
   }
 
@@ -533,8 +556,22 @@ class dense_hashtable {
     // get discarded during the resize.
     const size_type needed_size = min_size(num_elements + delta, 0);
     if ( needed_size > bucket_count() ) {      // we don't have enough buckets
-      const size_type resize_to = min_size(num_elements - num_deleted + delta,
-                                           0);
+      size_type resize_to = min_size(num_elements - num_deleted + delta,
+                                     bucket_count());
+      if (resize_to < needed_size) {
+        // This situation means that we have enough deleted elements,
+        // that once we purge them, we won't actually have needed to
+        // grow.  But we may want to grow anyway: if we just purge one
+        // element, say, we'll have to grow anyway next time we
+        // insert.  Might as well grow now, since we're already going
+        // through the trouble of copying (in order to purge the
+        // deleted elements).
+        if (num_elements - num_deleted + delta >=
+            static_cast<size_type>(resize_to*2 * shrink_resize_percent)) {
+          // Good, we won't be below the shrink threshhold even if we double.
+          resize_to *= 2;
+        }
+      }
       dense_hashtable tmp(*this, resize_to);
       swap(tmp);                             // now we are tmp
     }
@@ -599,6 +636,7 @@ class dense_hashtable {
       set_value(&table[bucknum], *it);       // copies the value to here
       num_elements++;
     }
+    num_ht_copies++;
   }
 
   // Required by the spec for hashed associative container
@@ -647,7 +685,7 @@ class dense_hashtable {
       num_buckets(expected_max_items_in_table == 0
                   ? HT_DEFAULT_STARTING_BUCKETS
                   : min_size(expected_max_items_in_table, 0)),
-      num_elements(0) {
+      num_elements(0), num_ht_copies(0) {
     // table is NULL until emptyval is set.  However, we set num_buckets
     // here so we know how much space to allocate once emptyval is set
     reset_thresholds();
@@ -663,14 +701,26 @@ class dense_hashtable {
       delkey(ht.delkey), emptyval(ht.emptyval),
       enlarge_resize_percent(ht.enlarge_resize_percent),
       shrink_resize_percent(ht.shrink_resize_percent), table(NULL),
-      num_buckets(0), num_elements(0) {
+      num_buckets(0), num_elements(0), num_ht_copies(ht.num_ht_copies) {
+    if (!ht.use_empty) {
+      // If use_empty isn't set, copy_from will crash, so we do our own copying.
+      assert(ht.empty());
+      num_buckets = min_size(ht.size(), min_buckets_wanted);
+      reset_thresholds();
+      return;
+    }
     reset_thresholds();
     copy_from(ht, min_buckets_wanted);   // copy_from() ignores deleted entries
   }
 
   dense_hashtable& operator= (const dense_hashtable& ht) {
     if (&ht == this)  return *this;        // don't copy onto ourselves
-    clear();
+    if (!ht.use_empty) {
+      assert(ht.empty());
+      dense_hashtable empty_table(ht);  // empty table with ht's thresholds
+      this->swap(empty_table);
+      return *this;
+    }
     hash = ht.hash;
     equals = ht.equals;
     get_key = ht.get_key;
@@ -681,7 +731,7 @@ class dense_hashtable {
     set_value(&emptyval, ht.emptyval);
     enlarge_resize_percent = ht.enlarge_resize_percent;
     shrink_resize_percent = ht.shrink_resize_percent;
-    copy_from(ht, HT_MIN_BUCKETS);         // sets num_deleted to 0 too
+    copy_from(ht, HT_MIN_BUCKETS);  // calls clear and sets num_deleted to 0 too
     return *this;
   }
 
@@ -712,17 +762,30 @@ class dense_hashtable {
     STL_NAMESPACE::swap(table, ht.table);
     STL_NAMESPACE::swap(num_buckets, ht.num_buckets);
     STL_NAMESPACE::swap(num_elements, ht.num_elements);
+    STL_NAMESPACE::swap(num_ht_copies, ht.num_ht_copies);
     reset_thresholds();
     ht.reset_thresholds();
   }
 
   // It's always nice to be able to clear a table without deallocating it
   void clear() {
+    const size_type new_num_buckets = min_size(0,0);
+    if (num_elements == 0 &&
+        num_deleted == 0 &&
+        new_num_buckets == num_buckets) {
+      // Table is already empty, and the number of buckets is already as we
+      // desire, so nothing to do.
+      return;
+    }
     if (table)
       destroy_buckets(0, num_buckets);
-    num_buckets = min_size(0,0);          // our new size
-    reset_thresholds();
-    table = (value_type *) realloc(table, num_buckets * sizeof(*table));
+    if (!table || (new_num_buckets != num_buckets)) {
+      // Recompute the resize thresholds and realloc the table only if we're
+      // actually changing its size.
+      num_buckets = new_num_buckets;          // our new size
+      reset_thresholds();
+      table = (value_type *) realloc(table, num_buckets * sizeof(*table));
+    }
     assert(table);
     fill_range_with_empty(table, table + num_buckets);
     num_elements = 0;
@@ -906,23 +969,45 @@ class dense_hashtable {
     }
   }
 
-  // This is really evil: really it should be iterator, not const_iterator.
-  // But...the only reason keys are const is to allow lookup.
-  // Since that's a moot issue for deleted keys, we allow const_iterators
-  void erase(const_iterator pos) {
-    if ( pos == end() ) return;    // sanity check
+  // We return the iterator past the deleted item.
+  iterator erase(iterator pos) {
+    if ( pos == end() ) return pos;    // sanity check
     if ( set_deleted(pos) ) {      // true if object has been newly deleted
       ++num_deleted;
       consider_shrink = true;      // will think about shrink after next insert
     }
+    return ++pos;
   }
 
-  void erase(const_iterator f, const_iterator l) {
+  iterator erase(iterator f, iterator l) {
     for ( ; f != l; ++f) {
       if ( set_deleted(f)  )       // should always be true
         ++num_deleted;
     }
     consider_shrink = true;        // will think about shrink after next insert
+    return l == end() ? l : ++l;
+  }
+
+  // We allow you to erase a const_iterator just like we allow you to
+  // erase an iterator.  This is in parallel to 'delete': you can delete
+  // a const pointer just like a non-const pointer.  The logic is that
+  // you can't use the object after it's erased anyway, so it doesn't matter
+  // if it's const or not.
+  const_iterator erase(const_iterator pos) {
+    if ( pos == end() ) return pos;    // sanity check
+    if ( set_deleted(pos) ) {      // true if object has been newly deleted
+      ++num_deleted;
+      consider_shrink = true;      // will think about shrink after next insert
+    }
+    return ++pos;
+  }
+  const_iterator erase(const_iterator f, const_iterator l) {
+    for ( ; f != l; ++f) {
+      if ( set_deleted(f)  )       // should always be true
+        ++num_deleted;
+    }
+    consider_shrink = true;        // will think about shrink after next insert
+    return l == end() ? l : ++l;
   }
 
 
@@ -1019,6 +1104,7 @@ class dense_hashtable {
   value_type *table;
   size_type num_buckets;
   size_type num_elements;
+  int num_ht_copies;             // a statistics counter incremented every Copy
   bool consider_shrink;   // true if we should try to shrink before next insert
 
   void reset_thresholds() {
