@@ -40,10 +40,15 @@
 // because all iterators for sets are const (you obviously can't
 // change the key, and for sets there is no value).
 //
-// We adhere mostly to the STL semantics for hash-set.  One important
-// exception is that insert() invalidates iterators entirely.  On the
-// plus side, though, delete() doesn't invalidate iterators at all, or
-// even change the ordering of elements.
+// We adhere mostly to the STL semantics for hash-map.  One important
+// exception is that insert() may invalidate iterators entirely -- STL
+// semantics are that insert() may reorder iterators, but they all
+// still refer to something valid in the hashtable.  Not so for us.
+// Likewise, insert() may invalidate pointers into the hashtable.
+// (Whether insert invalidates iterators and pointers depends on
+// whether it results in a hashtable resize).  On the plus side,
+// delete() doesn't invalidate iterators or pointers at all, or even
+// change the ordering of elements.
 //
 // Here are a few "power user" tips:
 //
@@ -62,19 +67,20 @@
 //         Setting the minimum load factor to 0.0 guarantees that
 //         the hash table will never shrink.
 //
-// Guide to what kind of hash_set to use:
-//   (1) dense_hash_set: fastest, uses the most memory
+// Roughly speaking:
+//   (1) dense_hash_set: fastest, uses the most memory unless entries are small
 //   (2) sparse_hash_set: slowest, uses the least memory
-//   (3) hash_set /unordered_set (STL): in the middle
+//   (3) hash_set / unordered_set (STL): in the middle
+//
 // Typically I use sparse_hash_set when I care about space and/or when
 // I need to save the hashtable on disk.  I use hash_set otherwise.  I
 // don't personally use dense_hash_set ever; some people use it for
 // small sets with lots of lookups.
 //
-// - dense_hash_set has, typically, a factor of 2 memory overhead (if your
-//   data takes up X bytes, the hash_set uses X more bytes in overhead).
-// - sparse_hash_set has about 2 bits overhead per entry.
-// - sparse_hash_map can be 3-7 times slower than the others for lookup and,
+// - dense_hash_set has, typically, about 78% memory overhead (if your
+//   data takes up X bytes, the hash_set uses .78X more bytes in overhead).
+// - sparse_hash_set has about 4 bits overhead per entry.
+// - sparse_hash_set can be 3-7 times slower than the others for lookup and,
 //   especially, inserts.  See time_hash_map.cc for details.
 //
 // See /usr/(local/)?doc/sparsehash-*/sparse_hash_set.html
@@ -248,8 +254,8 @@ class sparse_hash_set {
 
   // These are standard
   size_type erase(const key_type& key)               { return rep.erase(key); }
-  void erase(iterator it)                            { rep.erase(it); }
-  void erase(iterator f, iterator l)                 { rep.erase(f, l); }
+  iterator erase(iterator it)                        { return rep.erase(it); }
+  iterator erase(iterator f, iterator l)             { return rep.erase(f, l); }
 
 
   // Comparison

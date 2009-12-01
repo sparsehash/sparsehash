@@ -59,7 +59,7 @@ struct A {
 // A user-defined non-POD type with a trivial copy constructor.
 class B {
  public:
-  B(int n) : n_(n) { }
+  explicit B(int n) : n_(n) { }
  private:
   int n_;
 };
@@ -69,7 +69,7 @@ class B {
 // by specializing has_trivial_copy.
 class C {
  public:
-  C(int n) : n_(n) { }
+  explicit C(int n) : n_(n) { }
  private:
   int n_;
 };
@@ -83,7 +83,7 @@ _END_GOOGLE_NAMESPACE_
 // by specializing has_trivial_assign.
 class D {
  public:
-  D(int n) : n_(n) { }
+  explicit D(int n) : n_(n) { }
  private:
   int n_;
 };
@@ -109,7 +109,7 @@ _END_GOOGLE_NAMESPACE_
 // by specializing has_trivial_destructor.
 class F {
  public:
-  F(int n) : n_(n) { }
+  explicit F(int n) : n_(n) { }
  private:
   int n_;
 };

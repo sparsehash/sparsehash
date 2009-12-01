@@ -320,12 +320,12 @@ void TestInt() {
 
   // ----------------------------------------------------------------------
   // Test I/O
-  string filestr = "/tmp/#sparsetable.test";
+  string filestr = "/tmp/.sparsetable.test";
   const char *file = filestr.c_str();
   FILE *fp = fopen(file, "wb");
   if ( fp == NULL ) {
     // maybe we can't write to /tmp/.  Try the current directory
-    file = "#sparsetable.test";
+    file = ".sparsetable.test";
     fp = fopen(file, "wb");
   }
   if ( fp == NULL ) {

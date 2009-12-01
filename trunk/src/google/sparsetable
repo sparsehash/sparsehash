@@ -738,7 +738,12 @@ class sparsegroup {
  public:                         // get_iter() in sparsetable needs it
   // We need a small function that tells us how many set bits there are
   // in positions 0..i-1 of the bitmap.  It uses a big table.
-  // We make it static so templates don't allocate lots of these tables
+  // We make it static so templates don't allocate lots of these tables.
+  // There are lots of ways to do this calculation (called 'popcount').
+  // The 8-bit table lookup is one of the fastest, though this
+  // implementation suffers from not doing any loop unrolling.  See, eg,
+  //   http://www.dalkescientific.com/writings/diary/archive/2008/07/03/hakmem_and_other_popcounts.html
+  //   http://gurmeetsingh.wordpress.com/2008/08/05/fast-bit-counting-routines/
   static size_type pos_to_offset(const unsigned char *bm, size_type pos) {
     // We could make these ints.  The tradeoff is size (eg does it overwhelm
     // the cache?) vs efficiency in referencing sub-word-sized array elements

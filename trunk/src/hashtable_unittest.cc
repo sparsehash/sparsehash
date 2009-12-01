@@ -137,13 +137,6 @@ const char *default_dict[] = {"Aarhus\n",
                               "Zurich\n",
 };
 
-// Apparently identity is not stl-standard, so we define our own
-template<class Value>
-struct Identity {
-  Value& operator()(Value& v) const { return v; }
-  const Value& operator()(const Value& v) const { return v; }
-};
-
 // Likewise, it's not standard to hash a string pre-tr1.  Luckily, it is a char*
 #ifdef HAVE_UNORDERED_MAP
 typedef SPARSEHASH_HASH<string> StrHash;
@@ -508,7 +501,8 @@ void test_int() {
   CHECK(&*itdel3.first == &*itdel);
   CHECK(itdel3.second == ++itdel3.first);
 
-  z.erase(itdel);
+  typename htint::iterator itdel_after = z.erase(itdel);
+  CHECK(itdel_after == ++itdel);
   CHECK(z.size() == 8);
   itdel2 = z.equal_range(1111);
   CHECK(itdel2.first == z.end());
@@ -519,6 +513,7 @@ void test_int() {
 
   itdel = z.find(2222);               // should be end()
   z.erase(itdel);                     // shouldn't do anything
+  CHECK(itdel == z.end());
   CHECK(z.size() == 8);
   for ( typename htint::const_iterator it = z.begin(); it != z.end(); ++it )
     LOGF << "y: " << get_int_item(*it) << "\n";
@@ -526,8 +521,9 @@ void test_int() {
   for ( typename htint::const_iterator it = z.begin(); it != z.end(); ++it )
     LOGF << "y: " << get_int_item(*it) << "\n";
   LOGF << "That's " << z.size() << " elements\n";
-  z.erase(z.begin(), z.end());
+  itdel = z.erase(z.begin(), z.end());
   CHECK(z.empty());
+  CHECK(itdel == z.end());
 
   y.clear();
   CHECK(y.empty());
@@ -594,12 +590,12 @@ void test_charptr(bool read_write) {
 
   // Save the hashtable.
   if (read_write) {
-    const string file_string = TmpFile("#hashtable_unittest_dicthash");
+    const string file_string = TmpFile(".hashtable_unittest_dicthash");
     const char* file = file_string.c_str();
     FILE *fp = fopen(file, "wb");
     if ( fp == NULL ) {
       // maybe we can't write to /tmp/.  Try the current directory
-      file = "#hashtable_unittest_dicthash";
+      file = ".hashtable_unittest_dicthash";
       fp = fopen(file, "wb");
     }
     if ( fp == NULL ) {
@@ -728,12 +724,12 @@ void test_string(bool read_write) {
 
   // Save the hashtable.
   if (read_write) {
-    const string file_string = TmpFile("#hashtable_unittest_dicthash_str");
+    const string file_string = TmpFile(".hashtable_unittest_dicthash_str");
     const char* file = file_string.c_str();
     FILE *fp = fopen(file, "wb");
     if ( fp == NULL ) {
       // maybe we can't write to /tmp/.  Try the current directory
-      file = "#hashtable_unittest_dicthash_str";
+      file = ".hashtable_unittest_dicthash_str";
       fp = fopen(file, "wb");
     }
     if ( fp == NULL ) {
@@ -1004,6 +1000,14 @@ static void TestMaps() {
   TestMap<dense_hash_map>();
 }
 
+static void TestCopyConstructor() {
+  {  // Copy an empty table with no empty key set.
+    dense_hash_map<int, string> table1;
+    dense_hash_map<int, string> table2(table1);
+    CHECK_EQ(32, table2.bucket_count());  // default number of buckets.
+  }
+}
+
 static void TestOperatorEquals() {
   {
     dense_hash_set<int> sa, sb;
@@ -1042,6 +1046,51 @@ static void TestOperatorEquals() {
     CHECK(sa != sb);
     sb.erase(1);
     CHECK(sa != sb);
+  }
+  {  // Copy table with a different empty key.
+    dense_hash_map<string, string> table1;
+    table1.set_empty_key("key1");
+    dense_hash_map<string, string> table2;
+    table2.set_empty_key("key2");
+    table1.insert(make_pair("key", "value"));
+    table2.insert(make_pair("a", "b"));
+    table1 = table2;
+    CHECK_EQ("b", table1["a"]);
+    CHECK_EQ(1, table1.size());
+  }
+  {  // Assign to a map without an empty key.
+    dense_hash_map<string, string> table1;
+    dense_hash_map<string, string> table2;
+    table2.set_empty_key("key2");
+    table2.insert(make_pair("key", "value"));
+    table1 = table2;
+    CHECK_EQ("value", table1["key"]);
+  }
+  {  // Copy a map without an empty key.
+    dense_hash_map<string, string> table1;
+    dense_hash_map<string, string> table2;
+    table1 = table2;
+    CHECK_EQ(0, table1.size());
+    table1.set_empty_key("key1");
+    table1.insert(make_pair("key", "value"));
+    table1 = table2;
+    CHECK_EQ(0, table1.size());
+    table1.set_empty_key("key1");
+    table1.insert(make_pair("key", "value"));
+    CHECK_EQ("value", table1["key"]);
+  }
+  {
+    sparse_hash_map<string, string> table1;
+    table1.set_deleted_key("key1");
+    table1.insert(make_pair("key", "value"));
+
+    sparse_hash_map<string, string> table2;
+    table2.set_deleted_key("key");
+    table2 = table1;
+
+    CHECK_EQ(1, table2.size());
+    table2.erase("key");
+    CHECK(table2.empty());
   }
 }
 
@@ -1107,6 +1156,60 @@ static void TestResizingParameters() {
       }
     }
   }
+}
+
+// This tests for a problem we had where we could repeatedly "resize"
+// a hashtable to the same size it was before, on every insert.
+template<class HT>
+static void TestHashtableResizing() {
+  HT ht;
+  ht.set_deleted_key(-1);
+  set_empty_key(&ht, -2);
+
+  const int kSize = 1<<10;       // Pick any power of 2
+  const float kResize = 0.8f;    // anything between 0.5 and 1 is fine.
+  const int kThreshold = kSize * kResize - 1;
+  ht.set_resizing_parameters(0, kResize);
+
+  // Get right up to the resizing threshold.
+  for (int i = 0; i <= kThreshold; i++) {
+    ht.insert(i);
+  }
+  // The bucket count should equal kSize.
+  CHECK_EQ(ht.bucket_count(), kSize);
+
+  // Now start doing erase+insert pairs.  This should cause us to
+  // copy the hashtable at most once.
+  const int pre_copies = ht.num_table_copies();
+  for (int i = 0; i < kSize; i++) {
+    if (i % 100 == 0)
+      LOGF << "erase/insert: " << i
+           << " buckets: " << ht.bucket_count()
+           << " size: " << ht.size();
+    ht.erase(kThreshold);
+    ht.insert(kThreshold);
+  }
+  CHECK_LT(ht.num_table_copies(), pre_copies + 2);
+
+  // Now create a hashtable where we go right to the threshold, then
+  // delete everything and do one insert.  Even though our hashtable
+  // is now tiny, we should still have at least kSize buckets, because
+  // our shrink threshhold is 0.
+  HT ht2;
+  ht2.set_deleted_key(-1);
+  set_empty_key(&ht2, -2);
+  ht2.set_resizing_parameters(0, kResize);
+  CHECK_LT(ht2.bucket_count(), kSize);
+  for (int i = 0; i <= kThreshold; i++) {
+    ht2.insert(i);
+  }
+  CHECK_EQ(ht2.bucket_count(), kSize);
+  for (int i = 0; i <= kThreshold; i++) {
+    ht2.erase(i);
+    CHECK_EQ(ht2.bucket_count(), kSize);
+  }
+  ht2.insert(kThreshold+1);
+  CHECK_GE(ht2.bucket_count(), kSize);
 }
 
 // Tests the some of the tr1-inspired API features.
@@ -1282,7 +1385,15 @@ struct SetKey {
   }
 };
 
+template<class Value>
+struct Identity {
+  Value& operator()(Value& v) const { return v; }
+  const Value& operator()(const Value& v) const { return v; }
+};
+
+
 int main(int argc, char **argv) {
+  TestCopyConstructor();
   TestOperatorEquals();
 
   // SPARSEHASH_HASH is defined in sparseconfig.h.  It resolves to the
@@ -1295,8 +1406,7 @@ int main(int argc, char **argv) {
                        Identity<char *>, SetKey<char *>, strcmp_fnc,
 		       allocator<char *> >,
        dense_hashtable<string, string, StrHash,
-                       Identity<string>, SetKey<string>,
-		       equal_to<string>,
+                       Identity<string>, SetKey<string>, equal_to<string>,
 		       allocator<string> >,
        dense_hashtable<int, int, SPARSEHASH_HASH<int>,
                        Identity<int>, SetKey<int>, equal_to<int>,
@@ -1312,6 +1422,14 @@ int main(int argc, char **argv) {
   TestResizingParameters<dense_hash_set<int>, true>();    // use tr1 API
   TestResizingParameters<dense_hash_set<int>, false>();   // use older API
 
+  TestHashtableResizing<dense_hashtable<int, int, SPARSEHASH_HASH<int>,
+                           Identity<int>, SetKey<int>, equal_to<int>,
+                           allocator<int> > >();
+  TestHashtableResizing<sparse_hashtable<int, int, SPARSEHASH_HASH<int>,
+                           Identity<int>, SetKey<int>, equal_to<int>,
+                           allocator<int> > >();
+
+
   // Now try with hash_map, which differs only in insert()
   LOGF << "\n\nTEST WITH DENSE_HASH_MAP\n\n";
   test<dense_hash_map<char *, int, CharStarHash, strcmp_fnc>,
@@ -1321,15 +1439,14 @@ int main(int argc, char **argv) {
   // First try with the low-level hashtable interface
   LOGF << "\n\nTEST WITH SPARSE_HASHTABLE\n\n";
   test<sparse_hashtable<char *, char *, CharStarHash,
-                       Identity<char *>, SetKey<char *>, strcmp_fnc,
-		       allocator<char *> >,
+                        Identity<char *>, SetKey<char *>, strcmp_fnc,
+                        allocator<char *> >,
        sparse_hashtable<string, string, StrHash,
-                       Identity<string>, SetKey<string>, equal_to<string>,
-		       allocator<string> >,
+                        Identity<string>, SetKey<string>, equal_to<string>,
+                        allocator<string> >,
        sparse_hashtable<int, int, SPARSEHASH_HASH<int>,
-                       Identity<int>, SetKey<int>, equal_to<int>,
-		       allocator<int> > >(
-                         true);
+                        Identity<int>, SetKey<int>, equal_to<int>,
+                        allocator<int> > >(true);
 
   // Now try with hash_set, which should be equivalent
   LOGF << "\n\nTEST WITH SPARSE_HASH_SET\n\n";
