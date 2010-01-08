@@ -261,13 +261,16 @@ class dense_hash_set {
   // value to identify deleted and empty buckets.  You can change the
   // deleted key as time goes on, or get rid of it entirely to be insert-only.
   void set_empty_key(const key_type& key)     { rep.set_empty_key(key); }
+  key_type empty_key() const                  { return rep.empty_key(); }
+
   void set_deleted_key(const key_type& key)   { rep.set_deleted_key(key); }
   void clear_deleted_key()                    { rep.clear_deleted_key(); }
+  key_type deleted_key() const                { return rep.deleted_key(); }
 
   // These are standard
   size_type erase(const key_type& key)               { return rep.erase(key); }
-  iterator erase(iterator it)                        { return rep.erase(it); }
-  iterator erase(iterator f, iterator l)             { return rep.erase(f, l); }
+  void erase(iterator it)                            { rep.erase(it); }
+  void erase(iterator f, iterator l)                 { rep.erase(f, l); }
 
 
   // Comparison

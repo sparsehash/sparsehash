@@ -56,6 +56,7 @@
 #include <iostream>
 #include <iomanip>             // for setprecision()
 #include <string>
+#include <stdexcept>           // for std::length_error
 #include HASH_FUN_H            // defined in config.h
 #include <google/type_traits.h>
 #include <google/dense_hash_map>
@@ -99,7 +100,7 @@ using STL_NAMESPACE::ostream;
 #define CHECK_LT(a, b)  CHECK((a) < (b))
 #define CHECK_GE(a, b)  CHECK((a) >= (b))
 
-#ifndef WIN32   // windows defines its own version
+#ifndef _MSC_VER   // windows defines its own version
 static string TmpFile(const char* basename) {
   return string("/tmp/") + basename;
 }
@@ -144,6 +145,12 @@ struct CharStarHash {
   size_t operator()(const char* s) const {
     return StrHash()(string(s));
   }
+  // These are used by MSVC:
+  bool operator()(const char* a, const char* b) const {
+    return strcmp(a, b) < 0;
+  }
+  static const size_t bucket_size = 4;    // These are required by MSVC
+  static const size_t min_buckets = 8;    // 4 and 8 are the defaults
 };
 #else
 typedef SPARSEHASH_HASH<const char*> CharStarHash;
@@ -151,6 +158,12 @@ struct StrHash {
   size_t operator()(const string& s) const {
     return SPARSEHASH_HASH<const char*>()(s.c_str());
   }
+  // These are used by MSVC:
+  bool operator()(const string& a, const string& b) const {
+    return a < b;
+  }
+  static const size_t bucket_size = 4;    // These are required by MSVC
+  static const size_t min_buckets = 8;    // 4 and 8 are the defaults
 };
 #endif
 
@@ -475,6 +488,7 @@ void test_int() {
 
   CHECK(z.size() == 10);
   z.set_deleted_key(1010101010);      // an unused value
+  CHECK(z.deleted_key() == 1010101010);
   z.erase(11111);
   CHECK(z.size() == 9);
   insert(&z, 11111);                  // should retake deleted value
@@ -501,8 +515,7 @@ void test_int() {
   CHECK(&*itdel3.first == &*itdel);
   CHECK(itdel3.second == ++itdel3.first);
 
-  typename htint::iterator itdel_after = z.erase(itdel);
-  CHECK(itdel_after == ++itdel);
+  z.erase(itdel);
   CHECK(z.size() == 8);
   itdel2 = z.equal_range(1111);
   CHECK(itdel2.first == z.end());
@@ -513,17 +526,16 @@ void test_int() {
 
   itdel = z.find(2222);               // should be end()
   z.erase(itdel);                     // shouldn't do anything
-  CHECK(itdel == z.end());
   CHECK(z.size() == 8);
   for ( typename htint::const_iterator it = z.begin(); it != z.end(); ++it )
     LOGF << "y: " << get_int_item(*it) << "\n";
   z.set_deleted_key(1010101011);      // a different unused value
+  CHECK(z.deleted_key() == 1010101011);
   for ( typename htint::const_iterator it = z.begin(); it != z.end(); ++it )
     LOGF << "y: " << get_int_item(*it) << "\n";
   LOGF << "That's " << z.size() << " elements\n";
-  itdel = z.erase(z.begin(), z.end());
+  z.erase(z.begin(), z.end());
   CHECK(z.empty());
-  CHECK(itdel == z.end());
 
   y.clear();
   CHECK(y.empty());
@@ -1013,6 +1025,7 @@ static void TestOperatorEquals() {
     dense_hash_set<int> sa, sb;
     sa.set_empty_key(-1);
     sb.set_empty_key(-1);
+    CHECK(sa.empty_key() == -1);
     sa.set_deleted_key(-2);
     sb.set_deleted_key(-2);
     CHECK(sa == sb);
@@ -1031,6 +1044,7 @@ static void TestOperatorEquals() {
     dense_hash_map<int, string> sa, sb;
     sa.set_empty_key(-1);
     sb.set_empty_key(-1);
+    CHECK(sa.empty_key() == -1);
     sa.set_deleted_key(-2);
     sb.set_deleted_key(-2);
     CHECK(sa == sb);
@@ -1048,9 +1062,10 @@ static void TestOperatorEquals() {
     CHECK(sa != sb);
   }
   {  // Copy table with a different empty key.
-    dense_hash_map<string, string> table1;
+    dense_hash_map<string, string, StrHash> table1;
     table1.set_empty_key("key1");
-    dense_hash_map<string, string> table2;
+    CHECK(table1.empty_key() == "key1");
+    dense_hash_map<string, string, StrHash> table2;
     table2.set_empty_key("key2");
     table1.insert(make_pair("key", "value"));
     table2.insert(make_pair("a", "b"));
@@ -1059,19 +1074,21 @@ static void TestOperatorEquals() {
     CHECK_EQ(1, table1.size());
   }
   {  // Assign to a map without an empty key.
-    dense_hash_map<string, string> table1;
-    dense_hash_map<string, string> table2;
+    dense_hash_map<string, string, StrHash> table1;
+    dense_hash_map<string, string, StrHash> table2;
     table2.set_empty_key("key2");
+    CHECK(table2.empty_key() == "key2");
     table2.insert(make_pair("key", "value"));
     table1 = table2;
     CHECK_EQ("value", table1["key"]);
   }
   {  // Copy a map without an empty key.
-    dense_hash_map<string, string> table1;
-    dense_hash_map<string, string> table2;
+    dense_hash_map<string, string, StrHash> table1;
+    dense_hash_map<string, string, StrHash> table2;
     table1 = table2;
     CHECK_EQ(0, table1.size());
     table1.set_empty_key("key1");
+    CHECK(table1.empty_key() == "key1");
     table1.insert(make_pair("key", "value"));
     table1 = table2;
     CHECK_EQ(0, table1.size());
@@ -1080,11 +1097,11 @@ static void TestOperatorEquals() {
     CHECK_EQ("value", table1["key"]);
   }
   {
-    sparse_hash_map<string, string> table1;
+    sparse_hash_map<string, string, StrHash> table1;
     table1.set_deleted_key("key1");
     table1.insert(make_pair("key", "value"));
 
-    sparse_hash_map<string, string> table2;
+    sparse_hash_map<string, string, StrHash> table2;
     table2.set_deleted_key("key");
     table2 = table1;
 
@@ -1378,6 +1395,26 @@ void TestMemoryManagement() {
   CHECK_EQ(2, MemUsingKey::net_allocations());  // for deleted+empty_key
 }
 
+void TestHugeResize() {
+  try {
+    dense_hash_map<int, int> ht;
+    ht.resize(static_cast<size_t>(-1));
+    LOGF << "dense_hash_map resize should have failed";
+    abort();
+  } catch (const std::length_error&) {
+    // Good, the resize failed.
+  }
+
+  try {
+    sparse_hash_map<int, int> ht;
+    ht.resize(static_cast<size_t>(-1));
+    LOGF << "sparse_hash_map resize should have failed";
+    abort();
+  } catch (const std::length_error&) {
+    // Good, the resize failed.
+  }
+}
+
 template<class Key>
 struct SetKey {
   void operator()(Key* key, const Key& new_key) const {
@@ -1486,6 +1523,8 @@ int main(int argc, char **argv) {
   // Test memory management when the keys and values are non-trivial
   LOGF << "\n\nTesting memory management\n";
   TestMemoryManagement();
+
+  TestHugeResize();
 
   LOGF << "\nAll tests pass.\n";
   return 0;
