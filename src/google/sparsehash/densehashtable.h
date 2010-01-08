@@ -102,6 +102,7 @@
 #include <stdio.h>
 #include <stdlib.h>             // for abort()
 #include <algorithm>            // For swap(), eg
+#include <stdexcept>            // For length_error
 #include <iostream>             // For cerr
 #include <memory>               // For uninitialized_fill, uninitialized_copy
 #include <utility>              // for pair<>
@@ -382,6 +383,10 @@ class dense_hashtable {
     squash_deleted();
     use_deleted = false;
   }
+  key_type deleted_key() const {
+    assert(use_deleted);
+    return delkey;
+  }
 
   // These are public so the iterators can use them
   // True if the item at position bucknum is "deleted" marker
@@ -483,6 +488,11 @@ class dense_hashtable {
     assert(table);
     fill_range_with_empty(table, table + num_buckets);
   }
+  // TODO(sjackman): return a key_type rather than a value_type
+  value_type empty_key() const {
+    assert(use_empty);
+    return emptyval;
+  }
 
   // FUNCTIONS CONCERNING SIZE
  public:
@@ -510,8 +520,12 @@ class dense_hashtable {
   // If you like, you can give a min #buckets as well as a min #elts
   size_type min_size(size_type num_elts, size_type min_buckets_wanted) {
     size_type sz = HT_MIN_BUCKETS;             // min buckets allowed
-    while ( sz < min_buckets_wanted || num_elts >= sz * enlarge_resize_percent )
+    while ( sz < min_buckets_wanted ||
+            num_elts >= static_cast<size_type>(sz * enlarge_resize_percent) ) {
+      if (sz * 2 < sz)
+        throw std::length_error("resize overflow");  // protect against overflow
       sz *= 2;
+    }
     return sz;
   }
 
@@ -970,22 +984,20 @@ class dense_hashtable {
   }
 
   // We return the iterator past the deleted item.
-  iterator erase(iterator pos) {
-    if ( pos == end() ) return pos;    // sanity check
+  void erase(iterator pos) {
+    if ( pos == end() ) return;    // sanity check
     if ( set_deleted(pos) ) {      // true if object has been newly deleted
       ++num_deleted;
       consider_shrink = true;      // will think about shrink after next insert
     }
-    return ++pos;
   }
 
-  iterator erase(iterator f, iterator l) {
+  void erase(iterator f, iterator l) {
     for ( ; f != l; ++f) {
       if ( set_deleted(f)  )       // should always be true
         ++num_deleted;
     }
     consider_shrink = true;        // will think about shrink after next insert
-    return l == end() ? l : ++l;
   }
 
   // We allow you to erase a const_iterator just like we allow you to
@@ -993,21 +1005,19 @@ class dense_hashtable {
   // a const pointer just like a non-const pointer.  The logic is that
   // you can't use the object after it's erased anyway, so it doesn't matter
   // if it's const or not.
-  const_iterator erase(const_iterator pos) {
-    if ( pos == end() ) return pos;    // sanity check
+  void erase(const_iterator pos) {
+    if ( pos == end() ) return;    // sanity check
     if ( set_deleted(pos) ) {      // true if object has been newly deleted
       ++num_deleted;
       consider_shrink = true;      // will think about shrink after next insert
     }
-    return ++pos;
   }
-  const_iterator erase(const_iterator f, const_iterator l) {
+  void erase(const_iterator f, const_iterator l) {
     for ( ; f != l; ++f) {
       if ( set_deleted(f)  )       // should always be true
         ++num_deleted;
     }
     consider_shrink = true;        // will think about shrink after next insert
-    return l == end() ? l : ++l;
   }
 
 

@@ -110,6 +110,7 @@
 #include <google/sparsehash/sparseconfig.h>
 #include <assert.h>
 #include <algorithm>              // For swap(), eg
+#include <stdexcept>              // For length_error
 #include <iterator>               // for facts about iterator tags
 #include <utility>                // for pair<>
 #include <google/sparsetable>     // Since that's basically what we are
@@ -449,6 +450,10 @@ class sparse_hashtable {
     squash_deleted();
     use_deleted = false;
   }
+  key_type deleted_key() const {
+    assert(use_deleted);
+    return delkey;
+  }
 
   // These are public so the iterators can use them
   // True if the item at position bucknum is "deleted" marker
@@ -524,9 +529,13 @@ class sparse_hashtable {
   // This is the smallest size a hashtable can be without being too crowded
   // If you like, you can give a min #buckets as well as a min #elts
   size_type min_size(size_type num_elts, size_type min_buckets_wanted) {
-    size_type sz = HT_MIN_BUCKETS;
-    while ( sz < min_buckets_wanted || num_elts >= sz * enlarge_resize_percent )
+    size_type sz = HT_MIN_BUCKETS;             // min buckets allowed
+    while ( sz < min_buckets_wanted ||
+            num_elts >= static_cast<size_type>(sz * enlarge_resize_percent) ) {
+      if (sz * 2 < sz)
+        throw std::length_error("resize overflow");  // protect against overflow
       sz *= 2;
+    }
     return sz;
   }
 
@@ -940,22 +949,20 @@ class sparse_hashtable {
   }
 
   // We return the iterator past the deleted item.
-  iterator erase(iterator pos) {
-    if ( pos == end() ) return pos;    // sanity check
+  void erase(iterator pos) {
+    if ( pos == end() ) return;    // sanity check
     if ( set_deleted(pos) ) {      // true if object has been newly deleted
       ++num_deleted;
       consider_shrink = true;      // will think about shrink after next insert
     }
-    return ++pos;
   }
 
-  iterator erase(iterator f, iterator l) {
+  void erase(iterator f, iterator l) {
     for ( ; f != l; ++f) {
       if ( set_deleted(f)  )       // should always be true
         ++num_deleted;
     }
     consider_shrink = true;        // will think about shrink after next insert
-    return l == end() ? l : ++l;
   }
 
   // We allow you to erase a const_iterator just like we allow you to
@@ -963,21 +970,19 @@ class sparse_hashtable {
   // a const pointer just like a non-const pointer.  The logic is that
   // you can't use the object after it's erased anyway, so it doesn't matter
   // if it's const or not.
-  const_iterator erase(const_iterator pos) {
-    if ( pos == end() ) return pos;    // sanity check
+  void erase(const_iterator pos) {
+    if ( pos == end() ) return;    // sanity check
     if ( set_deleted(pos) ) {      // true if object has been newly deleted
       ++num_deleted;
       consider_shrink = true;      // will think about shrink after next insert
     }
-    return ++pos;
   }
-  const_iterator erase(const_iterator f, const_iterator l) {
+  void erase(const_iterator f, const_iterator l) {
     for ( ; f != l; ++f) {
       if ( set_deleted(f)  )       // should always be true
         ++num_deleted;
     }
     consider_shrink = true;        // will think about shrink after next insert
-    return l == end() ? l : ++l;
   }
 
 
