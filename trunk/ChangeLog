@@ -1,3 +1,18 @@
+Fri Jan  8 14:47:55 2010  Google Inc. <opensource@google.com>
+
+	* sparsehash: version 1.6 release
+	* New accessor methods for deleted_key, empty_key (sjackman)
+	* Use explicit hash functions in sparsehash tests (csilvers)
+	* BUGFIX: Cast resize to fix SUNWspro bug (csilvers)
+	* Check for sz overflow in min_size (csilvers)
+	* Speed up clear() for dense and sparse hashtables (jeff)
+	* Avoid shrinking in all cases when min-load is 0 (shaunj, csilvers)
+	* Improve densehashtable code for the deleted key (gpike)
+	* BUGFIX: Fix operator= when the 2 empty-keys differ (andreidam)
+	* BUGFIX: Fix ht copying when empty-key isn't set (andreidam)
+	* PORTING: Use TmpFile() instead of /tmp on MinGW (csilvers)
+	* PORTING: Use filenames that work with Stratus VOS.
+
 Tue May 12 14:16:38 2009  Google Inc. <opensource@google.com>
 
 	* sparsehash: version 1.5.2 release
