@@ -50,8 +50,7 @@
 // because of this container's memory economy, each insert and delete
 // causes a memory reallocation.
 //
-// See /usr/(local/)?doc/sparsehash-0.1/sparsetable.html
-// for information about how to use this class.
+// See doc/sparsetable.html for information about how to use this class.
 
 #ifndef _SPARSETABLE_H_
 #define _SPARSETABLE_H_
@@ -73,6 +72,7 @@
 #include <algorithm>            // equal, lexicographical_compare, swap,...
 #include <memory>               // uninitialized_copy
 #include <vector>               // a sparsetable is a vector of groups
+#include <google/sparsehash/libc_allocator_with_realloc.h>
 #include <google/type_traits.h> // for true_type, integral_constant, etc.
 
 #if STDC_HEADERS
@@ -639,16 +639,19 @@ class destructive_two_d_iterator {
     add_to |= (static_cast<size_type>(x) << ((offset) % (sizeof(add_to)*8))); \
 } while (0)
 
-template <class T, u_int16_t GROUP_SIZE>
+template <class T, u_int16_t GROUP_SIZE, class Alloc>
 class sparsegroup {
  public:
   // Basic types
   typedef T value_type;
+  typedef Alloc allocator_type;
   typedef value_type* pointer;
   typedef const value_type* const_pointer;
-  typedef table_iterator<sparsegroup<T, GROUP_SIZE> > iterator;
-  typedef const_table_iterator<sparsegroup<T, GROUP_SIZE> > const_iterator;
-  typedef table_element_adaptor<sparsegroup<T, GROUP_SIZE> > element_adaptor;
+  typedef table_iterator<sparsegroup<T, GROUP_SIZE, Alloc> > iterator;
+  typedef const_table_iterator<sparsegroup<T, GROUP_SIZE, Alloc> >
+      const_iterator;
+  typedef table_element_adaptor<sparsegroup<T, GROUP_SIZE, Alloc> >
+      element_adaptor;
   typedef value_type &reference;
   typedef const value_type &const_reference;
   typedef u_int16_t size_type;                  // max # of buckets
@@ -708,22 +711,18 @@ class sparsegroup {
   void bmset(size_type i)          { bitmap[charbit(i)] |= modbit(i); }
   void bmclear(size_type i)        { bitmap[charbit(i)] &= ~modbit(i); }
 
-  void* realloc_or_die(void* ptr, size_t num_bytes) {
-    void* retval = realloc(ptr, num_bytes);
+  value_type* allocate_group(size_t n) {
+    value_type* retval = allocator.allocate(n);
     if (retval == NULL) {
       // We really should use PRIuS here, but I don't want to have to add
       // a whole new configure option, with concomitant macro namespace
       // pollution, just to print this (unlikely) error message.  So I cast.
-      fprintf(stderr, "FATAL ERROR: failed to allocate %lu bytes for ptr %p",
-              static_cast<unsigned long>(num_bytes), ptr);
+      fprintf(stderr, "sparsehash: FATAL ERROR: "
+              "failed to allocate %lu groups\n",
+              static_cast<unsigned long>(n));
       exit(1);
     }
     return retval;
-  }
-
-  value_type* allocate_group(size_t n) {
-    return static_cast<value_type*>(realloc_or_die(NULL,
-                                                   n * sizeof(value_type)));
   }
 
   void free_group() {
@@ -731,7 +730,7 @@ class sparsegroup {
     value_type* end_it = group + num_buckets;
     for (value_type* p = group; p != end_it; ++p)
       p->~value_type();
-    free(group);
+    allocator.deallocate(group, num_buckets);
     group = NULL;
   }
 
@@ -781,7 +780,9 @@ class sparsegroup {
 
  public:
   // Constructors -- default and copy -- and destructor
-  sparsegroup() : group(0), num_buckets(0) { memset(bitmap, 0, sizeof(bitmap)); }
+  sparsegroup() : group(0), num_buckets(0) {
+    memset(bitmap, 0, sizeof(bitmap));
+  }
   sparsegroup(const sparsegroup& x) : group(0), num_buckets(x.num_buckets) {
     if ( num_buckets ) {
       group = allocate_group(x.num_buckets);
@@ -869,14 +870,14 @@ class sparsegroup {
 
  private:
   // Create space at group[offset], assuming value_type has trivial
-  // copy constructor and destructor.  (Really, we want it to have
+  // copy constructor and destructor, and the allocator_type is
+  // the default libc_allocator_with_alloc.  (Really, we want it to have
   // "trivial move", because that's what realloc and memmove both do.
   // But there's no way to capture that using type_traits, so we
   // pretend that move(x, y) is equivalent to "x.~T(); new(x) T(y);"
   // which is pretty much correct, if a bit conservative.)
   void set_aux(size_type offset, true_type) {
-    group = (value_type *)
-            realloc_or_die(group, sizeof(*group) * (num_buckets+1));
+    group = allocator.realloc_or_die(group, num_buckets+1);
     // This is equivalent to memmove(), but faster on my Intel P4,
     // at least with gcc4.1 -O2 / glibc 2.3.6.
     for (size_type i = num_buckets; i > offset; --i)
@@ -884,6 +885,7 @@ class sparsegroup {
   }
 
   // Create space at group[offset], without special assumptions about value_type
+  // and allocator_type.
   void set_aux(size_type offset, false_type) {
     // This is valid because 0 <= offset <= num_buckets
     value_type* p = allocate_group(num_buckets + 1);
@@ -905,7 +907,9 @@ class sparsegroup {
     } else {
       typedef integral_constant<bool,
           (has_trivial_copy<value_type>::value &&
-           has_trivial_destructor<value_type>::value)>
+           has_trivial_destructor<value_type>::value &&
+           is_same<allocator_type,
+                   libc_allocator_with_realloc<value_type> >::value)>
           realloc_and_memmove_ok; // we pretend mv(x,y) == "x.~T(); new(x) T(y)"
       set_aux(offset, realloc_and_memmove_ok());
       ++num_buckets;
@@ -927,7 +931,8 @@ class sparsegroup {
 
  private:
   // Shrink the array, assuming value_type has trivial copy
-  // constructor and destructor.  (Really, we want it to have "trivial
+  // constructor and destructor, and the allocator_type is the default
+  // libc_allocator_with_alloc.  (Really, we want it to have "trivial
   // move", because that's what realloc and memmove both do.  But
   // there's no way to capture that using type_traits, so we pretend
   // that move(x, y) is equivalent to ""x.~T(); new(x) T(y);"
@@ -941,11 +946,11 @@ class sparsegroup {
     assert(num_buckets > 0);
     for (size_type i = offset; i < num_buckets-1; ++i)
       memcpy(group + i, group + i+1, sizeof(*group));  // hopefully inlined!
-    group = (value_type *)
-            realloc_or_die(group, sizeof(*group) * (num_buckets-1));
+    group = allocator.realloc_or_die(group, num_buckets-1);
   }
 
-  // Shrink the array, without any special assumptions about value_type.
+  // Shrink the array, without any special assumptions about value_type and
+  // allocator_type.
   void erase_aux(size_type offset, false_type) {
     // This is valid because 0 <= offset < num_buckets. Note the inequality.
     value_type* p = allocate_group(num_buckets - 1);
@@ -961,7 +966,7 @@ class sparsegroup {
   // TODO(austern): Make this exception safe: handle exceptions from
   // value_type's copy constructor.
   void erase(size_type i) {
-    if ( bmtest(i) ) {                           // trivial to erase empty bucket
+    if ( bmtest(i) ) {                          // trivial to erase empty bucket
       size_type offset = pos_to_offset(bitmap,i); // where we'll find (or insert)
       if ( num_buckets == 1 ) {
         free_group();
@@ -969,7 +974,10 @@ class sparsegroup {
       } else {
         typedef integral_constant<bool,
             (has_trivial_copy<value_type>::value &&
-             has_trivial_destructor<value_type>::value)>
+             has_trivial_destructor<value_type>::value &&
+             is_same<
+                 allocator_type,
+                 libc_allocator_with_realloc<value_type> >::value)>
             realloc_and_memmove_ok; // pretend mv(x,y) == "x.~T(); new(x) T(y)"
         erase_aux(offset, realloc_and_memmove_ok());
       }
@@ -1059,31 +1067,78 @@ class sparsegroup {
   bool operator>=(const sparsegroup& x) const { return !(*this < x); }
 
  private:
+  typedef typename allocator_type::template rebind<value_type>::other
+      internal_alloc;
+
+  template <class V, class A>
+  class alloc_impl : public A {
+   public:
+    // realloc_or_die should only be used when using the default
+    // allocator (libc_allocator_with_realloc).
+    V* realloc_or_die(V* ptr, size_t n) {
+      fprintf(stderr, "realloc_or_die is only supported for "
+                      "libc_allocator_with_realloc");
+      exit(1);
+      return NULL;
+    }
+  };
+
+  // A template specialization of alloc_impl for
+  // libc_allocator_with_realloc that can handle realloc_or_die.
+  template <class V, class A>
+  class alloc_impl<V, libc_allocator_with_realloc<A> >
+      : public libc_allocator_with_realloc<A> {
+   public:
+    V* realloc_or_die(V* ptr, size_t n) {
+      V* retval = reallocate(ptr, n);
+      if (retval == NULL) {
+        // We really should use PRIuS here, but I don't want to have to add
+        // a whole new configure option, with concomitant macro namespace
+        // pollution, just to print this (unlikely) error message.  So I cast.
+        fprintf(stderr, "sparsehash: FATAL ERROR: failed to reallocate "
+                "%lu elements for ptr %p",
+                static_cast<unsigned long>(n), ptr);
+        exit(1);
+      }
+      return retval;
+    }
+  };
+
   // The actual data
+  alloc_impl<value_type, internal_alloc> allocator;  // allocator for memory
   value_type *group;                            // (small) array of T's
   unsigned char bitmap[(GROUP_SIZE-1)/8 + 1];   // fancy math is so we round up
   size_type num_buckets;                        // limits GROUP_SIZE to 64K
 };
 
 // We need a global swap as well
-template <class T, u_int16_t GROUP_SIZE>
-inline void swap(sparsegroup<T,GROUP_SIZE> &x, sparsegroup<T,GROUP_SIZE> &y) {
+template <class T, u_int16_t GROUP_SIZE, class Alloc>
+inline void swap(sparsegroup<T,GROUP_SIZE,Alloc> &x,
+                 sparsegroup<T,GROUP_SIZE,Alloc> &y) {
   x.swap(y);
 }
 
 // ---------------------------------------------------------------------------
 
 
-template <class T, u_int16_t GROUP_SIZE = DEFAULT_SPARSEGROUP_SIZE>
+template <class T, u_int16_t GROUP_SIZE = DEFAULT_SPARSEGROUP_SIZE,
+          class Alloc = libc_allocator_with_realloc<T> >
 class sparsetable {
+ private:
+  typedef typename Alloc::template rebind<
+      sparsegroup<T, GROUP_SIZE, Alloc> >::other vector_alloc;
+
  public:
   // Basic types
   typedef T value_type;                        // stolen from stl_vector.h
+  typedef Alloc allocator_type;
   typedef value_type* pointer;
   typedef const value_type* const_pointer;
-  typedef table_iterator<sparsetable<T, GROUP_SIZE> > iterator;
-  typedef const_table_iterator<sparsetable<T, GROUP_SIZE> > const_iterator;
-  typedef table_element_adaptor<sparsetable<T, GROUP_SIZE> > element_adaptor;
+  typedef table_iterator<sparsetable<T, GROUP_SIZE, Alloc> > iterator;
+  typedef const_table_iterator<sparsetable<T, GROUP_SIZE, Alloc> >
+      const_iterator;
+  typedef table_element_adaptor<sparsetable<T, GROUP_SIZE, Alloc> >
+      element_adaptor;
   typedef value_type &reference;
   typedef const value_type &const_reference;
   typedef size_t size_type;
@@ -1093,14 +1148,22 @@ class sparsetable {
 
   // These are our special iterators, that go over non-empty buckets in a
   // table.  These aren't const only because you can change non-empty bcks.
-  typedef two_d_iterator< vector< sparsegroup<value_type, GROUP_SIZE> > >
+  typedef two_d_iterator< vector< sparsegroup<value_type, GROUP_SIZE,
+                                  allocator_type>,
+                                  vector_alloc> >
      nonempty_iterator;
-  typedef const_two_d_iterator< vector< sparsegroup<value_type, GROUP_SIZE> > >
+  typedef const_two_d_iterator< vector< sparsegroup<value_type,
+                                                    GROUP_SIZE,
+                                                    allocator_type>,
+                                        vector_alloc> >
      const_nonempty_iterator;
   typedef STL_NAMESPACE::reverse_iterator<nonempty_iterator> reverse_nonempty_iterator;
   typedef STL_NAMESPACE::reverse_iterator<const_nonempty_iterator> const_reverse_nonempty_iterator;
   // Another special iterator: it frees memory as it iterates (used to resize)
-  typedef destructive_two_d_iterator< vector< sparsegroup<value_type, GROUP_SIZE> > >
+  typedef destructive_two_d_iterator< vector< sparsegroup<value_type,
+                                                          GROUP_SIZE,
+                                                          allocator_type>,
+                                              vector_alloc> >
      destructive_iterator;
 
   // Iterator functions
@@ -1145,15 +1208,18 @@ class sparsetable {
     return destructive_iterator(groups.begin(), groups.end(), groups.end());
   }
 
- private:
-  typedef typename vector< sparsegroup<value_type, GROUP_SIZE> >::reference
+  typedef typename vector< sparsegroup<value_type, GROUP_SIZE, allocator_type>,
+                           vector_alloc>::reference
     GroupsReference;
   typedef typename
-    vector< sparsegroup<value_type, GROUP_SIZE> >::const_reference
+    vector< sparsegroup<value_type, GROUP_SIZE, allocator_type>,
+            vector_alloc>::const_reference
     GroupsConstReference;
-  typedef typename vector< sparsegroup<value_type, GROUP_SIZE> >::iterator
+  typedef typename vector< sparsegroup<value_type, GROUP_SIZE, allocator_type>,
+                           vector_alloc>::iterator
     GroupsIterator;
-  typedef typename vector< sparsegroup<value_type, GROUP_SIZE> >::const_iterator
+  typedef typename vector< sparsegroup<value_type, GROUP_SIZE, allocator_type>,
+                           vector_alloc>::const_iterator
     GroupsConstIterator;
 
   // How to deal with the proper group
@@ -1454,14 +1520,16 @@ class sparsetable {
 
  private:
   // The actual data
-  vector< sparsegroup<value_type, GROUP_SIZE> > groups;  // our list of groups
+  vector< sparsegroup<value_type, GROUP_SIZE, allocator_type>,
+          vector_alloc > groups;                // our list of groups
   size_type table_size;                         // how many buckets they want
   size_type num_buckets;                        // number of non-empty buckets
 };
 
 // We need a global swap as well
-template <class T, u_int16_t GROUP_SIZE>
-inline void swap(sparsetable<T,GROUP_SIZE> &x, sparsetable<T,GROUP_SIZE> &y) {
+template <class T, u_int16_t GROUP_SIZE, class Alloc>
+inline void swap(sparsetable<T,GROUP_SIZE,Alloc> &x,
+                 sparsetable<T,GROUP_SIZE,Alloc> &y) {
   x.swap(y);
 }
 

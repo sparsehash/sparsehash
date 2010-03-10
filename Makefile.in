@@ -191,6 +191,7 @@ PACKAGE_BUGREPORT = @PACKAGE_BUGREPORT@
 PACKAGE_NAME = @PACKAGE_NAME@
 PACKAGE_STRING = @PACKAGE_STRING@
 PACKAGE_TARNAME = @PACKAGE_TARNAME@
+PACKAGE_URL = @PACKAGE_URL@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 PTHREAD_CC = @PTHREAD_CC@
@@ -297,7 +298,8 @@ CLEANFILES = src/google/sparsehash/sparseconfig.h
 sparsehashincludedir = $(googleincludedir)/sparsehash
 sparsehashinclude_HEADERS = \
    src/google/sparsehash/densehashtable.h	\
-   src/google/sparsehash/sparsehashtable.h
+   src/google/sparsehash/sparsehashtable.h      \
+   src/google/sparsehash/libc_allocator_with_realloc.h
 
 nodist_sparsehashinclude_HEADERS = src/google/sparsehash/sparseconfig.h
 type_traits_unittest_SOURCES = \

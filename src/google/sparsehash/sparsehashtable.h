@@ -103,7 +103,7 @@
 // The probing method
 // Linear probing
 // #define JUMP_(key, num_probes)    ( 1 )
-// Quadratic-ish probing
+// Quadratic probing
 #define JUMP_(key, num_probes)    ( num_probes )
 
 
@@ -119,6 +119,12 @@ _START_GOOGLE_NAMESPACE_
 
 using STL_NAMESPACE::pair;
 
+// The smaller this is, the faster lookup is (because the group bitmap is
+// smaller) and the faster insert is, because there's less to move.
+// On the other hand, there are more groups.  Since group::size_type is
+// a short, this number should be of the form 32*x + 16 to avoid waste.
+static const u_int16_t DEFAULT_GROUP_SIZE = 48;   // fits in 1.5 words
+
 // Hashtable class, used to implement the hashed associative containers
 // hash_set and hash_map.
 //
@@ -132,7 +138,7 @@ using STL_NAMESPACE::pair;
 //         with key == deleted_key.
 // EqualKey: Given two Keys, says whether they are the same (that is,
 //           if they are both associated with the same Value).
-// Alloc: STL allocator to use to allocate memory.  Currently ignored.
+// Alloc: STL allocator to use to allocate memory.
 
 template <class Value, class Key, class HashFcn,
           class ExtractKey, class SetKey, class EqualKey, class Alloc>
@@ -151,7 +157,8 @@ struct sparse_hashtable_iterator {
  public:
   typedef sparse_hashtable_iterator<V,K,HF,ExK,SetK,EqK,A>       iterator;
   typedef sparse_hashtable_const_iterator<V,K,HF,ExK,SetK,EqK,A> const_iterator;
-  typedef typename sparsetable<V>::nonempty_iterator        st_iterator;
+  typedef typename sparsetable<V,DEFAULT_GROUP_SIZE,A>::nonempty_iterator
+      st_iterator;
 
   typedef STL_NAMESPACE::forward_iterator_tag iterator_category;
   typedef V value_type;
@@ -199,7 +206,8 @@ struct sparse_hashtable_const_iterator {
  public:
   typedef sparse_hashtable_iterator<V,K,HF,ExK,SetK,EqK,A>       iterator;
   typedef sparse_hashtable_const_iterator<V,K,HF,ExK,SetK,EqK,A> const_iterator;
-  typedef typename sparsetable<V>::const_nonempty_iterator  st_iterator;
+  typedef typename sparsetable<V,DEFAULT_GROUP_SIZE,A>::const_nonempty_iterator
+      st_iterator;
 
   typedef STL_NAMESPACE::forward_iterator_tag iterator_category;
   typedef V value_type;
@@ -249,7 +257,8 @@ template <class V, class K, class HF, class ExK, class SetK, class EqK, class A>
 struct sparse_hashtable_destructive_iterator {
  public:
   typedef sparse_hashtable_destructive_iterator<V,K,HF,ExK,SetK,EqK,A> iterator;
-  typedef typename sparsetable<V>::destructive_iterator     st_iterator;
+  typedef typename sparsetable<V,DEFAULT_GROUP_SIZE,A>::destructive_iterator
+      st_iterator;
 
   typedef STL_NAMESPACE::forward_iterator_tag iterator_category;
   typedef V value_type;
@@ -301,6 +310,7 @@ class sparse_hashtable {
   typedef Value value_type;
   typedef HashFcn hasher;
   typedef EqualKey key_equal;
+  typedef Alloc allocator_type;
 
   typedef size_t            size_type;
   typedef ptrdiff_t         difference_type;
@@ -1039,7 +1049,8 @@ class sparse_hashtable {
   float shrink_resize_percent;                       // how empty before resize
   size_type shrink_threshold;           // table.size() * shrink_resize_percent
   size_type enlarge_threshold;         // table.size() * enlarge_resize_percent
-  sparsetable<value_type> table;      // holds num_buckets and num_elements too
+  sparsetable<value_type, DEFAULT_GROUP_SIZE, allocator_type> table;
+                                      // holds num_buckets and num_elements too
   bool consider_shrink;   // true if we should try to shrink before next insert
   int num_ht_copies;        // a statistics counter incremented every Copy/Move
 
