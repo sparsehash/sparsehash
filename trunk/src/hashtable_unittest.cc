@@ -59,6 +59,7 @@
 #include <stdexcept>           // for std::length_error
 #include HASH_FUN_H            // defined in config.h
 #include <google/type_traits.h>
+#include <google/sparsehash/libc_allocator_with_realloc.h>
 #include <google/dense_hash_map>
 #include <google/dense_hash_set>
 #include <google/sparsehash/densehashtable.h>
@@ -77,6 +78,7 @@ using GOOGLE_NAMESPACE::sparse_hash_set;
 using GOOGLE_NAMESPACE::dense_hash_set;
 using GOOGLE_NAMESPACE::sparse_hashtable;
 using GOOGLE_NAMESPACE::dense_hashtable;
+using GOOGLE_NAMESPACE::libc_allocator_with_realloc;
 using STL_NAMESPACE::map;
 using STL_NAMESPACE::set;
 using STL_NAMESPACE::pair;
@@ -187,12 +189,12 @@ template <class T, class H, class I, class S, class C, class A>
 void set_empty_key(sparse_hashtable<T,T,H,I,S,C,A> *ht, T val) {
 }
 
-template <class T, class H, class C>
-void set_empty_key(sparse_hash_set<T,H,C> *ht, T val) {
+template <class T, class H, class C, class A>
+void set_empty_key(sparse_hash_set<T,H,C,A> *ht, T val) {
 }
 
-template <class K, class V, class H, class C>
-void set_empty_key(sparse_hash_map<K,V,H,C> *ht, K val) {
+template <class K, class V, class H, class C, class A>
+void set_empty_key(sparse_hash_map<K,V,H,C,A> *ht, K val) {
 }
 
 template <class T, class H, class I, class S, class C, class A>
@@ -200,13 +202,13 @@ void set_empty_key(dense_hashtable<T,T,H,I,S,C,A> *ht, T val) {
   ht->set_empty_key(val);
 }
 
-template <class T, class H, class C>
-void set_empty_key(dense_hash_set<T,H,C> *ht, T val) {
+template <class T, class H, class C, class A>
+void set_empty_key(dense_hash_set<T,H,C,A> *ht, T val) {
   ht->set_empty_key(val);
 }
 
-template <class K, class V, class H, class C>
-void set_empty_key(dense_hash_map<K,V,H,C> *ht, K val) {
+template <class K, class V, class H, class C, class A>
+void set_empty_key(dense_hash_map<K,V,H,C,A> *ht, K val) {
   ht->set_empty_key(val);
 }
 
@@ -215,13 +217,13 @@ bool clear_no_resize(sparse_hashtable<T,T,H,I,S,C,A> *ht) {
   return false;
 }
 
-template <class T, class H, class C>
-bool clear_no_resize(sparse_hash_set<T,H,C> *ht) {
+template <class T, class H, class C, class A>
+bool clear_no_resize(sparse_hash_set<T,H,C,A> *ht) {
   return false;
 }
 
-template <class K, class V, class H, class C>
-bool clear_no_resize(sparse_hash_map<K,V,H,C> *ht) {
+template <class K, class V, class H, class C, class A>
+bool clear_no_resize(sparse_hash_map<K,V,H,C,A> *ht) {
   return false;
 }
 
@@ -231,14 +233,14 @@ bool clear_no_resize(dense_hashtable<T,T,H,I,S,C,A> *ht) {
   return true;
 }
 
-template <class T, class H, class C>
-bool clear_no_resize(dense_hash_set<T,H,C> *ht) {
+template <class T, class H, class C, class A>
+bool clear_no_resize(dense_hash_set<T,H,C,A> *ht) {
   ht->clear_no_resize();
   return true;
 }
 
-template <class K, class V, class H, class C>
-bool clear_no_resize(dense_hash_map<K,V,H,C> *ht) {
+template <class K, class V, class H, class C, class A>
+bool clear_no_resize(dense_hash_map<K,V,H,C,A> *ht) {
   ht->clear_no_resize();
   return true;
 }
@@ -248,13 +250,13 @@ void insert(dense_hashtable<T,T,H,I,S,C,A> *ht, T val) {
   ht->insert(val);
 }
 
-template <class T, class H, class C>
-void insert(dense_hash_set<T,H,C> *ht, T val) {
+template <class T, class H, class C, class A>
+void insert(dense_hash_set<T,H,C,A> *ht, T val) {
   ht->insert(val);
 }
 
-template <class K, class V, class H, class C>
-void insert(dense_hash_map<K,V,H,C> *ht, K val) {
+template <class K, class V, class H, class C, class A>
+void insert(dense_hash_map<K,V,H,C,A> *ht, K val) {
   ht->insert(pair<K,V>(val,V()));
 }
 
@@ -263,13 +265,13 @@ void insert(sparse_hashtable<T,T,H,I,S,C,A> *ht, T val) {
   ht->insert(val);
 }
 
-template <class T, class H, class C>
-void insert(sparse_hash_set<T,H,C> *ht, T val) {
+template <class T, class H, class C, class A>
+void insert(sparse_hash_set<T,H,C,A> *ht, T val) {
   ht->insert(val);
 }
 
-template <class K, class V, class H, class C>
-void insert(sparse_hash_map<K,V,H,C> *ht, K val) {
+template <class K, class V, class H, class C, class A>
+void insert(sparse_hash_map<K,V,H,C,A> *ht, K val) {
   ht->insert(pair<K,V>(val,V()));
 }
 
@@ -283,16 +285,16 @@ void insert(HT *ht, Iterator begin, Iterator end) {
 // iterators to point to pair's. So by looping over and calling insert
 // on each element individually, the code below automatically expands
 // into inserting a pair.
-template <class K, class V, class H, class C, class Iterator>
-void insert(dense_hash_map<K,V,H,C> *ht, Iterator begin, Iterator end) {
+template <class K, class V, class H, class C, class A, class Iterator>
+void insert(dense_hash_map<K,V,H,C,A> *ht, Iterator begin, Iterator end) {
   while (begin != end) {
     insert(ht, *begin);
     ++begin;
   }
 }
 
-template <class K, class V, class H, class C, class Iterator>
-void insert(sparse_hash_map<K,V,H,C> *ht, Iterator begin, Iterator end) {
+template <class K, class V, class H, class C, class A, class Iterator>
+void insert(sparse_hash_map<K,V,H,C,A> *ht, Iterator begin, Iterator end) {
   while (begin != end) {
     insert(ht, *begin);
     ++begin;
@@ -308,15 +310,15 @@ void iterator_insert(dense_hashtable<T,T,H,I,S,C,A>* ht, T val,
   ht->insert(val);
 }
 
-template <class T, class H, class C>
-void iterator_insert(dense_hash_set<T,H,C>* , T val,
-                     insert_iterator<dense_hash_set<T,H,C> >* ii) {
+template <class T, class H, class C, class A>
+void iterator_insert(dense_hash_set<T,H,C,A>* , T val,
+                     insert_iterator<dense_hash_set<T,H,C,A> >* ii) {
   *(*ii)++ = val;
 }
 
-template <class K, class V, class H, class C>
-void iterator_insert(dense_hash_map<K,V,H,C>* , K val,
-                     insert_iterator<dense_hash_map<K,V,H,C> >* ii) {
+template <class K, class V, class H, class C, class A>
+void iterator_insert(dense_hash_map<K,V,H,C,A>* , K val,
+                     insert_iterator<dense_hash_map<K,V,H,C,A> >* ii) {
   *(*ii)++ = pair<K,V>(val,V());
 }
 
@@ -326,15 +328,15 @@ void iterator_insert(sparse_hashtable<T,T,H,I,S,C,A>* ht, T val,
   ht->insert(val);
 }
 
-template <class T, class H, class C>
-void iterator_insert(sparse_hash_set<T,H,C>* , T val,
-                     insert_iterator<sparse_hash_set<T,H,C> >* ii) {
+template <class T, class H, class C, class A>
+void iterator_insert(sparse_hash_set<T,H,C,A>* , T val,
+                     insert_iterator<sparse_hash_set<T,H,C,A> >* ii) {
   *(*ii)++ = val;
 }
 
-template <class K, class V, class H, class C>
-void iterator_insert(sparse_hash_map<K,V,H,C> *, K val,
-                     insert_iterator<sparse_hash_map<K,V,H,C> >* ii) {
+template <class K, class V, class H, class C, class A>
+void iterator_insert(sparse_hash_map<K,V,H,C,A> *, K val,
+                     insert_iterator<sparse_hash_map<K,V,H,C,A> >* ii) {
   *(*ii)++ = pair<K,V>(val,V());
 }
 
@@ -1441,6 +1443,16 @@ int main(int argc, char **argv) {
   LOGF << "\n\nTEST WITH DENSE_HASHTABLE\n\n";
   test<dense_hashtable<char *, char *, CharStarHash,
                        Identity<char *>, SetKey<char *>, strcmp_fnc,
+                       libc_allocator_with_realloc<char *> >,
+       dense_hashtable<string, string, StrHash,
+                       Identity<string>, SetKey<string>, equal_to<string>,
+                       libc_allocator_with_realloc<string> >,
+       dense_hashtable<int, int, SPARSEHASH_HASH<int>,
+                       Identity<int>, SetKey<int>, equal_to<int>,
+                       libc_allocator_with_realloc<int> > >(false);
+
+  test<dense_hashtable<char *, char *, CharStarHash,
+                       Identity<char *>, SetKey<char *>, strcmp_fnc,
 		       allocator<char *> >,
        dense_hashtable<string, string, StrHash,
                        Identity<string>, SetKey<string>, equal_to<string>,
@@ -1456,16 +1468,24 @@ int main(int argc, char **argv) {
        dense_hash_set<string, StrHash>,
        dense_hash_set<int> >(false);
 
+  test<dense_hash_set<char *, CharStarHash, strcmp_fnc, allocator<char *> >,
+       dense_hash_set<string, StrHash, equal_to<string>, allocator<string> >,
+       dense_hash_set<int, SPARSEHASH_HASH<int>, equal_to<int>, allocator<int> > >(false);
+
   TestResizingParameters<dense_hash_set<int>, true>();    // use tr1 API
   TestResizingParameters<dense_hash_set<int>, false>();   // use older API
 
+  TestResizingParameters<dense_hash_set<int, SPARSEHASH_HASH<int>, equal_to<int>,
+                         allocator<int> >, true>();       // use tr1 API
+  TestResizingParameters<dense_hash_set<int, SPARSEHASH_HASH<int>, equal_to<int>,
+                         allocator<int> >, false>();      // use older API
+
   TestHashtableResizing<dense_hashtable<int, int, SPARSEHASH_HASH<int>,
                            Identity<int>, SetKey<int>, equal_to<int>,
-                           allocator<int> > >();
+                           libc_allocator_with_realloc<int> > >();
   TestHashtableResizing<sparse_hashtable<int, int, SPARSEHASH_HASH<int>,
                            Identity<int>, SetKey<int>, equal_to<int>,
                            allocator<int> > >();
-
 
   // Now try with hash_map, which differs only in insert()
   LOGF << "\n\nTEST WITH DENSE_HASH_MAP\n\n";
@@ -1473,8 +1493,25 @@ int main(int argc, char **argv) {
        dense_hash_map<string, int, StrHash>,
        dense_hash_map<int, int> >(false);
 
+  test<dense_hash_map<char *, int, CharStarHash, strcmp_fnc,
+                      allocator<char *> >,
+       dense_hash_map<string, int, StrHash, equal_to<string>,
+                      allocator<string> >,
+       dense_hash_map<int, int, SPARSEHASH_HASH<int>, equal_to<int>,
+                     allocator<int> > >(false);
+
   // First try with the low-level hashtable interface
   LOGF << "\n\nTEST WITH SPARSE_HASHTABLE\n\n";
+  test<sparse_hashtable<char *, char *, CharStarHash,
+                        Identity<char *>, SetKey<char *>, strcmp_fnc,
+                        libc_allocator_with_realloc<char *> >,
+       sparse_hashtable<string, string, StrHash,
+                        Identity<string>, SetKey<string>, equal_to<string>,
+                        libc_allocator_with_realloc<string> >,
+       sparse_hashtable<int, int, SPARSEHASH_HASH<int>,
+                        Identity<int>, SetKey<int>, equal_to<int>,
+                        libc_allocator_with_realloc<int> > >(true);
+
   test<sparse_hashtable<char *, char *, CharStarHash,
                         Identity<char *>, SetKey<char *>, strcmp_fnc,
                         allocator<char *> >,
@@ -1491,14 +1528,30 @@ int main(int argc, char **argv) {
        sparse_hash_set<string, StrHash>,
        sparse_hash_set<int> >(true);
 
+  test<sparse_hash_set<char *, CharStarHash, strcmp_fnc, allocator<int> >,
+       sparse_hash_set<string, StrHash, equal_to<string>, allocator<int>  >,
+       sparse_hash_set<int, SPARSEHASH_HASH<int>, equal_to<int>, allocator<int> > >(true);
+
   TestResizingParameters<sparse_hash_set<int>, true>();
   TestResizingParameters<sparse_hash_set<int>, false>();
+
+  TestResizingParameters<sparse_hash_set<int, SPARSEHASH_HASH<int>, equal_to<int>,
+                         allocator<int> >, true>();
+  TestResizingParameters<sparse_hash_set<int, SPARSEHASH_HASH<int>, equal_to<int>,
+                         allocator<int> >, false>();
 
   // Now try with hash_map, which differs only in insert()
   LOGF << "\n\nTEST WITH SPARSE_HASH_MAP\n\n";
   test<sparse_hash_map<char *, int, CharStarHash, strcmp_fnc>,
        sparse_hash_map<string, int, StrHash>,
        sparse_hash_map<int, int> >(true);
+
+  test<sparse_hash_map<char *, int, CharStarHash, strcmp_fnc,
+                       allocator<char *> >,
+       sparse_hash_map<string, int, StrHash, equal_to<string>,
+                       allocator<string> >,
+       sparse_hash_map<int, int, SPARSEHASH_HASH<int>, equal_to<int>,
+                       allocator<int> > >(true);
 
   // Test that we use the optimized routines for simple data types
   LOGF << "\n\nTesting simple-data-type optimizations\n";

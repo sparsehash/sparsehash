@@ -172,7 +172,7 @@ compatible with the tr1 class <code>unordered_map</code>.
 <TD VAlign=top>
    The <A href="http://www.sgi.com/tech/stl/HashFunction.html">hash function</A> used by the
    hash_map.  This is also defined as <tt>sparse_hash_map::hasher</tt>.
-   <br><b>Note:</b> Hashtable performance depends heavliy on the choice of
+   <br><b>Note:</b> Hashtable performance depends heavily on the choice of
    hash function.  See <A HREF="performance.html#hashfn">the performance
    page</A> for more information.
 </TD>
@@ -201,8 +201,18 @@ compatible with the tr1 class <code>unordered_map</code>.
    <tt>Alloc</tt>
 </TD>
 <TD VAlign=top>
-   <b>Ignored</b>; this is included only for API-compatibility
-   with SGI's (and tr1's) STL implementation.
+   The STL allocator to use.  By default, uses the provided allocator
+   <code>libc_allocator_with_realloc</code>, which likely gives better
+   performance than other STL allocators due to its built-in support
+   for <code>realloc</code>, which this container takes advantage of.
+   If you use an allocator other than the default, note that this
+   container imposes an additional requirement on the STL allocator
+   type beyond those in [lib.allocator.requirements]: it does not
+   support allocators that define alternate memory models.  That is,
+   it assumes that <code>pointer</code>, <code>const_pointer</code>,
+   <code>size_type</code>, and <code>difference_type</code> are just
+   <code>T*</code>, <code>const T*</code>, <code>size_t</code>, and
+   <code>ptrdiff_t</code>, respectively.
 </TD>
 <TD VAlign=top>
 </TD>

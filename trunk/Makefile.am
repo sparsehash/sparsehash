@@ -100,7 +100,8 @@ CLEANFILES = src/google/sparsehash/sparseconfig.h
 sparsehashincludedir = $(googleincludedir)/sparsehash
 sparsehashinclude_HEADERS =			\
    src/google/sparsehash/densehashtable.h	\
-   src/google/sparsehash/sparsehashtable.h
+   src/google/sparsehash/sparsehashtable.h      \
+   src/google/sparsehash/libc_allocator_with_realloc.h
 nodist_sparsehashinclude_HEADERS = src/google/sparsehash/sparseconfig.h
 
 type_traits_unittest_SOURCES =			\

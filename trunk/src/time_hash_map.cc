@@ -32,6 +32,14 @@
 //
 // Time various hash map implementations
 //
+// Consider doing the following to get good numbers:
+//
+// 1. Run the tests on a machine with no X service. Make sure no other
+//    processes are running.
+// 2. Minimize compiled-code differences. Compare results from the same
+//    binary, if possible, instead of comparing results from two different
+//    binaries.
+//
 // See PERFORMANCE for the output of one example run.
 
 #include "config.h"
@@ -78,36 +86,36 @@ template<class MapType> inline void SET_DELETED_KEY(MapType& m, int key) {}
 template<class MapType> inline void SET_EMPTY_KEY(MapType& m, int key) {}
 template<class MapType> inline void RESIZE(MapType& m, int iters) {}
 
-template<class K, class V, class H>
-inline void SET_DELETED_KEY(sparse_hash_map<K,V,H>& m, int key) {
+template<class K, class V, class H, class E, class A>
+inline void SET_DELETED_KEY(sparse_hash_map<K,V,H,E,A>& m, int key) {
   m.set_deleted_key(key);
 }
-template<class K, class V, class H>
-inline void SET_DELETED_KEY(dense_hash_map<K,V,H>& m, int key) {
+template<class K, class V, class H, class E, class A>
+inline void SET_DELETED_KEY(dense_hash_map<K,V,H,E,A>& m, int key) {
   m.set_deleted_key(key);
 }
 
-template<class K, class V, class H>
-inline void SET_EMPTY_KEY(dense_hash_map<K,V,H>& m, int key) {
+template<class K, class V, class H, class E, class A>
+inline void SET_EMPTY_KEY(dense_hash_map<K,V,H,E,A>& m, int key) {
   m.set_empty_key(key);
 }
 
-template<class K, class V, class H>
-inline void RESIZE(sparse_hash_map<K,V,H>& m, int iters) {
+template<class K, class V, class H, class E, class A>
+inline void RESIZE(sparse_hash_map<K,V,H,E,A>& m, int iters) {
   m.resize(iters);
 }
-template<class K, class V, class H>
-inline void RESIZE(dense_hash_map<K,V,H>& m, int iters) {
+template<class K, class V, class H, class E, class A>
+inline void RESIZE(dense_hash_map<K,V,H,E,A>& m, int iters) {
   m.resize(iters);
 }
 #if defined(HAVE_UNORDERED_MAP)
-template<class K, class V, class H>
-inline void RESIZE(HASH_NAMESPACE::unordered_map<K,V,H>& m, int iters) {
+template<class K, class V, class H, class E, class A>
+inline void RESIZE(HASH_NAMESPACE::unordered_map<K,V,H,E,A>& m, int iters) {
   m.rehash(iters);   // the tr1 name for resize()
 }
 #elif defined(HAVE_HASH_MAP)
-template<class K, class V, class H>
-inline void RESIZE(HASH_NAMESPACE::hash_map<K,V,H>& m, int iters) {
+template<class K, class V, class H, class E, class A>
+inline void RESIZE(HASH_NAMESPACE::hash_map<K,V,H,E,A>& m, int iters) {
 #ifndef _MSC_VER    /* apparently windows hash_map doesn't support resizing */
   m.resize(iters);
 #endif  // _MSC_VER

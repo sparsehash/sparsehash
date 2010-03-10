@@ -93,7 +93,7 @@
 // The probing method
 // Linear probing
 // #define JUMP_(key, num_probes)    ( 1 )
-// Quadratic-ish probing
+// Quadratic probing
 #define JUMP_(key, num_probes)    ( num_probes )
 
 
@@ -107,6 +107,7 @@
 #include <memory>               // For uninitialized_fill, uninitialized_copy
 #include <utility>              // for pair<>
 #include <iterator>             // for facts about iterator tags
+#include <google/sparsehash/libc_allocator_with_realloc.h>
 #include <google/type_traits.h> // for true_type, integral_constant, etc.
 
 _START_GOOGLE_NAMESPACE_
@@ -126,7 +127,7 @@ using STL_NAMESPACE::pair;
 //         with key == deleted_key or key == empty_key.
 // EqualKey: Given two Keys, says whether they are the same (that is,
 //           if they are both associated with the same Value).
-// Alloc: STL allocator to use to allocate memory.  Currently ignored.
+// Alloc: STL allocator to use to allocate memory.
 
 template <class Value, class Key, class HashFcn,
           class ExtractKey, class SetKey, class EqualKey, class Alloc>
@@ -249,6 +250,7 @@ class dense_hashtable {
   typedef Value value_type;
   typedef HashFcn hasher;
   typedef EqualKey key_equal;
+  typedef Alloc allocator_type;
 
   typedef size_t            size_type;
   typedef ptrdiff_t         difference_type;
@@ -484,7 +486,7 @@ class dense_hashtable {
 
     assert(!table);                  // must set before first use
     // num_buckets was set in constructor even though table was NULL
-    table = (value_type *) malloc(num_buckets * sizeof(*table));
+    table = allocator.allocate(num_buckets);
     assert(table);
     fill_range_with_empty(table, table + num_buckets);
   }
@@ -592,14 +594,14 @@ class dense_hashtable {
   }
 
   // Increase number of buckets, assuming value_type has trivial copy
-  // constructor and destructor.  (Really, we want it to have "trivial
+  // constructor and destructor, and the allocator type is the default
+  // libc_allocator_with_alloc.  (Really, we want it to have "trivial
   // move", because that's what realloc does.  But there's no way to
   // capture that using type_traits, so we pretend that move(x, y) is
   // equivalent to "x.~T(); new(x) T(y);" which is pretty much
   // correct, if a bit conservative.)
   void expand_array(size_t resize_to, true_type) {
-    table = (value_type *) realloc(table, resize_to * sizeof(value_type));
-    assert(table);
+    table = allocator.realloc_or_die(table, resize_to);
     fill_range_with_empty(table + num_buckets, table + resize_to);
   }
 
@@ -607,13 +609,12 @@ class dense_hashtable {
   // TODO(austern): make this exception safe. Handle exceptions from
   // value_type's copy constructor.
   void expand_array(size_t resize_to, false_type) {
-    value_type* new_table =
-      (value_type *) malloc(resize_to * sizeof(value_type));
+    value_type* new_table = allocator.allocate(resize_to);
     assert(new_table);
     STL_NAMESPACE::uninitialized_copy(table, table + num_buckets, new_table);
     fill_range_with_empty(new_table + num_buckets, new_table + resize_to);
     destroy_buckets(0, num_buckets);
-    free(table);
+    allocator.deallocate(table, num_buckets);
     table = new_table;
   }
 
@@ -626,7 +627,9 @@ class dense_hashtable {
     if ( resize_to > bucket_count() ) { // we don't have enough buckets
       typedef integral_constant<bool,
           (has_trivial_copy<value_type>::value &&
-           has_trivial_destructor<value_type>::value)>
+           has_trivial_destructor<value_type>::value &&
+           is_same<allocator_type,
+                   libc_allocator_with_realloc<value_type> >::value)>
           realloc_ok; // we pretend mv(x,y) == "x.~T(); new(x) T(y)"
       expand_array(resize_to, realloc_ok());
       num_buckets = resize_to;
@@ -662,7 +665,7 @@ class dense_hashtable {
     if ( consider_shrink || req_elements == 0 )
       maybe_shrink();
     if ( req_elements > num_elements )
-      return resize_delta(req_elements - num_elements);
+      resize_delta(req_elements - num_elements);
   }
 
   // Get and change the value of shrink_resize_percent and
@@ -752,7 +755,7 @@ class dense_hashtable {
   ~dense_hashtable() {
     if (table) {
       destroy_buckets(0, num_buckets);
-      free(table);
+      allocator.deallocate(table, num_buckets);
     }
   }
 
@@ -794,11 +797,12 @@ class dense_hashtable {
     if (table)
       destroy_buckets(0, num_buckets);
     if (!table || (new_num_buckets != num_buckets)) {
+      allocator.deallocate(table, num_buckets);
       // Recompute the resize thresholds and realloc the table only if we're
       // actually changing its size.
       num_buckets = new_num_buckets;          // our new size
       reset_thresholds();
-      table = (value_type *) realloc(table, num_buckets * sizeof(*table));
+      table = allocator.allocate(num_buckets);
     }
     assert(table);
     fill_range_with_empty(table, table + num_buckets);
@@ -1058,11 +1062,11 @@ class dense_hashtable {
   bool read_metadata(FILE *fp) {
     num_deleted = 0;            // since we got rid before writing
     assert(use_empty);          // have to set this before calling us
-    if (table)  free(table);    // we'll make our own
+    if (table)  allocator.deallocate(table, num_buckets);  // we'll make our own
     // TODO: read magic number
     // TODO: read num_buckets
     reset_thresholds();
-    table = (value_type *) malloc(num_buckets * sizeof(*table));
+    table = allocator.allocate(num_buckets);
     assert(table);
     fill_range_with_empty(table, table + num_buckets);
     // TODO: read num_elements
@@ -1096,11 +1100,49 @@ class dense_hashtable {
   }
 
  private:
+  typedef typename allocator_type::template rebind<value_type>::other
+      internal_alloc;
+
+  template <class V, class A>
+  class alloc_impl : public A {
+   public:
+    // realloc_or_die should only be used when using the default
+    // allocator (libc_allocator_with_realloc).
+    V* realloc_or_die(V* ptr, size_t n) {
+      fprintf(stderr, "realloc_or_die is only supported for "
+                      "libc_allocator_with_realloc");
+      exit(1);
+      return NULL;
+    }
+  };
+
+  // A template specialization of alloc_impl for
+  // libc_allocator_with_realloc that can handle realloc_or_die.
+  template <class V, class A>
+  class alloc_impl<V, libc_allocator_with_realloc<A> >
+      : public libc_allocator_with_realloc<A> {
+   public:
+    V* realloc_or_die(V* ptr, size_t n) {
+      V* retval = reallocate(ptr, n);
+      if (retval == NULL) {
+        // We really should use PRIuS here, but I don't want to have to add
+        // a whole new configure option, with concomitant macro namespace
+        // pollution, just to print this (unlikely) error message.  So I cast.
+        fprintf(stderr, "sparsehash: FATAL ERROR: failed to reallocate "
+                "%lu elements for ptr %p",
+                static_cast<unsigned long>(n), ptr);
+        exit(1);
+      }
+      return retval;
+    }
+  };
+
   // The actual data
   hasher hash;                      // required by hashed_associative_container
   key_equal equals;
   ExtractKey get_key;
   SetKey set_key;
+  alloc_impl<value_type, internal_alloc> allocator;  // allocator for memory
   size_type num_deleted;        // how many occupied buckets are marked deleted
   bool use_deleted;                          // false until delkey has been set
   bool use_empty;                          // you must do this before you start

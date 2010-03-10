@@ -45,11 +45,14 @@
 #include <unistd.h>         // for unlink()
 #include <sys/types.h>      // for size_t
 #include <string>
+#include <memory>           // for allocator
 #endif
 #include <google/sparsetable>
 
 using STL_NAMESPACE::string;
+using STL_NAMESPACE::allocator;
 using GOOGLE_NAMESPACE::sparsetable;
+using GOOGLE_NAMESPACE::DEFAULT_SPARSEGROUP_SIZE;
 
 // Many sparsetable operations return a size_t.  Rather than have to
 // use PRIuS everywhere, we'll just cast to a "big enough" value.
@@ -443,7 +446,66 @@ void TestString() {
     out += snprintf(out, LEFT, "y[??] = %s\n", (*--it).c_str());
 }
 
-// The expected output from all of the above: TestInt() and TestString()
+// Test sparsetable with with the default allocator and with stl allocator.
+void TestAllocator() {
+  // POD (int) with default allocator.
+  out += snprintf(out, LEFT, "allocator test\n");
+  sparsetable<int> x, y;
+  for (int s = 1000; s <= 40000; s += 1000) {
+    x.resize(s);
+    for (int i = 0; i < s; ++i) {
+      x.set(i, i + 1);
+    }
+    y = x;
+    for (int i = 0; i < s; ++i) {
+      y.erase(i);
+    }
+    y.swap(x);
+  }
+  TEST(x.num_nonempty() == 0);
+  out += snprintf(out, LEFT, "y[0]: %d\n", int(y[0]));
+  out += snprintf(out, LEFT, "y[39999]: %d\n", int(y[39999]));
+  y.clear();
+
+  // POD (int) with std allocator.
+  sparsetable<int, DEFAULT_SPARSEGROUP_SIZE, allocator<int> > u, v;
+  for (int s = 1000; s <= 40000; s += 1000) {
+    u.resize(s);
+    for (int i = 0; i < s; ++i) {
+      u.set(i, i + 1);
+    }
+    v = u;
+    for (int i = 0; i < s; ++i) {
+      v.erase(i);
+    }
+    v.swap(u);
+  }
+  TEST(u.num_nonempty() == 0);
+  out += snprintf(out, LEFT, "v[0]: %d\n", int(v[0]));
+  out += snprintf(out, LEFT, "v[39999]: %d\n", int(v[39999]));
+  v.clear();
+
+  // Non-POD (string) with default allocator.
+  sparsetable<string> a, b;
+  for (int s = 1000; s <= 40000; s += 1000) {
+    a.resize(s);
+    for (int i = 0; i < s; ++i) {
+      a.set(i, "aa");
+    }
+    b = a;
+    for (int i = 0; i < s; ++i) {
+      b.erase(i);
+    }
+    b.swap(a);
+  }
+  TEST(a.num_nonempty() == 0);
+  out += snprintf(out, LEFT, "b[0]: %s\n", b.get(0).c_str());
+  out += snprintf(out, LEFT, "b[39999]: %s\n", b.get(39999).c_str());
+  b.clear();
+}
+
+// The expected output from all of the above: TestInt(), TestString() and
+// TestAllocator().
 static const char g_expected[] = (
     "int test\n"
     "x[0]: 0\n"
@@ -675,12 +737,23 @@ static const char g_expected[] = (
     "y[??] = -13\n"
     "y[??] = -11\n"
     "y[??] = -10\n"
+    "allocator test\n"
+    "x.num_nonempty() == 0? yes\n"
+    "y[0]: 1\n"
+    "y[39999]: 40000\n"
+    "u.num_nonempty() == 0? yes\n"
+    "v[0]: 1\n"
+    "v[39999]: 40000\n"
+    "a.num_nonempty() == 0? yes\n"
+    "b[0]: aa\n"
+    "b[39999]: aa\n"
     );
 
 // defined at bottom of file for ease of maintainence
 int main(int argc, char **argv) {          // though we ignore the args
   TestInt();
   TestString();
+  TestAllocator();
 
   // Finally, check to see if our output (in out) is what it's supposed to be.
   const size_t r = sizeof(g_expected) - 1;

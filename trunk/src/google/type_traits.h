@@ -75,6 +75,16 @@ template <class T, T v> const T integral_constant<T, v>::value;
 typedef integral_constant<bool, true>  true_type;
 typedef integral_constant<bool, false> false_type;
 
+// is_same is a template type comparator, similar to Loki IsSameType.
+// is_same<A, B>::value is true iff "A" is the same type as "B".
+template<typename A, typename B>
+struct is_same : public false_type {
+};
+
+template<typename A>
+struct is_same<A, A> : public true_type {
+};
+
 // Types small_ and big_ are guaranteed such that sizeof(small_) <
 // sizeof(big_)
 typedef char small_;
