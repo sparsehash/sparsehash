@@ -968,50 +968,85 @@ class TestEqualTo : public equal_to<int> {
   int id_;
 };
 
-template <template <class V, class H, class E, class A> class Hash>
-void TestHash() {
-  typedef Hash<int, TestHashFcn, TestEqualTo, allocator<int> > TheHash;
+// Here, NonHT is the non-hash version of HT: "map" to HT's "hash_map"
+template<class HT, class NonHT>
+void TestSparseConstructors() {
   const TestHashFcn fcn(1);
   const TestEqualTo eqt(2);
   {
-    const TheHash simple(0, fcn, eqt);
-    CHECK(fcn.id() == simple.hash_funct().id());
-    CHECK(eqt.id() == simple.key_eq().id());
+    const HT simple(0, fcn, eqt);
+    CHECK_EQ(fcn.id(), simple.hash_funct().id());
+    CHECK_EQ(eqt.id(), simple.key_eq().id());
   }
   {
-    const set<int> input;
-    const TheHash iterated(input.begin(), input.end(), 0, fcn, eqt);
-    CHECK(fcn.id() == iterated.hash_funct().id());
-    CHECK(eqt.id() == iterated.key_eq().id());
+    const NonHT input;
+    const HT iterated(input.begin(), input.end(), 0, fcn, eqt);
+    CHECK_EQ(fcn.id(), iterated.hash_funct().id());
+    CHECK_EQ(eqt.id(), iterated.key_eq().id());
   }
+
+  // Now test each of the constructor types.
+  HT ht(0, fcn, eqt);
+  for (int i = 0; i < 1000; i++) {
+    insert(&ht, i * i);
+  }
+
+  HT ht_copy(ht);
+  CHECK(ht == ht_copy);
+
+  HT ht_equal(0, fcn, eqt);
+  ht_equal = ht;
+  CHECK(ht == ht_copy);
+
+  HT ht_iterator(ht.begin(), ht.end(), 0, fcn, eqt);
+  CHECK(ht == ht_iterator);
+
+  HT ht_size(ht.size(), fcn, eqt);
+  for (typename HT::const_iterator it = ht.begin(); it != ht.end(); ++it)
+    ht_size.insert(*it);
+  CHECK(ht == ht_size);
 }
 
-static void TestHashes() {
-  TestHash<sparse_hash_set>();
-  TestHash<dense_hash_set>();
-}
-
-template <template <class K, class T, class H, class E, class A> class Map>
-void TestMap() {
-  typedef Map<int, int, TestHashFcn, TestEqualTo, allocator<int> > TheMap;
+// Sadly, we need a separate version of this test because the iterator
+// constructors require an extra arg in densehash-land.
+template<class HT, class NonHT>
+void TestDenseConstructors() {
   const TestHashFcn fcn(1);
   const TestEqualTo eqt(2);
   {
-    const TheMap simple(0, fcn, eqt);
-    CHECK(fcn.id() == simple.hash_funct().id());
-    CHECK(eqt.id() == simple.key_eq().id());
+    const HT simple(0, fcn, eqt);
+    CHECK_EQ(fcn.id(), simple.hash_funct().id());
+    CHECK_EQ(eqt.id(), simple.key_eq().id());
   }
   {
-    const map<int, int> input;
-    const TheMap iterated(input.begin(), input.end(), 0, fcn, eqt);
-    CHECK(fcn.id() == iterated.hash_funct().id());
-    CHECK(eqt.id() == iterated.key_eq().id());
+    const NonHT input;
+    const HT iterated(input.begin(), input.end(), -1, 0, fcn, eqt);
+    CHECK_EQ(fcn.id(), iterated.hash_funct().id());
+    CHECK_EQ(eqt.id(), iterated.key_eq().id());
   }
-}
 
-static void TestMaps() {
-  TestMap<sparse_hash_map>();
-  TestMap<dense_hash_map>();
+  // Now test each of the constructor types.
+  HT ht(0, fcn, eqt);
+  ht.set_empty_key(-1);
+  for (int i = 0; i < 1000; i++) {
+    insert(&ht, i * i);
+  }
+
+  HT ht_copy(ht);
+  CHECK(ht == ht_copy);
+
+  HT ht_equal(0, fcn, eqt);
+  ht_equal = ht;
+  CHECK(ht == ht_copy);
+
+  HT ht_iterator(ht.begin(), ht.end(), ht.empty_key(), 0, fcn, eqt);
+  CHECK(ht == ht_iterator);
+
+  HT ht_size(ht.size(), fcn, eqt);
+  ht_size.set_empty_key(ht.empty_key());
+  for (typename HT::const_iterator it = ht.begin(); it != ht.end(); ++it)
+    ht_size.insert(*it);
+  CHECK(ht == ht_size);
 }
 
 static void TestCopyConstructor() {
@@ -1187,7 +1222,7 @@ static void TestHashtableResizing() {
 
   const int kSize = 1<<10;       // Pick any power of 2
   const float kResize = 0.8f;    // anything between 0.5 and 1 is fine.
-  const int kThreshold = kSize * kResize - 1;
+  const int kThreshold = static_cast<int>(kSize * kResize - 1);
   ht.set_resizing_parameters(0, kResize);
 
   // Get right up to the resizing threshold.
@@ -1204,7 +1239,7 @@ static void TestHashtableResizing() {
     if (i % 100 == 0)
       LOGF << "erase/insert: " << i
            << " buckets: " << ht.bucket_count()
-           << " size: " << ht.size();
+           << " size: " << ht.size() << "\n";
     ht.erase(kThreshold);
     ht.insert(kThreshold);
   }
@@ -1401,7 +1436,7 @@ void TestHugeResize() {
   try {
     dense_hash_map<int, int> ht;
     ht.resize(static_cast<size_t>(-1));
-    LOGF << "dense_hash_map resize should have failed";
+    LOGF << "dense_hash_map resize should have failed\n";
     abort();
   } catch (const std::length_error&) {
     // Good, the resize failed.
@@ -1410,7 +1445,7 @@ void TestHugeResize() {
   try {
     sparse_hash_map<int, int> ht;
     ht.resize(static_cast<size_t>(-1));
-    LOGF << "sparse_hash_map resize should have failed";
+    LOGF << "sparse_hash_map resize should have failed\n";
     abort();
   } catch (const std::length_error&) {
     // Good, the resize failed.
@@ -1558,14 +1593,22 @@ int main(int argc, char **argv) {
   TestSimpleDataTypeOptimizations();
 
   // Test shrinking to very small sizes
-  LOGF << "\n\nTesting shrinking behavior";
+  LOGF << "\n\nTesting shrinking behavior\n";
   TestShrinking();
 
-  // Test that the hashers and key_equals are used properly in hash tables and
-  // hash maps.
-  LOGF << "\n\nTesting hashers and key_equals\n";
-  TestHashes();
-  TestMaps();
+  LOGF << "\n\nTesting constructors, hashers, and key_equals\n";
+  TestSparseConstructors< sparse_hash_map<int, int, TestHashFcn, TestEqualTo,
+                                          allocator<int> >,
+                          map<int, int> >();
+  TestSparseConstructors< sparse_hash_set<int, TestHashFcn, TestEqualTo,
+                                          allocator<int> >,
+                          set<int, int> >();
+  TestDenseConstructors< dense_hash_map<int, int, TestHashFcn, TestEqualTo,
+                                        allocator<int> >,
+                         map<int, int> >();
+  TestDenseConstructors< dense_hash_set<int, TestHashFcn, TestEqualTo,
+                                        allocator<int> >,
+                         set<int, int> >();
 
   LOGF << "\n\nTesting tr1 API\n";
   TestTR1API<sparse_hash_map<int, int> >();

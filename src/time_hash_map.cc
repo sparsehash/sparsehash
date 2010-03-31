@@ -113,12 +113,15 @@ template<class K, class V, class H, class E, class A>
 inline void RESIZE(HASH_NAMESPACE::unordered_map<K,V,H,E,A>& m, int iters) {
   m.rehash(iters);   // the tr1 name for resize()
 }
+#elif defined(_MSC_VER)
+// MSVC/Dinkumware hash impl has fewer template args, and no resize support.
+template<class K, class V, class H, class A>
+inline void RESIZE(HASH_NAMESPACE::hash_map<K,V,H,A>& m, int iters) {
+}
 #elif defined(HAVE_HASH_MAP)
 template<class K, class V, class H, class E, class A>
 inline void RESIZE(HASH_NAMESPACE::hash_map<K,V,H,E,A>& m, int iters) {
-#ifndef _MSC_VER    /* apparently windows hash_map doesn't support resizing */
   m.resize(iters);
-#endif  // _MSC_VER
 }
 #endif  // HAVE_HASH_MAP
 

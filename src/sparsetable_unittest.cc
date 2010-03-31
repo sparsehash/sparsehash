@@ -446,10 +446,126 @@ void TestString() {
     out += snprintf(out, LEFT, "y[??] = %s\n", (*--it).c_str());
 }
 
-// Test sparsetable with with the default allocator and with stl allocator.
+// An instrumented allocator that keeps track of all calls to
+// allocate/deallocate/construct/destroy. It stores the number of times
+// they were called and the values they were called with. Such information is
+// stored in the following global variables.
+
+static size_t sum_allocate_bytes;
+static size_t sum_deallocate_bytes;
+
+void ResetAllocatorCounters() {
+  sum_allocate_bytes = 0;
+  sum_deallocate_bytes = 0;
+}
+
+template <class T> class instrumented_allocator {
+ public:
+  typedef T value_type;
+  typedef u_int16_t size_type;
+  typedef ptrdiff_t difference_type;
+
+  typedef T* pointer;
+  typedef const T* const_pointer;
+  typedef T& reference;
+  typedef const T& const_reference;
+
+  instrumented_allocator() {}
+  instrumented_allocator(const instrumented_allocator&) {}
+  ~instrumented_allocator() {}
+
+  pointer address(reference r) const  { return &r; }
+  const_pointer address(const_reference r) const  { return &r; }
+
+  pointer allocate(size_type n, const_pointer = 0) {
+    sum_allocate_bytes += n * sizeof(value_type);
+    return static_cast<pointer>(malloc(n * sizeof(value_type)));
+  }
+  void deallocate(pointer p, size_type n) {
+    sum_deallocate_bytes += n * sizeof(value_type);
+    free(p);
+  }
+
+  size_type max_size() const  {
+    return static_cast<size_type>(-1) / sizeof(value_type);
+  }
+
+  void construct(pointer p, const value_type& val) {
+    new(p) value_type(val);
+  }
+  void destroy(pointer p) {
+    p->~value_type();
+  }
+
+  template <class U>
+  explicit instrumented_allocator(const instrumented_allocator<U>&) {}
+
+  template<class U>
+  struct rebind {
+    typedef instrumented_allocator<U> other;
+  };
+
+ private:
+  void operator=(const instrumented_allocator&);
+};
+
+template<class T>
+inline bool operator==(const instrumented_allocator<T>&,
+                       const instrumented_allocator<T>&) {
+  return true;
+}
+
+template<class T>
+inline bool operator!=(const instrumented_allocator<T>&,
+                       const instrumented_allocator<T>&) {
+  return false;
+}
+
+// Test sparsetable with instrumented_allocator.
 void TestAllocator() {
-  // POD (int) with default allocator.
   out += snprintf(out, LEFT, "allocator test\n");
+
+  ResetAllocatorCounters();
+
+  // POD (int32) with instrumented_allocator.
+  typedef sparsetable<int, DEFAULT_SPARSEGROUP_SIZE,
+                      instrumented_allocator<int> > IntSparseTable;
+
+  IntSparseTable* s1 = new IntSparseTable(10000);
+  TEST(sum_allocate_bytes > 0);
+  for (int i = 0; i < 10000; ++i) {
+    s1->set(i, 0);
+  }
+  TEST(sum_allocate_bytes >= 10000 * sizeof(int));
+  ResetAllocatorCounters();
+  delete s1;
+  TEST(sum_deallocate_bytes >= 10000 * sizeof(int));
+
+  IntSparseTable* s2 = new IntSparseTable(1000);
+  IntSparseTable* s3 = new IntSparseTable(1000);
+
+  for (int i = 0; i < 1000; ++i) {
+    s2->set(i, 0);
+    s3->set(i, 0);
+  }
+  TEST(sum_allocate_bytes >= 2000 * sizeof(int));
+
+  ResetAllocatorCounters();
+  s3->clear();
+  TEST(sum_deallocate_bytes >= 1000 * sizeof(int));
+
+  ResetAllocatorCounters();
+  s2->swap(*s3);  // s2 is empty after the swap
+  s2->clear();
+  TEST(sum_deallocate_bytes < 1000 * sizeof(int));
+  for (int i = 0; i < s3->size(); ++i) {
+    s3->erase(i);
+  }
+  TEST(sum_deallocate_bytes >= 1000 * sizeof(int));
+  delete s2;
+  delete s3;
+
+  // POD (int) with default allocator.
   sparsetable<int> x, y;
   for (int s = 1000; s <= 40000; s += 1000) {
     x.resize(s);
@@ -738,6 +854,13 @@ static const char g_expected[] = (
     "y[??] = -11\n"
     "y[??] = -10\n"
     "allocator test\n"
+    "sum_allocate_bytes > 0? yes\n"
+    "sum_allocate_bytes >= 10000 * sizeof(int)? yes\n"
+    "sum_deallocate_bytes >= 10000 * sizeof(int)? yes\n"
+    "sum_allocate_bytes >= 2000 * sizeof(int)? yes\n"
+    "sum_deallocate_bytes >= 1000 * sizeof(int)? yes\n"
+    "sum_deallocate_bytes < 1000 * sizeof(int)? yes\n"
+    "sum_deallocate_bytes >= 1000 * sizeof(int)? yes\n"
     "x.num_nonempty() == 0? yes\n"
     "y[0]: 1\n"
     "y[39999]: 40000\n"

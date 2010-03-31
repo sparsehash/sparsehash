@@ -83,8 +83,6 @@
 #endif
 #endif
 
-_START_GOOGLE_NAMESPACE_
-
 #ifndef HAVE_U_INT16_T
 # if defined HAVE_UINT16_T
     typedef uint16_t u_int16_t;    // true on solaris, possibly other C99 libc's
@@ -97,6 +95,8 @@ _START_GOOGLE_NAMESPACE_
     typedef unsigned short int u_int16_t;
 # endif
 #endif
+
+_START_GOOGLE_NAMESPACE_
 
 using STL_NAMESPACE::vector;
 using STL_NAMESPACE::uninitialized_copy;
@@ -600,7 +600,7 @@ class destructive_two_d_iterator {
 #undef TWOD_CONST_ITER_
 
 
-
+
 
 // SPARSE-TABLE
 // ------------
@@ -641,19 +641,23 @@ class destructive_two_d_iterator {
 
 template <class T, u_int16_t GROUP_SIZE, class Alloc>
 class sparsegroup {
+ private:
+  typedef typename Alloc::template rebind<T>::other value_alloc_type;
+
  public:
   // Basic types
   typedef T value_type;
   typedef Alloc allocator_type;
-  typedef value_type* pointer;
-  typedef const value_type* const_pointer;
+  typedef typename value_alloc_type::reference reference;
+  typedef typename value_alloc_type::const_reference const_reference;
+  typedef typename value_alloc_type::pointer pointer;
+  typedef typename value_alloc_type::const_pointer const_pointer;
+
   typedef table_iterator<sparsegroup<T, GROUP_SIZE, Alloc> > iterator;
   typedef const_table_iterator<sparsegroup<T, GROUP_SIZE, Alloc> >
       const_iterator;
   typedef table_element_adaptor<sparsegroup<T, GROUP_SIZE, Alloc> >
       element_adaptor;
-  typedef value_type &reference;
-  typedef const value_type &const_reference;
   typedef u_int16_t size_type;                  // max # of buckets
   typedef int16_t difference_type;
   typedef STL_NAMESPACE::reverse_iterator<const_iterator> const_reverse_iterator;
@@ -711,8 +715,8 @@ class sparsegroup {
   void bmset(size_type i)          { bitmap[charbit(i)] |= modbit(i); }
   void bmclear(size_type i)        { bitmap[charbit(i)] &= ~modbit(i); }
 
-  value_type* allocate_group(size_t n) {
-    value_type* retval = allocator.allocate(n);
+  pointer allocate_group(size_type n) {
+    pointer retval = allocator.allocate(n);
     if (retval == NULL) {
       // We really should use PRIuS here, but I don't want to have to add
       // a whole new configure option, with concomitant macro namespace
@@ -726,9 +730,9 @@ class sparsegroup {
   }
 
   void free_group() {
-    // Valid even for empty group, because NULL+0 is defined to be NULL
-    value_type* end_it = group + num_buckets;
-    for (value_type* p = group; p != end_it; ++p)
+    if (!group)  return;
+    pointer end_it = group + num_buckets;
+    for (pointer p = group; p != end_it; ++p)
       p->~value_type();
     allocator.deallocate(group, num_buckets);
     group = NULL;
@@ -800,7 +804,7 @@ class sparsegroup {
     if ( x.num_buckets == 0 ) {
       free_group();
     } else {
-      value_type* p = allocate_group(x.num_buckets);
+      pointer p = allocate_group(x.num_buckets);
       uninitialized_copy(x.group, x.group + x.num_buckets, p);
       free_group();
       group = p;
@@ -888,7 +892,7 @@ class sparsegroup {
   // and allocator_type.
   void set_aux(size_type offset, false_type) {
     // This is valid because 0 <= offset <= num_buckets
-    value_type* p = allocate_group(num_buckets + 1);
+    pointer p = allocate_group(num_buckets + 1);
     uninitialized_copy(group, group + offset, p);
     uninitialized_copy(group + offset, group + num_buckets, p + offset + 1);
     free_group();
@@ -953,7 +957,7 @@ class sparsegroup {
   // allocator_type.
   void erase_aux(size_type offset, false_type) {
     // This is valid because 0 <= offset < num_buckets. Note the inequality.
-    value_type* p = allocate_group(num_buckets - 1);
+    pointer p = allocate_group(num_buckets - 1);
     uninitialized_copy(group, group + offset, p);
     uninitialized_copy(group + offset + 1, group + num_buckets, p + offset);
     free_group();
@@ -1067,15 +1071,15 @@ class sparsegroup {
   bool operator>=(const sparsegroup& x) const { return !(*this < x); }
 
  private:
-  typedef typename allocator_type::template rebind<value_type>::other
-      internal_alloc;
-
-  template <class V, class A>
+  template <class A>
   class alloc_impl : public A {
    public:
+    typedef typename A::pointer pointer;
+    typedef typename A::size_type size_type;
+
     // realloc_or_die should only be used when using the default
     // allocator (libc_allocator_with_realloc).
-    V* realloc_or_die(V* ptr, size_t n) {
+    pointer realloc_or_die(pointer ptr, size_type n) {
       fprintf(stderr, "realloc_or_die is only supported for "
                       "libc_allocator_with_realloc");
       exit(1);
@@ -1085,12 +1089,15 @@ class sparsegroup {
 
   // A template specialization of alloc_impl for
   // libc_allocator_with_realloc that can handle realloc_or_die.
-  template <class V, class A>
-  class alloc_impl<V, libc_allocator_with_realloc<A> >
+  template <class A>
+  class alloc_impl<libc_allocator_with_realloc<A> >
       : public libc_allocator_with_realloc<A> {
    public:
-    V* realloc_or_die(V* ptr, size_t n) {
-      V* retval = reallocate(ptr, n);
+    typedef typename libc_allocator_with_realloc<A>::pointer pointer;
+    typedef typename libc_allocator_with_realloc<A>::size_type size_type;
+
+    pointer realloc_or_die(pointer ptr, size_type n) {
+      pointer retval = this->reallocate(ptr, n);
       if (retval == NULL) {
         // We really should use PRIuS here, but I don't want to have to add
         // a whole new configure option, with concomitant macro namespace
@@ -1105,8 +1112,8 @@ class sparsegroup {
   };
 
   // The actual data
-  alloc_impl<value_type, internal_alloc> allocator;  // allocator for memory
-  value_type *group;                            // (small) array of T's
+  alloc_impl<value_alloc_type> allocator;       // allocator for memory
+  pointer group;                                // (small) array of T's
   unsigned char bitmap[(GROUP_SIZE-1)/8 + 1];   // fancy math is so we round up
   size_type num_buckets;                        // limits GROUP_SIZE to 64K
 };
@@ -1125,36 +1132,37 @@ template <class T, u_int16_t GROUP_SIZE = DEFAULT_SPARSEGROUP_SIZE,
           class Alloc = libc_allocator_with_realloc<T> >
 class sparsetable {
  private:
+  typedef typename Alloc::template rebind<T>::other value_alloc_type;
   typedef typename Alloc::template rebind<
-      sparsegroup<T, GROUP_SIZE, Alloc> >::other vector_alloc;
+      sparsegroup<T, GROUP_SIZE, value_alloc_type> >::other vector_alloc;
 
  public:
   // Basic types
   typedef T value_type;                        // stolen from stl_vector.h
   typedef Alloc allocator_type;
-  typedef value_type* pointer;
-  typedef const value_type* const_pointer;
+  typedef typename value_alloc_type::size_type size_type;
+  typedef typename value_alloc_type::difference_type difference_type;
+  typedef typename value_alloc_type::reference reference;
+  typedef typename value_alloc_type::const_reference const_reference;
+  typedef typename value_alloc_type::pointer pointer;
+  typedef typename value_alloc_type::const_pointer const_pointer;
   typedef table_iterator<sparsetable<T, GROUP_SIZE, Alloc> > iterator;
   typedef const_table_iterator<sparsetable<T, GROUP_SIZE, Alloc> >
       const_iterator;
   typedef table_element_adaptor<sparsetable<T, GROUP_SIZE, Alloc> >
       element_adaptor;
-  typedef value_type &reference;
-  typedef const value_type &const_reference;
-  typedef size_t size_type;
-  typedef ptrdiff_t difference_type;
   typedef STL_NAMESPACE::reverse_iterator<const_iterator> const_reverse_iterator;
   typedef STL_NAMESPACE::reverse_iterator<iterator> reverse_iterator;
 
   // These are our special iterators, that go over non-empty buckets in a
   // table.  These aren't const only because you can change non-empty bcks.
   typedef two_d_iterator< vector< sparsegroup<value_type, GROUP_SIZE,
-                                  allocator_type>,
+                                              value_alloc_type>,
                                   vector_alloc> >
      nonempty_iterator;
   typedef const_two_d_iterator< vector< sparsegroup<value_type,
                                                     GROUP_SIZE,
-                                                    allocator_type>,
+                                                    value_alloc_type>,
                                         vector_alloc> >
      const_nonempty_iterator;
   typedef STL_NAMESPACE::reverse_iterator<nonempty_iterator> reverse_nonempty_iterator;
@@ -1162,7 +1170,7 @@ class sparsetable {
   // Another special iterator: it frees memory as it iterates (used to resize)
   typedef destructive_two_d_iterator< vector< sparsegroup<value_type,
                                                           GROUP_SIZE,
-                                                          allocator_type>,
+                                                          value_alloc_type>,
                                               vector_alloc> >
      destructive_iterator;
 
@@ -1208,17 +1216,20 @@ class sparsetable {
     return destructive_iterator(groups.begin(), groups.end(), groups.end());
   }
 
-  typedef typename vector< sparsegroup<value_type, GROUP_SIZE, allocator_type>,
+  typedef typename vector< sparsegroup<value_type, GROUP_SIZE,
+                                       value_alloc_type>,
                            vector_alloc>::reference
     GroupsReference;
   typedef typename
-    vector< sparsegroup<value_type, GROUP_SIZE, allocator_type>,
+    vector< sparsegroup<value_type, GROUP_SIZE, value_alloc_type>,
             vector_alloc>::const_reference
     GroupsConstReference;
-  typedef typename vector< sparsegroup<value_type, GROUP_SIZE, allocator_type>,
+  typedef typename vector< sparsegroup<value_type, GROUP_SIZE,
+                                       value_alloc_type>,
                            vector_alloc>::iterator
     GroupsIterator;
-  typedef typename vector< sparsegroup<value_type, GROUP_SIZE, allocator_type>,
+  typedef typename vector< sparsegroup<value_type, GROUP_SIZE,
+                                       value_alloc_type>,
                            vector_alloc>::const_iterator
     GroupsConstIterator;
 
@@ -1268,7 +1279,7 @@ class sparsetable {
   // of not-empty buckets (use num_nonempty() for that).  Instead
   // it says whether you've allocated any buckets or not.
   size_type size() const           { return table_size; }
-  size_type max_size() const       { return size_type(-1); }
+  size_type max_size() const       { return groups.max_size(); }
   bool empty() const               { return table_size == 0; }
   // We also may want to know how many *used* buckets there are
   size_type num_nonempty() const   { return num_buckets; }

@@ -2,8 +2,8 @@
 <VisualStudioProject
 	ProjectType="Visual C++"
 	Version="7.10"
-	Name="hashtable_unittest"
-	ProjectGUID="{FCDB3718-F01C-4DE4-B9F5-E10F2C5C0535}"
+	Name="sparsehashtable_test"
+	ProjectGUID="{FCDB3718-F01C-4DE4-B9F5-E10F2C5C0536}"
 	Keyword="Win32Proj">
 	<Platforms>
 		<Platform
@@ -30,10 +30,10 @@
 				Name="VCCustomBuildTool"/>
 			<Tool
 				Name="VCLinkerTool"
-				OutputFile="$(OutDir)/hashtable_unittest.exe"
+				OutputFile="$(OutDir)/sparsehashtable_test.exe"
 				LinkIncremental="2"
 				GenerateDebugInformation="TRUE"
-				ProgramDatabaseFile="$(OutDir)/hashtable_unittest.pdb"
+				ProgramDatabaseFile="$(OutDir)/sparsehashtable_test.pdb"
 				SubSystem="1"
 				TargetMachine="1"/>
 			<Tool
@@ -74,7 +74,7 @@
 				Name="VCCustomBuildTool"/>
 			<Tool
 				Name="VCLinkerTool"
-				OutputFile="$(OutDir)/hashtable_unittest.exe"
+				OutputFile="$(OutDir)/sparsehashtable_test.exe"
 				LinkIncremental="1"
 				GenerateDebugInformation="TRUE"
 				SubSystem="1"
@@ -111,7 +111,7 @@
 			Filter="cpp;c;cxx;def;odl;idl;hpj;bat;asm;asmx"
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}">
 			<File
-				RelativePath="..\..\src\hashtable_unittest.cc">
+				RelativePath="..\..\src\sparsehashtable_test.cc">
 				<FileConfiguration
 					Name="Debug|Win32">
 					<Tool
@@ -149,22 +149,7 @@
 				RelativePath="..\..\src\windows\config.h">
 			</File>
 			<File
-				RelativePath="..\..\src\google\dense_hash_map">
-			</File>
-			<File
-				RelativePath="..\..\src\google\dense_hash_set">
-			</File>
-			<File
-				RelativePath="..\..\src\google\sparsehash\densehashtable.h">
-			</File>
-			<File
 				RelativePath="..\..\src\windows\port.h">
-			</File>
-			<File
-				RelativePath="..\..\src\google\sparse_hash_map">
-			</File>
-			<File
-				RelativePath="..\..\src\google\sparse_hash_set">
 			</File>
 			<File
 				RelativePath="..\..\src\windows\google\sparsehash\sparseconfig.h">
@@ -180,6 +165,9 @@
 			</File>
 			<File
 				RelativePath="..\..\src\google\type_traits.h">
+			</File>
+			<File
+				RelativePath="..\..\src\testutil.h">
 			</File>
 		</Filter>
 	</Files>

@@ -123,8 +123,8 @@ class sparse_hash_map {
   };
 
   // The actual data
-  typedef sparse_hashtable<pair<const Key, T>, Key, HashFcn,
-                           SelectKey, SetKey, EqualKey, Alloc> ht;
+  typedef sparse_hashtable<pair<const Key, T>, Key, HashFcn, SelectKey,
+                           SetKey, EqualKey, Alloc> ht;
   ht rep;
 
  public:

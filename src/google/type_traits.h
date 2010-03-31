@@ -45,6 +45,7 @@
 //   remove_cv
 //   remove_reference
 //   remove_pointer
+//   is_same
 //   is_convertible
 // We can add more type traits as required.
 
@@ -74,16 +75,6 @@ template <class T, T v> const T integral_constant<T, v>::value;
 // boolean true and false values.
 typedef integral_constant<bool, true>  true_type;
 typedef integral_constant<bool, false> false_type;
-
-// is_same is a template type comparator, similar to Loki IsSameType.
-// is_same<A, B>::value is true iff "A" is the same type as "B".
-template<typename A, typename B>
-struct is_same : public false_type {
-};
-
-template<typename A>
-struct is_same<A, A> : public true_type {
-};
 
 // Types small_ and big_ are guaranteed such that sizeof(small_) <
 // sizeof(big_)
@@ -223,6 +214,10 @@ template<typename T> struct remove_pointer<T* const> { typedef T type; };
 template<typename T> struct remove_pointer<T* volatile> { typedef T type; };
 template<typename T> struct remove_pointer<T* const volatile> {
   typedef T type; };
+
+// Specified by TR1 [4.6] Relationships between types
+template<typename T, typename U> struct is_same : public false_type { };
+template<typename T> struct is_same<T, T> : public true_type { };
 
 // Specified by TR1 [4.6] Relationships between types
 #ifndef _MSC_VER
