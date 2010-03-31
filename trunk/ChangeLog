@@ -1,3 +1,14 @@
+Wed Mar 31 12:32:03 2010  Google Inc. <opensource@google.com>
+
+	* sparsehash: version 1.7 release
+	* Add support for Allocator (guilin)
+	* Add libc_allocator_with_realloc as the new default allocator (guilin)
+	* Repack {sparse,dense}hashtable vars to reduce container size (giao)
+	* BUGFIX: operator== no longer requires same table ordering (csilvers)
+	* BUGFIX: fix dense_hash_*(it,it) by requiring empty-key too (csilvers)
+	* PORTING: fix language bugs that gcc allowed (csilvers, chandlerc)
+	* Update from autoconf 2.61 to autoconf 2.64
+
 Fri Jan  8 14:47:55 2010  Google Inc. <opensource@google.com>
 
 	* sparsehash: version 1.6 release

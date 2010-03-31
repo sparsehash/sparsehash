@@ -120,9 +120,8 @@ class sparse_hash_set {
     }
   };
 
-  // The actual data
-  typedef sparse_hashtable<Value, Value, HashFcn,
-                           Identity, SetKey, EqualKey, Alloc> ht;
+  typedef sparse_hashtable<Value, Value, HashFcn, Identity, SetKey,
+                           EqualKey, Alloc> ht;
   ht rep;
 
  public:

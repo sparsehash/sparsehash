@@ -451,6 +451,32 @@ class TypeTraitsTest {
                             GOOGLE_NAMESPACE::remove_cv<const volatile int>::type);
   }
 
+  static void TestIsSame() {
+    typedef int int32;
+    typedef long int64;
+
+    ASSERT_TRUE((GOOGLE_NAMESPACE::is_same<int32, int32>::value));
+    ASSERT_FALSE((GOOGLE_NAMESPACE::is_same<int32, int64>::value));
+    ASSERT_FALSE((GOOGLE_NAMESPACE::is_same<int64, int32>::value));
+    ASSERT_FALSE((GOOGLE_NAMESPACE::is_same<int, const int>::value));
+
+    ASSERT_TRUE((GOOGLE_NAMESPACE::is_same<void, void>::value));
+    ASSERT_FALSE((GOOGLE_NAMESPACE::is_same<void, int>::value));
+    ASSERT_FALSE((GOOGLE_NAMESPACE::is_same<int, void>::value));
+
+    ASSERT_TRUE((GOOGLE_NAMESPACE::is_same<int*, int*>::value));
+    ASSERT_TRUE((GOOGLE_NAMESPACE::is_same<void*, void*>::value));
+    ASSERT_FALSE((GOOGLE_NAMESPACE::is_same<int*, void*>::value));
+    ASSERT_FALSE((GOOGLE_NAMESPACE::is_same<void*, int*>::value));
+    ASSERT_FALSE((GOOGLE_NAMESPACE::is_same<void*, const void*>::value));
+    ASSERT_FALSE((GOOGLE_NAMESPACE::is_same<void*, void* const>::value));
+
+    ASSERT_TRUE((GOOGLE_NAMESPACE::is_same<Base*, Base*>::value));
+    ASSERT_TRUE((GOOGLE_NAMESPACE::is_same<Derived*, Derived*>::value));
+    ASSERT_FALSE((GOOGLE_NAMESPACE::is_same<Base*, Derived*>::value));
+    ASSERT_FALSE((GOOGLE_NAMESPACE::is_same<Derived*, Base*>::value));
+  }
+
   static void TestIsConvertible() {
 #ifndef _MSC_VER
     ASSERT_TRUE((GOOGLE_NAMESPACE::is_convertible<int, int>::value));
@@ -486,6 +512,7 @@ int main(int argc, char **argv) {
   TypeTraitsTest::TestRemoveVolatile();
   TypeTraitsTest::TestRemoveReference();
   TypeTraitsTest::TestRemoveCV();
+  TypeTraitsTest::TestIsSame();
   TypeTraitsTest::TestIsConvertible();
   printf("PASS\n");
   return 0;

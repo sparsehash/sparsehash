@@ -73,21 +73,40 @@ am__installdirs = "$(DESTDIR)$(libdir)" "$(DESTDIR)$(docdir)" \
 libLTLIBRARIES_INSTALL = $(INSTALL)
 LTLIBRARIES = $(lib_LTLIBRARIES)
 am__EXEEXT_1 = type_traits_unittest$(EXEEXT) \
-	sparsetable_unittest$(EXEEXT) hashtable_unittest$(EXEEXT) \
+	libc_allocator_with_realloc_test$(EXEEXT) \
+	sparsetable_unittest$(EXEEXT) sparsehashtable_test$(EXEEXT) \
+	densehashtable_test$(EXEEXT) hashtable_unittest$(EXEEXT) \
 	simple_test$(EXEEXT)
 PROGRAMS = $(noinst_PROGRAMS)
 am__objects_1 =
+am_densehashtable_test_OBJECTS = densehashtable_test.$(OBJEXT) \
+	$(am__objects_1)
+nodist_densehashtable_test_OBJECTS = $(am__objects_1)
+densehashtable_test_OBJECTS = $(am_densehashtable_test_OBJECTS) \
+	$(nodist_densehashtable_test_OBJECTS)
+densehashtable_test_LDADD = $(LDADD)
 am_hashtable_unittest_OBJECTS = hashtable_unittest.$(OBJEXT) \
 	$(am__objects_1) $(am__objects_1)
 nodist_hashtable_unittest_OBJECTS = $(am__objects_1)
 hashtable_unittest_OBJECTS = $(am_hashtable_unittest_OBJECTS) \
 	$(nodist_hashtable_unittest_OBJECTS)
 hashtable_unittest_LDADD = $(LDADD)
+am_libc_allocator_with_realloc_test_OBJECTS =  \
+	libc_allocator_with_realloc_test.$(OBJEXT) $(am__objects_1)
+libc_allocator_with_realloc_test_OBJECTS =  \
+	$(am_libc_allocator_with_realloc_test_OBJECTS)
+libc_allocator_with_realloc_test_LDADD = $(LDADD)
 am_simple_test_OBJECTS = simple_test.$(OBJEXT) $(am__objects_1)
 nodist_simple_test_OBJECTS = $(am__objects_1)
 simple_test_OBJECTS = $(am_simple_test_OBJECTS) \
 	$(nodist_simple_test_OBJECTS)
 simple_test_LDADD = $(LDADD)
+am_sparsehashtable_test_OBJECTS = sparsehashtable_test.$(OBJEXT) \
+	$(am__objects_1) $(am__objects_1)
+nodist_sparsehashtable_test_OBJECTS = $(am__objects_1)
+sparsehashtable_test_OBJECTS = $(am_sparsehashtable_test_OBJECTS) \
+	$(nodist_sparsehashtable_test_OBJECTS)
+sparsehashtable_test_LDADD = $(LDADD)
 am_sparsetable_unittest_OBJECTS = sparsetable_unittest.$(OBJEXT) \
 	$(am__objects_1)
 nodist_sparsetable_unittest_OBJECTS = $(am__objects_1)
@@ -118,14 +137,23 @@ COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
 CCLD = $(CC)
 LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
-SOURCES = $(hashtable_unittest_SOURCES) \
-	$(nodist_hashtable_unittest_SOURCES) $(simple_test_SOURCES) \
-	$(nodist_simple_test_SOURCES) $(sparsetable_unittest_SOURCES) \
+SOURCES = $(densehashtable_test_SOURCES) \
+	$(nodist_densehashtable_test_SOURCES) \
+	$(hashtable_unittest_SOURCES) \
+	$(nodist_hashtable_unittest_SOURCES) \
+	$(libc_allocator_with_realloc_test_SOURCES) \
+	$(simple_test_SOURCES) $(nodist_simple_test_SOURCES) \
+	$(sparsehashtable_test_SOURCES) \
+	$(nodist_sparsehashtable_test_SOURCES) \
+	$(sparsetable_unittest_SOURCES) \
 	$(nodist_sparsetable_unittest_SOURCES) \
 	$(time_hash_map_SOURCES) $(nodist_time_hash_map_SOURCES) \
 	$(type_traits_unittest_SOURCES) \
 	$(nodist_type_traits_unittest_SOURCES)
-DIST_SOURCES = $(hashtable_unittest_SOURCES) $(simple_test_SOURCES) \
+DIST_SOURCES = $(densehashtable_test_SOURCES) \
+	$(hashtable_unittest_SOURCES) \
+	$(libc_allocator_with_realloc_test_SOURCES) \
+	$(simple_test_SOURCES) $(sparsehashtable_test_SOURCES) \
 	$(sparsetable_unittest_SOURCES) $(time_hash_map_SOURCES) \
 	$(type_traits_unittest_SOURCES)
 dist_docDATA_INSTALL = $(INSTALL_DATA)
@@ -281,15 +309,18 @@ dist_doc_DATA = AUTHORS COPYING ChangeLog INSTALL NEWS README README.windows \
    doc/designstyle.css
 
 lib_LTLIBRARIES = 
-# TODO(csilvers): get simple_test working on windows
 WINDOWS_PROJECTS = google-sparsehash.sln \
+	vsprojects/time_hash_map/time_hash_map.vcproj \
 	vsprojects/type_traits_unittest/type_traits_unittest.vcproj \
+	vsprojects/libc_allocator_with_realloc_test/libc_allocator_with_realloc_test.vcproj \
 	vsprojects/sparsetable_unittest/sparsetable_unittest.vcproj \
+	vsprojects/sparsehashtable_test/sparsehashtable_test.vcproj \
+	vsprojects/densehashtable_test/densehashtable_test.vcproj \
 	vsprojects/hashtable_unittest/hashtable_unittest.vcproj \
-	vsprojects/time_hash_map/time_hash_map.vcproj
-TESTS = type_traits_unittest sparsetable_unittest hashtable_unittest \
-        simple_test
-
+	vsprojects/simple_test/simple_test.vcproj
+TESTS = type_traits_unittest libc_allocator_with_realloc_test \
+	sparsetable_unittest sparsehashtable_test densehashtable_test \
+	hashtable_unittest simple_test
 check_SCRIPTS = 
 TESTS_ENVIRONMENT = 
 # This is how we tell automake about auto-generated .h files
@@ -308,12 +339,31 @@ type_traits_unittest_SOURCES = \
    src/google/type_traits.h
 
 nodist_type_traits_unittest_SOURCES = $(nodist_sparsehashinclude_HEADERS)
+libc_allocator_with_realloc_test_SOURCES = \
+   src/libc_allocator_with_realloc_test.cc	\
+   $(sparsehashinclude_HEADERS)			\
+   src/google/sparsehash/libc_allocator_with_realloc.h
+
 sparsetable_unittest_SOURCES = \
    src/sparsetable_unittest.cc			\
    $(sparsehashinclude_HEADERS)			\
    src/google/sparsetable
 
 nodist_sparsetable_unittest_SOURCES = $(nodist_sparsehashinclude_HEADERS)
+sparsehashtable_test_SOURCES = \
+   src/sparsehashtable_test.cc			\
+   src/testutil.h                               \
+   $(googleinclude_HEADERS)			\
+   $(sparsehashinclude_HEADERS)
+
+nodist_sparsehashtable_test_SOURCES = $(nodist_sparsehashinclude_HEADERS)
+densehashtable_test_SOURCES = \
+   src/densehashtable_test.cc			\
+   src/testutil.h                               \
+   $(googleinclude_HEADERS)			\
+   $(densehashinclude_HEADERS)
+
+nodist_densehashtable_test_SOURCES = $(nodist_sparsehashinclude_HEADERS)
 hashtable_unittest_SOURCES = \
    src/hashtable_unittest.cc			\
    $(googleinclude_HEADERS)			\
@@ -426,12 +476,21 @@ clean-libLTLIBRARIES:
 
 clean-noinstPROGRAMS:
 	-test -z "$(noinst_PROGRAMS)" || rm -f $(noinst_PROGRAMS)
+densehashtable_test$(EXEEXT): $(densehashtable_test_OBJECTS) $(densehashtable_test_DEPENDENCIES) 
+	@rm -f densehashtable_test$(EXEEXT)
+	$(CXXLINK) $(densehashtable_test_LDFLAGS) $(densehashtable_test_OBJECTS) $(densehashtable_test_LDADD) $(LIBS)
 hashtable_unittest$(EXEEXT): $(hashtable_unittest_OBJECTS) $(hashtable_unittest_DEPENDENCIES) 
 	@rm -f hashtable_unittest$(EXEEXT)
 	$(CXXLINK) $(hashtable_unittest_LDFLAGS) $(hashtable_unittest_OBJECTS) $(hashtable_unittest_LDADD) $(LIBS)
+libc_allocator_with_realloc_test$(EXEEXT): $(libc_allocator_with_realloc_test_OBJECTS) $(libc_allocator_with_realloc_test_DEPENDENCIES) 
+	@rm -f libc_allocator_with_realloc_test$(EXEEXT)
+	$(CXXLINK) $(libc_allocator_with_realloc_test_LDFLAGS) $(libc_allocator_with_realloc_test_OBJECTS) $(libc_allocator_with_realloc_test_LDADD) $(LIBS)
 simple_test$(EXEEXT): $(simple_test_OBJECTS) $(simple_test_DEPENDENCIES) 
 	@rm -f simple_test$(EXEEXT)
 	$(CXXLINK) $(simple_test_LDFLAGS) $(simple_test_OBJECTS) $(simple_test_LDADD) $(LIBS)
+sparsehashtable_test$(EXEEXT): $(sparsehashtable_test_OBJECTS) $(sparsehashtable_test_DEPENDENCIES) 
+	@rm -f sparsehashtable_test$(EXEEXT)
+	$(CXXLINK) $(sparsehashtable_test_LDFLAGS) $(sparsehashtable_test_OBJECTS) $(sparsehashtable_test_LDADD) $(LIBS)
 sparsetable_unittest$(EXEEXT): $(sparsetable_unittest_OBJECTS) $(sparsetable_unittest_DEPENDENCIES) 
 	@rm -f sparsetable_unittest$(EXEEXT)
 	$(CXXLINK) $(sparsetable_unittest_LDFLAGS) $(sparsetable_unittest_OBJECTS) $(sparsetable_unittest_LDADD) $(LIBS)
@@ -448,8 +507,11 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/densehashtable_test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hashtable_unittest.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libc_allocator_with_realloc_test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/simple_test.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sparsehashtable_test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sparsetable_unittest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/time_hash_map-time_hash_map.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/type_traits_unittest.Po@am__quote@
@@ -468,6 +530,20 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXXCOMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
 
+densehashtable_test.o: src/densehashtable_test.cc
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT densehashtable_test.o -MD -MP -MF "$(DEPDIR)/densehashtable_test.Tpo" -c -o densehashtable_test.o `test -f 'src/densehashtable_test.cc' || echo '$(srcdir)/'`src/densehashtable_test.cc; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/densehashtable_test.Tpo" "$(DEPDIR)/densehashtable_test.Po"; else rm -f "$(DEPDIR)/densehashtable_test.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/densehashtable_test.cc' object='densehashtable_test.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o densehashtable_test.o `test -f 'src/densehashtable_test.cc' || echo '$(srcdir)/'`src/densehashtable_test.cc
+
+densehashtable_test.obj: src/densehashtable_test.cc
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT densehashtable_test.obj -MD -MP -MF "$(DEPDIR)/densehashtable_test.Tpo" -c -o densehashtable_test.obj `if test -f 'src/densehashtable_test.cc'; then $(CYGPATH_W) 'src/densehashtable_test.cc'; else $(CYGPATH_W) '$(srcdir)/src/densehashtable_test.cc'; fi`; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/densehashtable_test.Tpo" "$(DEPDIR)/densehashtable_test.Po"; else rm -f "$(DEPDIR)/densehashtable_test.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/densehashtable_test.cc' object='densehashtable_test.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o densehashtable_test.obj `if test -f 'src/densehashtable_test.cc'; then $(CYGPATH_W) 'src/densehashtable_test.cc'; else $(CYGPATH_W) '$(srcdir)/src/densehashtable_test.cc'; fi`
+
 hashtable_unittest.o: src/hashtable_unittest.cc
 @am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT hashtable_unittest.o -MD -MP -MF "$(DEPDIR)/hashtable_unittest.Tpo" -c -o hashtable_unittest.o `test -f 'src/hashtable_unittest.cc' || echo '$(srcdir)/'`src/hashtable_unittest.cc; \
 @am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/hashtable_unittest.Tpo" "$(DEPDIR)/hashtable_unittest.Po"; else rm -f "$(DEPDIR)/hashtable_unittest.Tpo"; exit 1; fi
@@ -482,6 +558,20 @@ hashtable_unittest.obj: src/hashtable_unittest.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o hashtable_unittest.obj `if test -f 'src/hashtable_unittest.cc'; then $(CYGPATH_W) 'src/hashtable_unittest.cc'; else $(CYGPATH_W) '$(srcdir)/src/hashtable_unittest.cc'; fi`
 
+libc_allocator_with_realloc_test.o: src/libc_allocator_with_realloc_test.cc
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libc_allocator_with_realloc_test.o -MD -MP -MF "$(DEPDIR)/libc_allocator_with_realloc_test.Tpo" -c -o libc_allocator_with_realloc_test.o `test -f 'src/libc_allocator_with_realloc_test.cc' || echo '$(srcdir)/'`src/libc_allocator_with_realloc_test.cc; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libc_allocator_with_realloc_test.Tpo" "$(DEPDIR)/libc_allocator_with_realloc_test.Po"; else rm -f "$(DEPDIR)/libc_allocator_with_realloc_test.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/libc_allocator_with_realloc_test.cc' object='libc_allocator_with_realloc_test.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libc_allocator_with_realloc_test.o `test -f 'src/libc_allocator_with_realloc_test.cc' || echo '$(srcdir)/'`src/libc_allocator_with_realloc_test.cc
+
+libc_allocator_with_realloc_test.obj: src/libc_allocator_with_realloc_test.cc
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libc_allocator_with_realloc_test.obj -MD -MP -MF "$(DEPDIR)/libc_allocator_with_realloc_test.Tpo" -c -o libc_allocator_with_realloc_test.obj `if test -f 'src/libc_allocator_with_realloc_test.cc'; then $(CYGPATH_W) 'src/libc_allocator_with_realloc_test.cc'; else $(CYGPATH_W) '$(srcdir)/src/libc_allocator_with_realloc_test.cc'; fi`; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libc_allocator_with_realloc_test.Tpo" "$(DEPDIR)/libc_allocator_with_realloc_test.Po"; else rm -f "$(DEPDIR)/libc_allocator_with_realloc_test.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/libc_allocator_with_realloc_test.cc' object='libc_allocator_with_realloc_test.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libc_allocator_with_realloc_test.obj `if test -f 'src/libc_allocator_with_realloc_test.cc'; then $(CYGPATH_W) 'src/libc_allocator_with_realloc_test.cc'; else $(CYGPATH_W) '$(srcdir)/src/libc_allocator_with_realloc_test.cc'; fi`
+
 simple_test.o: src/simple_test.cc
 @am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT simple_test.o -MD -MP -MF "$(DEPDIR)/simple_test.Tpo" -c -o simple_test.o `test -f 'src/simple_test.cc' || echo '$(srcdir)/'`src/simple_test.cc; \
 @am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/simple_test.Tpo" "$(DEPDIR)/simple_test.Po"; else rm -f "$(DEPDIR)/simple_test.Tpo"; exit 1; fi
@@ -495,6 +585,20 @@ simple_test.obj: src/simple_test.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/simple_test.cc' object='simple_test.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o simple_test.obj `if test -f 'src/simple_test.cc'; then $(CYGPATH_W) 'src/simple_test.cc'; else $(CYGPATH_W) '$(srcdir)/src/simple_test.cc'; fi`
+
+sparsehashtable_test.o: src/sparsehashtable_test.cc
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT sparsehashtable_test.o -MD -MP -MF "$(DEPDIR)/sparsehashtable_test.Tpo" -c -o sparsehashtable_test.o `test -f 'src/sparsehashtable_test.cc' || echo '$(srcdir)/'`src/sparsehashtable_test.cc; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/sparsehashtable_test.Tpo" "$(DEPDIR)/sparsehashtable_test.Po"; else rm -f "$(DEPDIR)/sparsehashtable_test.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/sparsehashtable_test.cc' object='sparsehashtable_test.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o sparsehashtable_test.o `test -f 'src/sparsehashtable_test.cc' || echo '$(srcdir)/'`src/sparsehashtable_test.cc
+
+sparsehashtable_test.obj: src/sparsehashtable_test.cc
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT sparsehashtable_test.obj -MD -MP -MF "$(DEPDIR)/sparsehashtable_test.Tpo" -c -o sparsehashtable_test.obj `if test -f 'src/sparsehashtable_test.cc'; then $(CYGPATH_W) 'src/sparsehashtable_test.cc'; else $(CYGPATH_W) '$(srcdir)/src/sparsehashtable_test.cc'; fi`; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/sparsehashtable_test.Tpo" "$(DEPDIR)/sparsehashtable_test.Po"; else rm -f "$(DEPDIR)/sparsehashtable_test.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/sparsehashtable_test.cc' object='sparsehashtable_test.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o sparsehashtable_test.obj `if test -f 'src/sparsehashtable_test.cc'; then $(CYGPATH_W) 'src/sparsehashtable_test.cc'; else $(CYGPATH_W) '$(srcdir)/src/sparsehashtable_test.cc'; fi`
 
 sparsetable_unittest.o: src/sparsetable_unittest.cc
 @am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT sparsetable_unittest.o -MD -MP -MF "$(DEPDIR)/sparsetable_unittest.Tpo" -c -o sparsetable_unittest.o `test -f 'src/sparsetable_unittest.cc' || echo '$(srcdir)/'`src/sparsetable_unittest.cc; \
@@ -731,7 +835,7 @@ check-TESTS: $(TESTS)
 distdir: $(DISTFILES)
 	$(am__remove_distdir)
 	mkdir $(distdir)
-	$(mkdir_p) $(distdir)/doc $(distdir)/m4 $(distdir)/packages $(distdir)/packages/rpm $(distdir)/src $(distdir)/src/google $(distdir)/src/google/sparsehash $(distdir)/vsprojects/hashtable_unittest $(distdir)/vsprojects/sparsetable_unittest $(distdir)/vsprojects/time_hash_map $(distdir)/vsprojects/type_traits_unittest
+	$(mkdir_p) $(distdir)/doc $(distdir)/m4 $(distdir)/packages $(distdir)/packages/rpm $(distdir)/src $(distdir)/src/google $(distdir)/src/google/sparsehash $(distdir)/vsprojects/densehashtable_test $(distdir)/vsprojects/hashtable_unittest $(distdir)/vsprojects/libc_allocator_with_realloc_test $(distdir)/vsprojects/simple_test $(distdir)/vsprojects/sparsehashtable_test $(distdir)/vsprojects/sparsetable_unittest $(distdir)/vsprojects/time_hash_map $(distdir)/vsprojects/type_traits_unittest
 	@srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`; \
 	topsrcdirstrip=`echo "$(top_srcdir)" | sed 's|.|.|g'`; \
 	list='$(DISTFILES)'; for file in $$list; do \

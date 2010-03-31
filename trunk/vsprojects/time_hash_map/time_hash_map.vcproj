@@ -176,6 +176,9 @@
 				RelativePath="..\..\src\google\sparsetable">
 			</File>
 			<File
+				RelativePath="..\..\src\google\sparsehash\libc_allocator_with_realloc.h">
+			</File>
+			<File
 				RelativePath="..\..\src\google\type_traits.h">
 			</File>
 		</Filter>

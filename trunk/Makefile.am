@@ -47,12 +47,7 @@ WINDOWS_PROJECTS = google-sparsehash.sln
 ## TESTS is for binary unittests, check_SCRIPTS for script-based unittests.
 ## TESTS_ENVIRONMENT sets environment variables for when you run unittest,
 ## but it only seems to take effect for *binary* unittests (argh!)
-TESTS = type_traits_unittest sparsetable_unittest hashtable_unittest \
-        simple_test
-# TODO(csilvers): get simple_test working on windows
-WINDOWS_PROJECTS += vsprojects/type_traits_unittest/type_traits_unittest.vcproj \
-                    vsprojects/sparsetable_unittest/sparsetable_unittest.vcproj \
-                    vsprojects/hashtable_unittest/hashtable_unittest.vcproj
+TESTS =
 check_SCRIPTS =
 TESTS_ENVIRONMENT =
 
@@ -104,18 +99,50 @@ sparsehashinclude_HEADERS =			\
    src/google/sparsehash/libc_allocator_with_realloc.h
 nodist_sparsehashinclude_HEADERS = src/google/sparsehash/sparseconfig.h
 
+TESTS += type_traits_unittest
+WINDOWS_PROJECTS += vsprojects/type_traits_unittest/type_traits_unittest.vcproj
 type_traits_unittest_SOURCES =			\
    src/type_traits_unittest.cc			\
    $(sparsehashinclude_HEADERS)			\
    src/google/type_traits.h
 nodist_type_traits_unittest_SOURCES = $(nodist_sparsehashinclude_HEADERS)
 
+TESTS += libc_allocator_with_realloc_test
+WINDOWS_PROJECTS += vsprojects/libc_allocator_with_realloc_test/libc_allocator_with_realloc_test.vcproj
+libc_allocator_with_realloc_test_SOURCES =	\
+   src/libc_allocator_with_realloc_test.cc	\
+   $(sparsehashinclude_HEADERS)			\
+   src/google/sparsehash/libc_allocator_with_realloc.h
+
+
+TESTS += sparsetable_unittest
+WINDOWS_PROJECTS += vsprojects/sparsetable_unittest/sparsetable_unittest.vcproj
 sparsetable_unittest_SOURCES =			\
    src/sparsetable_unittest.cc			\
    $(sparsehashinclude_HEADERS)			\
    src/google/sparsetable
 nodist_sparsetable_unittest_SOURCES = $(nodist_sparsehashinclude_HEADERS)
 
+TESTS += sparsehashtable_test
+WINDOWS_PROJECTS += vsprojects/sparsehashtable_test/sparsehashtable_test.vcproj
+sparsehashtable_test_SOURCES =			\
+   src/sparsehashtable_test.cc			\
+   src/testutil.h                               \
+   $(googleinclude_HEADERS)			\
+   $(sparsehashinclude_HEADERS)
+nodist_sparsehashtable_test_SOURCES = $(nodist_sparsehashinclude_HEADERS)
+
+TESTS += densehashtable_test
+WINDOWS_PROJECTS += vsprojects/densehashtable_test/densehashtable_test.vcproj
+densehashtable_test_SOURCES =			\
+   src/densehashtable_test.cc			\
+   src/testutil.h                               \
+   $(googleinclude_HEADERS)			\
+   $(densehashinclude_HEADERS)
+nodist_densehashtable_test_SOURCES = $(nodist_sparsehashinclude_HEADERS)
+
+TESTS += hashtable_unittest
+WINDOWS_PROJECTS += vsprojects/hashtable_unittest/hashtable_unittest.vcproj
 hashtable_unittest_SOURCES =			\
    src/hashtable_unittest.cc			\
    $(googleinclude_HEADERS)			\
@@ -123,10 +150,13 @@ hashtable_unittest_SOURCES =			\
    src/words
 nodist_hashtable_unittest_SOURCES = $(nodist_sparsehashinclude_HEADERS)
 
+TESTS += simple_test
+WINDOWS_PROJECTS += vsprojects/simple_test/simple_test.vcproj
 simple_test_SOURCES =	   		        \
    src/simple_test.cc				\
    $(sparsehashinclude_HEADERS)
 nodist_simple_test_SOURCES = $(nodist_sparsehashinclude_HEADERS)
+
 
 time_hash_map_SOURCES =				\
    src/time_hash_map.cc				\

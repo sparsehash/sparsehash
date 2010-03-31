@@ -154,6 +154,9 @@ struct sparse_hashtable_const_iterator;
 // that skips over deleted elements.
 template <class V, class K, class HF, class ExK, class SetK, class EqK, class A>
 struct sparse_hashtable_iterator {
+ private:
+  typedef typename A::template rebind<V>::other value_alloc_type;
+
  public:
   typedef sparse_hashtable_iterator<V,K,HF,ExK,SetK,EqK,A>       iterator;
   typedef sparse_hashtable_const_iterator<V,K,HF,ExK,SetK,EqK,A> const_iterator;
@@ -162,10 +165,10 @@ struct sparse_hashtable_iterator {
 
   typedef STL_NAMESPACE::forward_iterator_tag iterator_category;
   typedef V value_type;
-  typedef ptrdiff_t difference_type;
-  typedef size_t size_type;
-  typedef V& reference;                // Value
-  typedef V* pointer;
+  typedef typename value_alloc_type::difference_type difference_type;
+  typedef typename value_alloc_type::size_type size_type;
+  typedef typename value_alloc_type::reference reference;
+  typedef typename value_alloc_type::pointer pointer;
 
   // "Real" constructor and default constructor
   sparse_hashtable_iterator(const sparse_hashtable<V,K,HF,ExK,SetK,EqK,A> *h,
@@ -203,6 +206,9 @@ struct sparse_hashtable_iterator {
 // Now do it all again, but with const-ness!
 template <class V, class K, class HF, class ExK, class SetK, class EqK, class A>
 struct sparse_hashtable_const_iterator {
+ private:
+  typedef typename A::template rebind<V>::other value_alloc_type;
+
  public:
   typedef sparse_hashtable_iterator<V,K,HF,ExK,SetK,EqK,A>       iterator;
   typedef sparse_hashtable_const_iterator<V,K,HF,ExK,SetK,EqK,A> const_iterator;
@@ -211,10 +217,10 @@ struct sparse_hashtable_const_iterator {
 
   typedef STL_NAMESPACE::forward_iterator_tag iterator_category;
   typedef V value_type;
-  typedef ptrdiff_t difference_type;
-  typedef size_t size_type;
-  typedef const V& reference;                // Value
-  typedef const V* pointer;
+  typedef typename value_alloc_type::difference_type difference_type;
+  typedef typename value_alloc_type::size_type size_type;
+  typedef typename value_alloc_type::const_reference reference;
+  typedef typename value_alloc_type::const_pointer pointer;
 
   // "Real" constructor and default constructor
   sparse_hashtable_const_iterator(const sparse_hashtable<V,K,HF,ExK,SetK,EqK,A> *h,
@@ -255,6 +261,9 @@ struct sparse_hashtable_const_iterator {
 // And once again, but this time freeing up memory as we iterate
 template <class V, class K, class HF, class ExK, class SetK, class EqK, class A>
 struct sparse_hashtable_destructive_iterator {
+ private:
+  typedef typename A::template rebind<V>::other value_alloc_type;
+
  public:
   typedef sparse_hashtable_destructive_iterator<V,K,HF,ExK,SetK,EqK,A> iterator;
   typedef typename sparsetable<V,DEFAULT_GROUP_SIZE,A>::destructive_iterator
@@ -262,10 +271,10 @@ struct sparse_hashtable_destructive_iterator {
 
   typedef STL_NAMESPACE::forward_iterator_tag iterator_category;
   typedef V value_type;
-  typedef ptrdiff_t difference_type;
-  typedef size_t size_type;
-  typedef V& reference;                // Value
-  typedef V* pointer;
+  typedef typename value_alloc_type::difference_type difference_type;
+  typedef typename value_alloc_type::size_type size_type;
+  typedef typename value_alloc_type::reference reference;
+  typedef typename value_alloc_type::pointer pointer;
 
   // "Real" constructor and default constructor
   sparse_hashtable_destructive_iterator(const
@@ -305,6 +314,9 @@ struct sparse_hashtable_destructive_iterator {
 template <class Value, class Key, class HashFcn,
           class ExtractKey, class SetKey, class EqualKey, class Alloc>
 class sparse_hashtable {
+ private:
+  typedef typename Alloc::template rebind<Value>::other value_alloc_type;
+
  public:
   typedef Key key_type;
   typedef Value value_type;
@@ -312,12 +324,12 @@ class sparse_hashtable {
   typedef EqualKey key_equal;
   typedef Alloc allocator_type;
 
-  typedef size_t            size_type;
-  typedef ptrdiff_t         difference_type;
-  typedef value_type*       pointer;
-  typedef const value_type* const_pointer;
-  typedef value_type&       reference;
-  typedef const value_type& const_reference;
+  typedef typename value_alloc_type::size_type size_type;
+  typedef typename value_alloc_type::difference_type difference_type;
+  typedef typename value_alloc_type::reference reference;
+  typedef typename value_alloc_type::const_reference const_reference;
+  typedef typename value_alloc_type::pointer pointer;
+  typedef typename value_alloc_type::const_pointer const_pointer;
   typedef sparse_hashtable_iterator<Value, Key, HashFcn, ExtractKey,
                                     SetKey, EqualKey, Alloc>
   iterator;
@@ -340,19 +352,20 @@ class sparse_hashtable {
   static const float HT_OCCUPANCY_FLT; // = 0.8f;
 
   // How empty we let the table get before we resize lower, by default.
+  // (0.0 means never resize lower.)
   // It should be less than OCCUPANCY_FLT / 2 or we thrash resizing
   static const float HT_EMPTY_FLT; // = 0.4 * HT_OCCUPANCY_FLT;
 
   // Minimum size we're willing to let hashtables be.
   // Must be a power of two, and at least 4.
-  // Note, however, that for a given hashtable, the minimum size is
-  // determined by the first constructor arg, and may be >HT_MIN_BUCKETS.
-  static const size_t HT_MIN_BUCKETS = 4;
+  // Note, however, that for a given hashtable, the initial size is a
+  // function of the first constructor arg, and may be >HT_MIN_BUCKETS.
+  static const size_type HT_MIN_BUCKETS = 4;
 
   // By default, if you don't specify a hashtable size at
   // construction-time, we use this size.  Must be a power of two, and
   // at least HT_MIN_BUCKETS.
-  static const size_t HT_DEFAULT_STARTING_BUCKETS = 32;
+  static const size_type HT_DEFAULT_STARTING_BUCKETS = 32;
 
   // ITERATOR FUNCTIONS
   iterator begin()             { return iterator(this, table.nonempty_begin(),
@@ -410,8 +423,8 @@ class sparse_hashtable {
 
 
   // ACCESSOR FUNCTIONS for the things we templatize on, basically
-  hasher hash_funct() const { return hash; }
-  key_equal key_eq() const  { return equals; }
+  hasher hash_funct() const { return settings; }
+  key_equal key_eq() const  { return settings; }
 
   // Accessor function for statistics gathering.
   int num_table_copies() const { return num_ht_copies; }
@@ -422,7 +435,7 @@ class sparse_hashtable {
   // operator because value_type might not be assignable (it's often
   // pair<const X, Y>).  We use explicit destructor invocation and
   // placement new to get around this.  Arg.
-  void set_value(value_type* dst, const value_type src) {
+  void set_value(pointer dst, const_reference src) {
     dst->~value_type();   // delete the old value, if any
     new(dst) value_type(src);
   }
@@ -449,12 +462,20 @@ class sparse_hashtable {
     assert(num_deleted == 0);
   }
 
+  bool test_deleted_key(const key_type& key) const {
+    // The num_deleted test is crucial for read(): after read(), the ht values
+    // are garbage, and we don't want to think some of them are deleted.
+    // Invariant: !use_deleted implies num_deleted is 0.
+    assert(use_deleted || num_deleted == 0);
+    return num_deleted > 0 && equals(key_info.delkey, key);
+  }
+
  public:
   void set_deleted_key(const key_type &key) {
     // It's only safe to change what "deleted" means if we purge deleted guys
     squash_deleted();
     use_deleted = true;
-    delkey = key;
+    key_info.delkey = key;
   }
   void clear_deleted_key() {
     squash_deleted();
@@ -462,35 +483,34 @@ class sparse_hashtable {
   }
   key_type deleted_key() const {
     assert(use_deleted);
-    return delkey;
+    return key_info.delkey;
   }
 
   // These are public so the iterators can use them
   // True if the item at position bucknum is "deleted" marker
   bool test_deleted(size_type bucknum) const {
-    // The num_deleted test is crucial for read(): after read(), the ht values
-    // are garbage, and we don't want to think some of them are deleted.
-    return (use_deleted && num_deleted > 0 && table.test(bucknum) &&
-            equals(delkey, get_key(table.unsafe_get(bucknum))));
+    if (num_deleted == 0 || !table.test(bucknum)) return false;
+    return test_deleted_key(get_key(table.unsafe_get(bucknum)));
   }
   bool test_deleted(const iterator &it) const {
-    return (use_deleted && num_deleted > 0 &&
-            equals(delkey, get_key(*it)));
+    if (!use_deleted) return false;
+    return test_deleted_key(get_key(*it));
   }
   bool test_deleted(const const_iterator &it) const {
-    return (use_deleted && num_deleted > 0 &&
-            equals(delkey, get_key(*it)));
+    if (!use_deleted) return false;
+    return test_deleted_key(get_key(*it));
   }
   bool test_deleted(const destructive_iterator &it) const {
-    return (use_deleted && num_deleted > 0 &&
-            equals(delkey, get_key(*it)));
+    if (!use_deleted) return false;
+    return test_deleted_key(get_key(*it));
   }
+
   // Set it so test_deleted is true.  true if object didn't used to be deleted.
   bool set_deleted(iterator &it) {
     assert(use_deleted);
     bool retval = !test_deleted(it);
     // &* converts from iterator to value-type.
-    set_key(&(*it), delkey);
+    set_key(&(*it), key_info.delkey);
     return retval;
   }
   // Set it so test_deleted is false.  true if object used to be deleted.
@@ -508,19 +528,19 @@ class sparse_hashtable {
   bool set_deleted(const_iterator &it) {
     assert(use_deleted);             // bad if set_deleted_key() wasn't called
     bool retval = !test_deleted(it);
-    set_key(const_cast<value_type*>(&(*it)), delkey);
+    set_key(const_cast<pointer>(&(*it)), key_info.delkey);
     return retval;
   }
+  // Set it so test_deleted is false.  true if object used to be deleted.
   bool clear_deleted(const_iterator &it) {
     assert(use_deleted);             // bad if set_deleted_key() wasn't called
     return test_deleted(it);
   }
 
-
   // FUNCTIONS CONCERNING SIZE
+ public:
   size_type size() const      { return table.num_nonempty() - num_deleted; }
-  // Buckets are always a power of 2
-  size_type max_size() const          { return (size_type(-1) >> 1U) + 1; }
+  size_type max_size() const          { return table.max_size(); }
   bool empty() const                  { return size() == 0; }
   size_type bucket_count() const      { return table.size(); }
   size_type max_bucket_count() const  { return max_size(); }
@@ -541,7 +561,8 @@ class sparse_hashtable {
   size_type min_size(size_type num_elts, size_type min_buckets_wanted) {
     size_type sz = HT_MIN_BUCKETS;             // min buckets allowed
     while ( sz < min_buckets_wanted ||
-            num_elts >= static_cast<size_type>(sz * enlarge_resize_percent) ) {
+            num_elts >=
+            static_cast<size_type>(sz * settings.enlarge_resize_percent) ) {
       if (sz * 2 < sz)
         throw std::length_error("resize overflow");  // protect against overflow
       sz *= 2;
@@ -560,14 +581,15 @@ class sparse_hashtable {
     // shrink below HT_DEFAULT_STARTING_BUCKETS.  Otherwise, something
     // like "dense_hash_set<int> x; x.insert(4); x.erase(4);" will
     // shrink us down to HT_MIN_BUCKETS buckets, which is too small.
-    if (shrink_threshold > 0 &&
-        (table.num_nonempty()-num_deleted) < shrink_threshold &&
+    const size_type num_remain = table.num_nonempty() - num_deleted;
+    if (settings.shrink_threshold > 0 &&
+        num_remain < settings.shrink_threshold &&
         bucket_count() > HT_DEFAULT_STARTING_BUCKETS) {
       size_type sz = bucket_count() / 2;    // find how much we should shrink
-      while ( sz > HT_DEFAULT_STARTING_BUCKETS &&
-              (table.num_nonempty() - num_deleted) <= sz *
-              shrink_resize_percent )
+      while (sz > HT_DEFAULT_STARTING_BUCKETS &&
+             num_remain < sz * settings.shrink_resize_percent) {
         sz /= 2;                            // stay a power of 2
+      }
       sparse_hashtable tmp(MoveDontCopy, *this, sz);
       swap(tmp);                            // now we are tmp
     }
@@ -580,7 +602,7 @@ class sparse_hashtable {
     if ( consider_shrink )                   // see if lots of deletes happened
       maybe_shrink();
     if ( bucket_count() >= HT_MIN_BUCKETS &&
-         (table.num_nonempty() + delta) <= enlarge_threshold )
+         (table.num_nonempty() + delta) <= settings.enlarge_threshold )
       return;                                // we're ok as we are
 
     // Sometimes, we need to resize just to get rid of all the
@@ -601,8 +623,9 @@ class sparse_hashtable {
         // insert.  Might as well grow now, since we're already going
         // through the trouble of copying (in order to purge the
         // deleted elements).
-        if (table.num_nonempty() - num_deleted + delta >=
-            static_cast<size_type>(resize_to*2 * shrink_resize_percent)) {
+        const size_type target =
+          static_cast<size_type>(resize_to*2 * settings.shrink_resize_percent);
+        if (table.num_nonempty() - num_deleted + delta >= target) {
           // Good, we won't be below the shrink threshhold even if we double.
           resize_to *= 2;
         }
@@ -627,7 +650,7 @@ class sparse_hashtable {
     // We use a normal iterator to get non-deleted bcks from ht
     // We could use insert() here, but since we know there are
     // no duplicates and no deleted items, we can be more efficient
-    assert( (bucket_count() & (bucket_count()-1)) == 0);      // a power of two
+    assert((bucket_count() & (bucket_count()-1)) == 0);      // a power of two
     for ( const_iterator it = ht.begin(); it != ht.end(); ++it ) {
       size_type num_probes = 0;              // how many times we've probed
       size_type bucknum;
@@ -651,7 +674,7 @@ class sparse_hashtable {
     clear();            // clear table, set num_deleted to 0
 
     // If we need to change the size of our table, do it now
-    size_t resize_to;
+    size_type resize_to;
     if ( mover == MoveDontGrow )
       resize_to = ht.bucket_count();         // keep same size as old ht
     else                                     // MoveDontCopy
@@ -699,16 +722,16 @@ class sparse_hashtable {
   // file explains how to choose the values.  Setting the shrink
   // parameter to 0.0 ensures that the table never shrinks.
   void get_resizing_parameters(float* shrink, float* grow) const {
-    *shrink = shrink_resize_percent;
-    *grow = enlarge_resize_percent;
+    *shrink = settings.shrink_resize_percent;
+    *grow = settings.enlarge_resize_percent;
   }
   void set_resizing_parameters(float shrink, float grow) {
     assert(shrink >= 0.0);
     assert(grow <= 1.0);
     if (shrink > grow/2.0f)
       shrink = grow / 2.0f;     // otherwise we thrash hashtable size
-    shrink_resize_percent = shrink;
-    enlarge_resize_percent = grow;
+    settings.shrink_resize_percent = shrink;
+    settings.enlarge_resize_percent = grow;
     reset_thresholds();
   }
 
@@ -719,15 +742,16 @@ class sparse_hashtable {
   explicit sparse_hashtable(size_type expected_max_items_in_table = 0,
                             const HashFcn& hf = HashFcn(),
                             const EqualKey& eql = EqualKey(),
-                            const SetKey& set = SetKey(),
-                            const ExtractKey& ext = ExtractKey())
-    : hash(hf), equals(eql), get_key(ext), set_key(set), num_deleted(0),
-      use_deleted(false), delkey(), enlarge_resize_percent(HT_OCCUPANCY_FLT),
-      shrink_resize_percent(HT_EMPTY_FLT),
-      table(expected_max_items_in_table == 0
-            ? HT_DEFAULT_STARTING_BUCKETS
-            : min_size(expected_max_items_in_table, 0)),
-      num_ht_copies(0) {
+                            const ExtractKey& ext = ExtractKey(),
+                            const SetKey& set = SetKey())
+      : settings(hf, eql),
+        key_info(ext, set),
+        use_deleted(false),
+        num_ht_copies(0),
+        num_deleted(0),
+        table(expected_max_items_in_table == 0
+              ? HT_DEFAULT_STARTING_BUCKETS
+              : min_size(expected_max_items_in_table, 0)) {
     reset_thresholds();
   }
 
@@ -737,51 +761,46 @@ class sparse_hashtable {
   // into us instead of copying.
   sparse_hashtable(const sparse_hashtable& ht,
                    size_type min_buckets_wanted = HT_DEFAULT_STARTING_BUCKETS)
-    : hash(ht.hash), equals(ht.equals),
-      get_key(ht.get_key), set_key(ht.set_key), num_deleted(0),
-      use_deleted(ht.use_deleted), delkey(ht.delkey),
-      enlarge_resize_percent(ht.enlarge_resize_percent),
-      shrink_resize_percent(ht.shrink_resize_percent),
-      table(), num_ht_copies(ht.num_ht_copies) {
+      : settings(ht.settings),
+        key_info(ht.key_info),
+        use_deleted(ht.use_deleted),
+        num_ht_copies(ht.num_ht_copies),
+        num_deleted(0),
+        table() {
     reset_thresholds();
     copy_from(ht, min_buckets_wanted);   // copy_from() ignores deleted entries
   }
   sparse_hashtable(MoveDontCopyT mover, sparse_hashtable& ht,
                    size_type min_buckets_wanted = HT_DEFAULT_STARTING_BUCKETS)
-    : hash(ht.hash), equals(ht.equals), get_key(ht.get_key),
-      num_deleted(0), use_deleted(ht.use_deleted), delkey(ht.delkey),
-      enlarge_resize_percent(ht.enlarge_resize_percent),
-      shrink_resize_percent(ht.shrink_resize_percent),
-      table(), num_ht_copies(ht.num_ht_copies) {
+      : settings(ht.settings),
+        key_info(ht.key_info),
+        use_deleted(ht.use_deleted),
+        num_ht_copies(ht.num_ht_copies),
+        num_deleted(0),
+        table() {
     reset_thresholds();
     move_from(mover, ht, min_buckets_wanted);  // ignores deleted entries
   }
 
   sparse_hashtable& operator= (const sparse_hashtable& ht) {
     if (&ht == this)  return *this;        // don't copy onto ourselves
-    hash = ht.hash;
-    equals = ht.equals;
-    get_key = ht.get_key;
-    set_key = ht.set_key;
+    settings = ht.settings;
+    key_info = ht.key_info;
     use_deleted = ht.use_deleted;
-    delkey = ht.delkey;
-    copy_from(ht, HT_MIN_BUCKETS);  // calls clear and sets num_deleted to 0 too
+    num_ht_copies = ht.num_ht_copies;
+    // copy_from() calls clear and sets num_deleted to 0 too
+    copy_from(ht, HT_MIN_BUCKETS);
     return *this;
   }
 
   // Many STL algorithms use swap instead of copy constructors
   void swap(sparse_hashtable& ht) {
-    STL_NAMESPACE::swap(hash, ht.hash);
-    STL_NAMESPACE::swap(equals, ht.equals);
-    STL_NAMESPACE::swap(get_key, ht.get_key);
-    STL_NAMESPACE::swap(set_key, ht.set_key);
-    STL_NAMESPACE::swap(num_deleted, ht.num_deleted);
+    STL_NAMESPACE::swap(settings, ht.settings);
+    STL_NAMESPACE::swap(key_info, ht.key_info);
     STL_NAMESPACE::swap(use_deleted, ht.use_deleted);
-    STL_NAMESPACE::swap(enlarge_resize_percent, ht.enlarge_resize_percent);
-    STL_NAMESPACE::swap(shrink_resize_percent, ht.shrink_resize_percent);
-    STL_NAMESPACE::swap(delkey, ht.delkey);
-    table.swap(ht.table);
     STL_NAMESPACE::swap(num_ht_copies, ht.num_ht_copies);
+    STL_NAMESPACE::swap(num_deleted, ht.num_deleted);
+    table.swap(ht.table);
     reset_thresholds();
     ht.reset_thresholds();
   }
@@ -888,9 +907,9 @@ class sparse_hashtable {
   // INSERTION ROUTINES
  private:
   // If you know *this is big enough to hold obj, use this routine
-  pair<iterator, bool> insert_noresize(const value_type& obj) {
+  pair<iterator, bool> insert_noresize(const_reference obj) {
     // First, double-check we're not inserting delkey
-    assert(!use_deleted || !equals(get_key(obj), delkey));
+    assert(!use_deleted || !equals(get_key(obj), key_info.delkey));
     const pair<size_type,size_type> pos = find_position(get_key(obj));
     if ( pos.first != ILLEGAL_BUCKET) {      // object was already there
       return pair<iterator,bool>(iterator(this, table.get_iter(pos.first),
@@ -911,8 +930,8 @@ class sparse_hashtable {
 
  public:
   // This is the normal insert routine, used by the outside world
-  pair<iterator, bool> insert(const value_type& obj) {
-    resize_delta(1);  // adding an object, grow if need be
+  pair<iterator, bool> insert(const_reference obj) {
+    resize_delta(1);                      // adding an object, grow if need be
     return insert_noresize(obj);
   }
 
@@ -945,7 +964,7 @@ class sparse_hashtable {
   // DELETION ROUTINES
   size_type erase(const key_type& key) {
     // First, double-check we're not erasing delkey.
-    assert(!use_deleted || !equals(key, delkey));
+    assert(!use_deleted || !equals(key, key_info.delkey));
     const_iterator pos = find(key);   // shrug: shouldn't need to be const
     if ( pos != end() ) {
       assert(!test_deleted(pos));  // or find() shouldn't have returned it
@@ -998,9 +1017,21 @@ class sparse_hashtable {
 
   // COMPARISON
   bool operator==(const sparse_hashtable& ht) const {
-    // We really want to check that the hash functions are the same
-    // but alas there's no way to do this.  We just hope.
-    return ( num_deleted == ht.num_deleted && table == ht.table );
+    if (size() != ht.size()) {
+      return false;
+    } else if (this == &ht) {
+      return true;
+    } else {
+      // Iterate through the elements in "this" and see if the
+      // corresponding element is in ht
+      for ( const_iterator it = begin(); it != end(); ++it ) {
+        const_iterator it2 = ht.find(get_key(*it));
+        if ((it2 == ht.end()) || (*it != *it2)) {
+          return false;
+        }
+      }
+      return true;
+    }
   }
   bool operator!=(const sparse_hashtable& ht) const {
     return !(*this == ht);
@@ -1036,32 +1067,93 @@ class sparse_hashtable {
   }
 
  private:
-  // The actual data
-  hasher hash;                      // required by hashed_associative_container
-  key_equal equals;
-  ExtractKey get_key;
-  SetKey set_key;
-  size_type num_deleted;        // how many occupied buckets are marked deleted
-  bool use_deleted;                          // false until delkey has been set
-  // TODO(csilvers): make a pointer, and get rid of use_deleted (benchmark!)
-  key_type delkey;                           // which key marks deleted entries
-  float enlarge_resize_percent;                       // how full before resize
-  float shrink_resize_percent;                       // how empty before resize
-  size_type shrink_threshold;           // table.size() * shrink_resize_percent
-  size_type enlarge_threshold;         // table.size() * enlarge_resize_percent
-  sparsetable<value_type, DEFAULT_GROUP_SIZE, allocator_type> table;
-                                      // holds num_buckets and num_elements too
-  bool consider_shrink;   // true if we should try to shrink before next insert
-  int num_ht_copies;        // a statistics counter incremented every Copy/Move
+  // Table is the main storage class.
+  typedef sparsetable<value_type, DEFAULT_GROUP_SIZE, value_alloc_type> Table;
+
+  // Package templated functors with the other types to eliminate memory
+  // needed for storing these zero-size operators.  Since ExtractKey and
+  // hasher's operator() might have the same function signature, they
+  // must be packaged in different classes.
+
+  // KeyInfo stores delete key and packages zero-size functors:
+  // ExtractKey and SetKey.
+  class KeyInfo : public ExtractKey, public SetKey {
+   public:
+    KeyInfo(const ExtractKey& ek, const SetKey& sk)
+        : ExtractKey(ek), SetKey(sk) {
+    }
+    const key_type get_key(const_reference v) const {
+      return ExtractKey::operator()(v);
+    }
+    void set_key(pointer v, const key_type& k) const {
+      SetKey::operator()(v, k);
+    }
+
+    // TODO(csilvers): make a pointer, and get rid of use_deleted (benchmark!)
+    key_type delkey;
+  };
+
+  // Settings contains parameters for growing and shrinking the table.
+  // It also packages zero-size functors (ie. hasher and key_equal).
+  class Settings : public hasher, public key_equal {
+   public:
+    Settings(const hasher& hf, const key_equal& eq)
+        : hasher(hf),
+          key_equal(eq),
+          enlarge_resize_percent(HT_OCCUPANCY_FLT),
+          shrink_resize_percent(HT_EMPTY_FLT),
+          enlarge_threshold(0),
+          shrink_threshold(0) {
+    }
+    size_type hash(const key_type& v) const {
+      return hasher::operator()(v);
+    }
+    bool equals(const key_type& a, const key_type& b) const {
+      return key_equal::operator()(a, b);
+    }
+
+    float enlarge_resize_percent;  // how full before resize
+    float shrink_resize_percent;   // how empty before resize
+    size_type enlarge_threshold; // table.size() * enlarge_resize_percent
+    size_type shrink_threshold;  // table.size() * shrink_resize_percent
+  };
 
   void reset_thresholds() {
-    enlarge_threshold = static_cast<size_type>(table.size()
-                                               * enlarge_resize_percent);
-    shrink_threshold = static_cast<size_type>(table.size()
-                                              * shrink_resize_percent);
-    consider_shrink = false;   // whatever caused us to reset already considered
+    settings.enlarge_threshold = static_cast<size_type>(
+        table.size() * settings.enlarge_resize_percent);
+    settings.shrink_threshold = static_cast<size_type>(
+        table.size() * settings.shrink_resize_percent);
+    consider_shrink = false;  // whatever caused us to reset already considered
   }
+
+  // Utility functions to access the templated operators
+  size_type hash(const key_type& v) const {
+    return settings.hash(v);
+  }
+  bool equals(const key_type& a, const key_type& b) const {
+    return settings.equals(a, b);
+  }
+  const key_type get_key(const_reference v) const {
+    return key_info.get_key(v);
+  }
+  void set_key(pointer v, const key_type& k) const {
+    key_info.set_key(v, k);
+  }
+
+ private:
+  // Actual data
+  Settings settings;
+  KeyInfo key_info;
+  bool consider_shrink;   // true if we should try to shrink before next insert
+  bool use_deleted;                          // false until delkey has been set
+
+  // TODO(giao): Reduce the number of bits for num_ht_copies. It is not
+  // currently used by any application.
+  int num_ht_copies;        // a statistics counter incremented every Copy/Move
+  size_type num_deleted;        // how many occupied buckets are marked deleted
+  Table table;     // holds num_buckets and num_elements too
 };
+
 
 // We need a global swap as well
 template <class V, class K, class HF, class ExK, class SetK, class EqK, class A>
@@ -1084,8 +1176,8 @@ const float sparse_hashtable<V,K,HF,ExK,SetK,EqK,A>::HT_OCCUPANCY_FLT = 0.8f;
 // How empty we let the table get before we resize lower.
 // It should be less than OCCUPANCY_FLT / 2 or we thrash resizing
 template <class V, class K, class HF, class ExK, class SetK, class EqK, class A>
-const float sparse_hashtable<V,K,HF,ExK,SetK,EqK,A>::HT_EMPTY_FLT = 0.4f *
-sparse_hashtable<V,K,HF,ExK,SetK,EqK,A>::HT_OCCUPANCY_FLT;
+const float sparse_hashtable<V,K,HF,ExK,SetK,EqK,A>::HT_EMPTY_FLT
+    = 0.4f * sparse_hashtable<V,K,HF,ExK,SetK,EqK,A>::HT_OCCUPANCY_FLT;
 
 _END_GOOGLE_NAMESPACE_
 
