@@ -76,6 +76,15 @@ using GOOGLE_NAMESPACE::sparse_hash_map;
 using GOOGLE_NAMESPACE::dense_hash_map;
 
 
+static bool FLAGS_test_sparse_hash_map = true;
+static bool FLAGS_test_dense_hash_map = true;
+static bool FLAGS_test_hash_map = true;
+static bool FLAGS_test_map = true;
+
+static bool FLAGS_test_4_bytes = true;
+static bool FLAGS_test_16_bytes = true;
+static bool FLAGS_test_256_bytes = true;
+
 static const int kDefaultIters = 10000000;
 
 // Normally I don't like non-const references, but using them here ensures
@@ -125,6 +134,26 @@ inline void RESIZE(HASH_NAMESPACE::hash_map<K,V,H,E,A>& m, int iters) {
 }
 #endif  // HAVE_HASH_MAP
 
+// Returns the number of hashes that have been done since the last
+// call to NumHashesSinceLastCall().  This is shared across all
+// HashObject instances, which isn't super-OO, but avoids two issues:
+// (1) making HashObject bigger than it ought to be (this is very
+// important for our testing), and (2) having to pass around
+// HashObject objects everywhere, which is annoying.
+static int g_num_hashes;
+static int g_num_copies;
+
+int NumHashesSinceLastCall() {
+  int retval = g_num_hashes;
+  g_num_hashes = 0;
+  return retval;
+}
+int NumCopiesSinceLastCall() {
+  int retval = g_num_copies;
+  g_num_copies = 0;
+  return retval;
+}
+
 /*
  * These are the objects we hash.  Size is the size of the object
  * (must be > sizeof(int).  Hashsize is how many of these bytes we
@@ -137,8 +166,17 @@ template<int Size, int Hashsize> class HashObject {
   HashObject(int i) : i_(i) {
     memset(buffer_, i & 255, sizeof(buffer_));   // a "random" char
   }
+  HashObject(const HashObject& that) {
+    operator=(that);
+  }
+  void operator=(const HashObject& that) {
+    g_num_copies++;
+    this->i_ = that.i_;
+    memcpy(this->buffer_, that.buffer_, sizeof(this->buffer_));
+  }
 
   size_t Hash() const {
+    g_num_hashes++;
     int hashval = i_;
     for (int i = 0; i < Hashsize - sizeof(i_); ++i) {
       hashval += buffer_[i];
@@ -161,8 +199,18 @@ template<> class HashObject<sizeof(int), sizeof(int)> {
   typedef HashObject<sizeof(int), sizeof(int)> class_type;
   HashObject() {}
   HashObject(int i) : i_(i) {}
+  HashObject(const HashObject& that) {
+    operator=(that);
+  }
+  void operator=(const HashObject& that) {
+    g_num_copies++;
+    this->i_ = that.i_;
+  }
 
-  size_t Hash() const { return SPARSEHASH_HASH<int>()(i_); }
+  size_t Hash() const {
+    g_num_hashes++;
+    return SPARSEHASH_HASH<int>()(i_);
+  }
 
   bool operator==(const class_type& that) const { return this->i_ == that.i_; }
   bool operator< (const class_type& that) const { return this->i_ < that.i_; }
@@ -302,16 +350,18 @@ static size_t CurrentMemoryUsage() { return 0; }
 
 static void report(char const* title, double t,
                    int iters,
-                   size_t heap_growth) {
+                   size_t start_memory, size_t end_memory) {
   // Construct heap growth report text if applicable
-  char heap[100];
-  if (heap_growth > 0) {
-    snprintf(heap, sizeof(heap), "%8.1f MB", heap_growth / 1048576.0);
-  } else {
-    heap[0] = '\0';
+  char heap[100] = "";
+  if (end_memory > start_memory) {
+    snprintf(heap, sizeof(heap), "%7.1f MB",
+             (end_memory - start_memory) / 1048576.0);
   }
 
-  printf("%-20s %8.1f ns %s\n", title, (t * 1000000000.0 / iters), heap);
+  printf("%-20s %6.1f ns  (%8d hashes, %8d copies)%s\n",
+         title, (t * 1000000000.0 / iters),
+         NumHashesSinceLastCall(), NumCopiesSinceLastCall(),
+         heap);
   fflush(stdout);
 }
 
@@ -328,7 +378,7 @@ static void time_map_grow(int iters) {
   }
   double ut = t.UserTime();
   const size_t finish = CurrentMemoryUsage();
-  report("map_grow", ut, iters, finish - start);
+  report("map_grow", ut, iters, start, finish);
 }
 
 template<class MapType>
@@ -345,7 +395,7 @@ static void time_map_grow_predicted(int iters) {
   }
   double ut = t.UserTime();
   const size_t finish = CurrentMemoryUsage();
-  report("map_predict/grow", ut, iters, finish - start);
+  report("map_predict/grow", ut, iters, start, finish);
 }
 
 template<class MapType>
@@ -365,7 +415,7 @@ static void time_map_replace(int iters) {
   }
   double ut = t.UserTime();
 
-  report("map_replace", ut, iters, 0);
+  report("map_replace", ut, iters, 0, 0);
 }
 
 template<class MapType>
@@ -388,7 +438,7 @@ static void time_map_fetch(int iters) {
   double ut = t.UserTime();
 
   srand(r);   // keep compiler from optimizing away r (we never call rand())
-  report("map_fetch", ut, iters, 0);
+  report("map_fetch", ut, iters, 0, 0);
 }
 
 template<class MapType>
@@ -407,7 +457,7 @@ static void time_map_fetch_empty(int iters) {
   double ut = t.UserTime();
 
   srand(r);   // keep compiler from optimizing away r (we never call rand())
-  report("map_fetch_empty", ut, iters, 0);
+  report("map_fetch_empty", ut, iters, 0, 0);
 }
 
 template<class MapType>
@@ -428,7 +478,7 @@ static void time_map_remove(int iters) {
   }
   double ut = t.UserTime();
 
-  report("map_remove", ut, iters, 0);
+  report("map_remove", ut, iters, 0, 0);
 }
 
 template<class MapType>
@@ -449,12 +499,12 @@ static void time_map_toggle(int iters) {
   double ut = t.UserTime();
   const size_t finish = CurrentMemoryUsage();
 
-  report("map_toggle", ut, iters, finish - start);
+  report("map_toggle", ut, iters, start, finish);
 }
 
 template<class MapType>
-static void measure_map(const char* label, int iters) {
-  printf("\n%s:\n", label);
+static void measure_map(const char* label, int obj_size, int iters) {
+  printf("\n%s (%d byte objects, %d iterations):\n", label, obj_size, iters);
   if (1) time_map_grow<MapType>(iters);
   if (1) time_map_grow_predicted<MapType>(iters);
   if (1) time_map_replace<MapType>(iters);
@@ -464,18 +514,33 @@ static void measure_map(const char* label, int iters) {
   if (1) time_map_toggle<MapType>(iters);
 }
 
+template<class ObjType>
+static void test_all_maps(int obj_size, int iters) {
+  if (FLAGS_test_sparse_hash_map)
+    measure_map< sparse_hash_map<ObjType, int, HashFn> >("SPARSE_HASH_MAP",
+                                                 obj_size, iters);
+  if (FLAGS_test_dense_hash_map)
+    measure_map< dense_hash_map<ObjType, int, HashFn> >("DENSE_HASH_MAP",
+                                                obj_size, iters);
+#if defined(HAVE_UNORDERED_MAP)
+  if (FLAGS_test_hash_map)
+    measure_map< HASH_NAMESPACE::unordered_map<ObjType, int, HashFn> >(
+        "TR1 UNORDERED_MAP", obj_size, iters);
+#elif defined(HAVE_HASH_MAP)
+  if (FLAGS_test_hash_map)
+    measure_map< HASH_NAMESPACE::hash_map<ObjType, int, HashFn> >(
+        "STANDARD HASH_MAP", obj_size, iters);
+#endif
+  if (FLAGS_test_map)
+    measure_map< STL_NAMESPACE::map<ObjType, int, HashFn> >("STANDARD MAP",
+                                     obj_size, iters);
+}
+
 int main(int argc, char** argv) {
   int iters = kDefaultIters;
   if (argc > 1) {            // first arg is # of iterations
     iters = atoi(argv[1]);
   }
-
-  // It would be nice to set these at run-time, but by setting them at
-  // compile-time, we allow optimizations that make it as fast to use
-  // a HashObject as it would be to use just a straight int/char buffer.
-  const int obj_size = 4;
-  const int hash_size = 4;
-  typedef HashObject<obj_size, hash_size> HashObj;
 
   stamp_run(iters);
 
@@ -484,16 +549,14 @@ int main(int argc, char** argv) {
          "                 reported are wall-clock time, not user time\n");
 #endif
 
-  measure_map< sparse_hash_map<HashObj,int,HashFn> >("SPARSE_HASH_MAP", iters);
-  measure_map< dense_hash_map<HashObj,int,HashFn> >("DENSE_HASH_MAP", iters);
-#if defined(HAVE_UNORDERED_MAP)
-  measure_map< HASH_NAMESPACE::unordered_map<HashObj,int,HashFn> >(
-      "TR1 UNORDERED_MAP", iters);
-#elif defined(HAVE_HASH_MAP)
-  measure_map< HASH_NAMESPACE::hash_map<HashObj,int,HashFn> >(
-      "STANDARD HASH_MAP", iters);
-#endif
-  measure_map< STL_NAMESPACE::map<HashObj,int,HashFn> >("STANDARD MAP", iters);
+  // It would be nice to set these at run-time, but by setting them at
+  // compile-time, we allow optimizations that make it as fast to use
+  // a HashObject as it would be to use just a straight int/char
+  // buffer.  To keep memory use similar, we normalize the number of
+  // iterations based on size.
+  if (FLAGS_test_4_bytes)  test_all_maps< HashObject<4,4> >(4, iters/1);
+  if (FLAGS_test_16_bytes)  test_all_maps< HashObject<16,16> >(16, iters/4);
+  if (FLAGS_test_256_bytes)  test_all_maps< HashObject<256,256> >(256, iters/32);
 
   return 0;
 }

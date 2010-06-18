@@ -63,7 +63,7 @@ class libc_allocator_with_realloc {
   pointer allocate(size_type n, const_pointer = 0) {
     return static_cast<pointer>(malloc(n * sizeof(value_type)));
   }
-  void deallocate(pointer p, size_type n) {
+  void deallocate(pointer p, size_type) {
     free(p);
   }
   pointer reallocate(pointer p, size_type n) {

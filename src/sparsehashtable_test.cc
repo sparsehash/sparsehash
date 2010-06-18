@@ -86,6 +86,9 @@ static int16 test_data[] = {
 
 
 class SparsehashtableTest {
+ public:
+  virtual ~SparsehashtableTest() { }
+
  protected:
   virtual void SetUp() {
     for (int i = 0; i < arraysize(test_data); ++i) {

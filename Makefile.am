@@ -26,7 +26,7 @@ docdir = $(prefix)/share/doc/$(PACKAGE)-$(VERSION)
 ## This is for HTML and other documentation you want to install.
 ## Add your documentation files (in doc/) in addition to these boilerplate
 ## Also add a TODO file if you have one
-dist_doc_DATA = AUTHORS COPYING ChangeLog INSTALL NEWS README README.windows \
+dist_doc_DATA = AUTHORS COPYING ChangeLog INSTALL NEWS README README_windows.txt \
    TODO \
    doc/dense_hash_map.html			\
    doc/dense_hash_set.html			\

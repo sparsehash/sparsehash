@@ -76,9 +76,11 @@ struct IntHash {
   size_t operator()(int16 v) const { return v; }
 };
 
-struct Table : dense_hashtable<int16, int16,
-                               IntHash, Identity<int16>, SetKey<int16>,
-                               equal_to<int16>, allocator<int16> >  {
+typedef dense_hashtable<int16, int16,
+                        IntHash, Identity<int16>, SetKey<int16>,
+                        equal_to<int16>, allocator<int16> > BaseTable;
+
+struct Table : public BaseTable {
   Table() {
     set_empty_key(-32767);
   }
@@ -89,6 +91,9 @@ static int16 test_data[] = {
 };
 
 class DensehashtableTest {
+ public:
+  virtual ~DensehashtableTest() { }
+
  protected:
   virtual void SetUp() {
     for (int i = 0; i < arraysize(test_data); ++i) {
@@ -258,6 +263,21 @@ TEST_F(DensehashtableTest, Erase) {
   ht.erase(table_.begin(), table_.end());
   EXPECT_FALSE(ht == table_);
   EXPECT_EQ(ht.size(), 0);
+}
+
+// Regression for 15425559
+TEST_F(DensehashtableTest, SimpleCopy) {
+  BaseTable t1(15);
+  BaseTable t2(15);
+  t1.set_empty_key(-32767);
+  for (int i = 0; i < 24; ++i) {
+    ASSERT_TRUE(t1.insert(i).second);
+  }
+  t2 = t1;
+
+  Table::iterator it = t2.find(10);
+  EXPECT_TRUE(it != t2.end());
+  EXPECT_EQ(*it, 10);
 }
 
 }  // namespace
