@@ -36,19 +36,20 @@
 
 #include <stdio.h>
 
-#define TEST_F(superclass, testname)                    \
-  class TEST_##testname : public superclass {           \
-   public:                                              \
-    TEST_##testname() {                                 \
-      fputs("Running " #testname "\n", stderr);         \
-      SetUp();                                          \
-      Run();                                            \
-      TearDown();                                       \
-    }                                                   \
-    void Run();                                         \
-  };                                                    \
-  static TEST_##testname test_instance_##testname;      \
-  void TEST_##testname::Run()
+#define TEST_F(superclass, testname)                                    \
+  class TEST_##superclass##_##testname : public superclass {            \
+   public:                                                              \
+    TEST_##superclass##_##testname() {                                  \
+      fputs("Running " #superclass "::" #testname "\n", stderr);        \
+      SetUp();                                                          \
+      Run();                                                            \
+      TearDown();                                                       \
+    }                                                                   \
+    void Run();                                                         \
+  };                                                                    \
+  static TEST_##superclass##_##testname                                 \
+      test_instance_##superclass##_##testname;                          \
+  void TEST_##superclass##_##testname::Run()
 
 #define EXPECT_TRUE(cond)  do {                 \
   if (!(cond)) {                                \
@@ -61,3 +62,6 @@
 #define EXPECT_EQ(a, b)  EXPECT_TRUE((a) == (b))
 #define EXPECT_LT(a, b)  EXPECT_TRUE((a) < (b))
 #define EXPECT_GT(a, b)  EXPECT_TRUE((a) > (b))
+
+#define ASSERT_TRUE(cond)   EXPECT_TRUE(cond)
+#define ASSERT_FALSE(cond)  EXPECT_FALSE(cond)

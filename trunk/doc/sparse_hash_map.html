@@ -212,7 +212,8 @@ compatible with the tr1 class <code>unordered_map</code>.
    it assumes that <code>pointer</code>, <code>const_pointer</code>,
    <code>size_type</code>, and <code>difference_type</code> are just
    <code>T*</code>, <code>const T*</code>, <code>size_t</code>, and
-   <code>ptrdiff_t</code>, respectively.
+   <code>ptrdiff_t</code>, respectively.  This is also defined as
+   <tt>sparse_hash_map::allocator_type</tt>.
 </TD>
 <TD VAlign=top>
 </TD>
@@ -797,6 +798,20 @@ None.
 
 <TR>
 <TD VAlign=top>
+   <tt>allocator_type get_allocator() const</tt>
+</TD>
+<TD VAlign=top>
+   <tt>Unordered Associative Container</tt> (tr1)
+</TD>
+<TD VAlign=top>
+   Returns the <tt>allocator_type</tt> object used by the
+   <tt>sparse_hash_map</tt>: either the one passed in to the
+   constructor, or a default <tt>Alloc</tt> instance.
+</TD>
+</TR>
+
+<TR>
+<TD VAlign=top>
    <tt>sparse_hash_map()</tt>
 </TD>
 <TD VAlign=top>
@@ -852,6 +867,22 @@ None.
    Creates an empty <tt>sparse_hash_map</tt> that's optimized for up
    to <tt>n</tt> items, using <tt>h</tt> as the hash function and
    <tt>k</tt> as the key equal function.
+</TD>
+</TR>
+
+<TR>
+<TD VAlign=top>
+   <tt>sparse_hash_map(size_type n, const hasher&amp; h, const
+   key_equal&amp; k, const allocator_type&amp; a)</tt>
+</TD>
+<TD VAlign=top>
+   <tt>Unordered Associative Container</tt> (tr1)
+</TD>
+<TD VAlign=top>
+   Creates an empty <tt>sparse_hash_map</tt> that's optimized for up
+   to <tt>n</tt> items, using <tt>h</tt> as the hash function,
+   <tt>k</tt> as the key equal function, and <tt>a</tt> as the
+   allocator object.
 </TD>
 </TR>
 
@@ -924,6 +955,25 @@ hasher&amp; h, const key_equal&amp; k) </pre> <A href="#2">[2]</A>
    Creates a hash_map with a copy of a range that's optimized for
    holding up to <tt>n</tt> items, using <tt>h</tt> as the hash
    function and <tt>k</tt> as the key equal function.
+</TD>
+</TR>
+
+<TR>
+<TD VAlign=top>
+   <pre>template &lt;class <A
+href="http://www.sgi.com/tech/stl/InputIterator.html">InputIterator</A>&gt;
+sparse_hash_map(InputIterator f, InputIterator l, size_type n, const
+hasher&amp; h, const key_equal&amp; k, const allocator_type&amp; a) </pre>
+   <A href="#2">[2]</A>
+</TD>
+<TD VAlign=top>
+   <tt>Unordered Associative Container</tt> (tr1)
+</TD>
+<TD VAlign=top>
+   Creates a hash_map with a copy of a range that's optimized for
+   holding up to <tt>n</tt> items, using <tt>h</tt> as the hash
+   function, <tt>k</tt> as the key equal function, and <tt>a</tt> as
+   the allocator object.
 </TD>
 </TR>
 

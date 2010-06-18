@@ -296,7 +296,7 @@ googleinclude_HEADERS = \
    src/google/sparsetable                       \
    src/google/type_traits.h
 
-dist_doc_DATA = AUTHORS COPYING ChangeLog INSTALL NEWS README README.windows \
+dist_doc_DATA = AUTHORS COPYING ChangeLog INSTALL NEWS README README_windows.txt \
    TODO \
    doc/dense_hash_map.html			\
    doc/dense_hash_set.html			\

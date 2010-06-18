@@ -81,6 +81,7 @@ using GOOGLE_NAMESPACE::dense_hashtable;
 using GOOGLE_NAMESPACE::libc_allocator_with_realloc;
 using STL_NAMESPACE::map;
 using STL_NAMESPACE::set;
+using STL_NAMESPACE::vector;
 using STL_NAMESPACE::pair;
 using STL_NAMESPACE::make_pair;
 using STL_NAMESPACE::string;
@@ -88,6 +89,8 @@ using STL_NAMESPACE::insert_iterator;
 using STL_NAMESPACE::allocator;
 using STL_NAMESPACE::equal_to;
 using STL_NAMESPACE::ostream;
+
+typedef unsigned char uint8;
 
 #define LOGF  STL_NAMESPACE::cout   // where we log to; LOGF is a historical name
 
@@ -100,6 +103,8 @@ using STL_NAMESPACE::ostream;
 
 #define CHECK_EQ(a, b)  CHECK((a) == (b))
 #define CHECK_LT(a, b)  CHECK((a) < (b))
+#define CHECK_GT(a, b)  CHECK((a) > (b))
+#define CHECK_LE(a, b)  CHECK((a) <= (b))
 #define CHECK_GE(a, b)  CHECK((a) >= (b))
 
 #ifndef _MSC_VER   // windows defines its own version
@@ -301,6 +306,60 @@ void insert(sparse_hash_map<K,V,H,C,A> *ht, Iterator begin, Iterator end) {
   }
 }
 
+// Just like above, but uses operator[] when possible.
+template <class T, class H, class I, class S, class C, class A>
+void bracket_insert(dense_hashtable<T,T,H,I,S,C,A> *ht, T val) {
+  ht->insert(val);
+}
+
+template <class T, class H, class C, class A>
+void bracket_insert(dense_hash_set<T,H,C,A> *ht, T val) {
+  ht->insert(val);
+}
+
+template <class K, class V, class H, class C, class A>
+void bracket_insert(dense_hash_map<K,V,H,C,A> *ht, K val) {
+  (*ht)[val] = V();
+}
+
+template <class T, class H, class I, class S, class C, class A>
+void bracket_insert(sparse_hashtable<T,T,H,I,S,C,A> *ht, T val) {
+  ht->insert(val);
+}
+
+template <class T, class H, class C, class A>
+void bracket_insert(sparse_hash_set<T,H,C,A> *ht, T val) {
+  ht->insert(val);
+}
+
+template <class K, class V, class H, class C, class A>
+void bracket_insert(sparse_hash_map<K,V,H,C,A> *ht, K val) {
+  (*ht)[val] = V();
+}
+
+template <class HT, class Iterator>
+void bracket_insert(HT *ht, Iterator begin, Iterator end) {
+  ht->bracket_insert(begin, end);
+}
+
+template <class K, class V, class H, class C, class A, class Iterator>
+void bracket_insert(dense_hash_map<K,V,H,C,A> *ht,
+                    Iterator begin, Iterator end) {
+  while (begin != end) {
+    bracket_insert(ht, *begin);
+    ++begin;
+  }
+}
+
+template <class K, class V, class H, class C, class A, class Iterator>
+void bracket_insert(sparse_hash_map<K,V,H,C,A> *ht,
+                    Iterator begin, Iterator end) {
+  while (begin != end) {
+    bracket_insert(ht, *begin);
+    ++begin;
+  }
+}
+
 // A version of insert that uses the insert_iterator.  But insert_iterator
 // isn't defined for the low level hashtable classes, so we just punt to insert.
 
@@ -416,6 +475,73 @@ int get_int_item(pair<int, int> val) {
 int getintkey(int i) { return i; }
 
 int getintkey(const pair<int, int> &p) { return p.first; }
+
+template<typename T>
+class DenseStringMap : public dense_hash_map<string, T> {
+ public:
+  DenseStringMap() { this->set_empty_key(string()); }
+};
+
+class DenseStringSet : public dense_hash_set<string> {
+ public:
+  DenseStringSet() { this->set_empty_key(string()); }
+};
+
+// Allocator that uses uint8 as size_type to test overflowing on insert.
+// Also, to test allocators with state, if you pass in an int*, we
+// increment it on every alloc and realloc call.  Because we use this
+// allocator in a vector, we need to define != and swap for gcc.
+template<typename T, typename SizeT, int MAX_SIZE>
+struct Alloc {
+  typedef T value_type;
+  typedef SizeT size_type;
+  typedef ptrdiff_t difference_type;
+  typedef T* pointer;
+  typedef const T* const_pointer;
+  typedef T& reference;
+  typedef const T& const_reference;
+
+  Alloc(int* count = NULL) : count_(count) {}
+  ~Alloc() {}
+  pointer address(reference r) const  { return &r; }
+  const_pointer address(const_reference r) const  { return &r; }
+  pointer allocate(size_type n, const_pointer = 0) {
+    if (count_)  ++(*count_);
+    return static_cast<pointer>(malloc(n * sizeof(value_type)));
+  }
+  void deallocate(pointer p, size_type n) {
+    free(p);
+  }
+  pointer reallocate(pointer p, size_type n) {
+    if (count_)  ++(*count_);
+    return static_cast<pointer>(realloc(p, n * sizeof(value_type)));
+  }
+  size_type max_size() const  {
+    return static_cast<size_type>(MAX_SIZE);
+  }
+  void construct(pointer p, const value_type& val) {
+    new(p) value_type(val);
+  }
+  void destroy(pointer p) { p->~value_type(); }
+
+  bool is_custom_alloc() const { return true; }
+
+  template <class U>
+  Alloc(const Alloc<U, SizeT, MAX_SIZE>& that) : count_(that.count_) {}
+
+  template <class U>
+  struct rebind {
+    typedef Alloc<U, SizeT, MAX_SIZE> other;
+  };
+
+  bool operator!=(const Alloc<T,SizeT,MAX_SIZE>& that) {
+    return this->count_ != that.count_;
+  }
+
+ private:
+  template<typename U, typename U_SizeT, int U_MAX_SIZE> friend class Alloc;
+  int* count_;
+};
 
 }   // end anonymous namespace
 
@@ -542,6 +668,19 @@ void test_int() {
   y.clear();
   CHECK(y.empty());
   LOGF << "y has " << y.bucket_count() << " buckets\n";
+
+  // Let's do some crash-testing with operator[]
+  y.set_deleted_key(-1);
+  for (int iters = 0; iters < 10; iters++) {
+    // We start at 33 because after shrinking, we'll be at 32 buckets.
+    for (int i = 33; i < 133; i++) {
+      bracket_insert(&y, i);
+    }
+    clear_no_resize(&y);
+    // This will force a shrink on the next insert, which we want to test.
+    insert(&y, 0);
+    y.erase(0);
+  }
 }
 
 // Performs tests where the hashtable's value type is assumed to be char*.
@@ -869,25 +1008,7 @@ void TestSimpleDataTypeOptimizations() {
          << NoMemmove::num_copies_ << "/" << Memmove::num_copies_ << "\n";
     CHECK(NoMemmove::num_copies_ > Memmove::num_copies_);
   }
-  // Same should hold true for dense_hash_map
-  {
-    dense_hash_map<int, Memmove> memmove;
-    dense_hash_map<int, NoMemmove> nomemmove;
-    memmove.set_empty_key(0);
-    nomemmove.set_empty_key(0);
-
-    Memmove::num_copies_ = 0;  // reset
-    NoMemmove::num_copies_ = 0;  // reset
-    for (int i = 10000; i > 0; i--) {
-      memmove[i] = Memmove(i);
-    }
-    for (int i = 10000; i > 0; i--) {
-      nomemmove[i] = NoMemmove(i);
-    }
-    LOGF << "dense_hash_map copies for unoptimized/optimized cases: "
-         << NoMemmove::num_copies_ << "/" << Memmove::num_copies_ << "\n";
-    CHECK(NoMemmove::num_copies_ > Memmove::num_copies_);
-  }
+  // dense_hash_map doesn't use this optimization, so no need to test it.
 }
 
 void TestShrinking() {
@@ -968,43 +1089,66 @@ class TestEqualTo : public equal_to<int> {
   int id_;
 };
 
+// Test combining Hash and EqualTo function into 1 object
+struct HashWithEqual {
+  int key_inc;
+  HashWithEqual() : key_inc(17) {}
+  explicit HashWithEqual(int i) : key_inc(i) {}
+  size_t operator()(const int& a) const { return a + key_inc; }
+  bool operator()(const int& a, const int& b) const { return a == b; }
+};
+
 // Here, NonHT is the non-hash version of HT: "map" to HT's "hash_map"
 template<class HT, class NonHT>
 void TestSparseConstructors() {
   const TestHashFcn fcn(1);
   const TestEqualTo eqt(2);
+  int alloc_count = 0;
+  const Alloc<int, int, 10000> alloc(&alloc_count);
   {
-    const HT simple(0, fcn, eqt);
+    const HT simple(0, fcn, eqt, alloc);
     CHECK_EQ(fcn.id(), simple.hash_funct().id());
     CHECK_EQ(eqt.id(), simple.key_eq().id());
+    CHECK(simple.get_allocator().is_custom_alloc());
   }
   {
     const NonHT input;
-    const HT iterated(input.begin(), input.end(), 0, fcn, eqt);
+    const HT iterated(input.begin(), input.end(), 0, fcn, eqt, alloc);
     CHECK_EQ(fcn.id(), iterated.hash_funct().id());
     CHECK_EQ(eqt.id(), iterated.key_eq().id());
+    CHECK(iterated.get_allocator().is_custom_alloc());
   }
 
   // Now test each of the constructor types.
-  HT ht(0, fcn, eqt);
+  HT ht(0, fcn, eqt, alloc);
   for (int i = 0; i < 1000; i++) {
     insert(&ht, i * i);
   }
+  CHECK_GT(alloc_count, 0);
+  alloc_count = 0;
 
   HT ht_copy(ht);
   CHECK(ht == ht_copy);
+  CHECK_GT(alloc_count, 0);
+  alloc_count = 0;
 
-  HT ht_equal(0, fcn, eqt);
+  HT ht_equal(0, fcn, eqt, alloc);
   ht_equal = ht;
   CHECK(ht == ht_copy);
+  CHECK_GT(alloc_count, 0);
+  alloc_count = 0;
 
-  HT ht_iterator(ht.begin(), ht.end(), 0, fcn, eqt);
+  HT ht_iterator(ht.begin(), ht.end(), 0, fcn, eqt, alloc);
   CHECK(ht == ht_iterator);
+  CHECK_GT(alloc_count, 0);
+  alloc_count = 0;
 
-  HT ht_size(ht.size(), fcn, eqt);
+  HT ht_size(ht.size(), fcn, eqt, alloc);
   for (typename HT::const_iterator it = ht.begin(); it != ht.end(); ++it)
     ht_size.insert(*it);
   CHECK(ht == ht_size);
+  CHECK_GT(alloc_count, 0);
+  alloc_count = 0;
 }
 
 // Sadly, we need a separate version of this test because the iterator
@@ -1013,40 +1157,55 @@ template<class HT, class NonHT>
 void TestDenseConstructors() {
   const TestHashFcn fcn(1);
   const TestEqualTo eqt(2);
+  int alloc_count;
+  const Alloc<int, int, 10000> alloc(&alloc_count);
   {
-    const HT simple(0, fcn, eqt);
+    const HT simple(0, fcn, eqt, alloc);
     CHECK_EQ(fcn.id(), simple.hash_funct().id());
     CHECK_EQ(eqt.id(), simple.key_eq().id());
+    CHECK(simple.get_allocator().is_custom_alloc());
+
   }
   {
     const NonHT input;
-    const HT iterated(input.begin(), input.end(), -1, 0, fcn, eqt);
+    const HT iterated(input.begin(), input.end(), -1, 0, fcn, eqt, alloc);
     CHECK_EQ(fcn.id(), iterated.hash_funct().id());
     CHECK_EQ(eqt.id(), iterated.key_eq().id());
+    CHECK(iterated.get_allocator().is_custom_alloc());
   }
 
   // Now test each of the constructor types.
-  HT ht(0, fcn, eqt);
+  HT ht(0, fcn, eqt, alloc);
   ht.set_empty_key(-1);
   for (int i = 0; i < 1000; i++) {
     insert(&ht, i * i);
   }
+  CHECK_GT(alloc_count, 0);
+  alloc_count = 0;
 
   HT ht_copy(ht);
   CHECK(ht == ht_copy);
+  CHECK_GT(alloc_count, 0);
+  alloc_count = 0;
 
-  HT ht_equal(0, fcn, eqt);
+  HT ht_equal(0, fcn, eqt, alloc);
   ht_equal = ht;
   CHECK(ht == ht_copy);
+  CHECK_GT(alloc_count, 0);
+  alloc_count = 0;
 
-  HT ht_iterator(ht.begin(), ht.end(), ht.empty_key(), 0, fcn, eqt);
+  HT ht_iterator(ht.begin(), ht.end(), ht.empty_key(), 0, fcn, eqt, alloc);
   CHECK(ht == ht_iterator);
+  CHECK_GT(alloc_count, 0);
+  alloc_count = 0;
 
-  HT ht_size(ht.size(), fcn, eqt);
+  HT ht_size(ht.size(), fcn, eqt, alloc);
   ht_size.set_empty_key(ht.empty_key());
   for (typename HT::const_iterator it = ht.begin(); it != ht.end(); ++it)
     ht_size.insert(*it);
   CHECK(ht == ht_size);
+  CHECK_GT(alloc_count, 0);
+  alloc_count = 0;
 }
 
 static void TestCopyConstructor() {
@@ -1269,35 +1428,48 @@ static void TestHashtableResizing() {
 // Tests the some of the tr1-inspired API features.
 template<class HS>
 static void TestTR1API() {
-    HS hs;
-    hs.set_deleted_key(-1);
-    set_empty_key(&hs, -2);
+  HS hs;
+  hs.set_deleted_key(-1);
+  set_empty_key(&hs, -2);
 
-    typename HS::size_type expected_bucknum = hs.bucket(1);
-    insert(&hs, 1);
-    typename HS::size_type bucknum = hs.bucket(1);
-    CHECK(expected_bucknum == bucknum);
-    typename HS::const_local_iterator b = hs.begin(bucknum);
-    typename HS::const_local_iterator e = hs.end(bucknum);
-    CHECK(b != e);
-    CHECK(getintkey(*b) == 1);
-    b++;
-    CHECK(b == e);
+  typename HS::size_type expected_bucknum = hs.bucket(1);
+  insert(&hs, 1);
+  typename HS::size_type bucknum = hs.bucket(1);
+  CHECK(expected_bucknum == bucknum);
+  typename HS::const_local_iterator b = hs.begin(bucknum);
+  typename HS::const_local_iterator e = hs.end(bucknum);
+  CHECK(b != e);
+  CHECK(getintkey(*b) == 1);
+  b++;
+  CHECK(b == e);
 
-    hs.erase(1);
-    bucknum = hs.bucket(1);
-    CHECK(expected_bucknum == bucknum);
-    b = hs.begin(bucknum);
-    e = hs.end(bucknum);
-    CHECK(b == e);
+  hs.erase(1);
+  bucknum = hs.bucket(1);
+  CHECK(expected_bucknum == bucknum);
+  b = hs.begin(bucknum);
+  e = hs.end(bucknum);
+  CHECK(b == e);
 
-    // For very small sets, the min-bucket-size gets in the way, so
-    // let's make our hash_set bigger.
-    for (int i = 0; i < 10000; i++)
-      insert(&hs, i);
-    float f = hs.load_factor();
-    CHECK(f >= hs.min_load_factor());
-    CHECK(f <= hs.max_load_factor());
+  // For very small sets, the min-bucket-size gets in the way, so
+  // let's make our hash_set bigger.
+  for (int i = 0; i < 10000; i++)
+    insert(&hs, i);
+  float f = hs.load_factor();
+  CHECK(f >= hs.min_load_factor());
+  CHECK(f <= hs.max_load_factor());
+}
+
+// People can do better than to have a hash_map of hash_maps, but we
+// should still support it.  HT should map from string to another
+// hashtable (map or set) or some kind.  Mostly we're just checking
+// for memory leaks or crashes here.
+template<class HT>
+static void TestNestedHashtable() {
+  HT ht;
+  set_empty_key(&ht, string());
+  ht["hi"];   // creates a sub-ht with default values
+  ht["lo"];   // creates a sub-ht with default values
+  HT ht2 = ht;
 }
 
 class MemUsingKey {
@@ -1450,6 +1622,162 @@ void TestHugeResize() {
   } catch (const std::length_error&) {
     // Good, the resize failed.
   }
+
+  static const int kMax = 256;
+  vector<int> test_data(kMax);
+  for (int i = 0; i < kMax; ++i) {
+    test_data[i] = i+1000;
+  }
+
+  sparse_hash_set<int, SPARSEHASH_HASH<int>, equal_to<int>, Alloc<int, uint8, 10> > shs;
+  dense_hash_set<int, SPARSEHASH_HASH<int>, equal_to<int>, Alloc<int, uint8, 10> > dhs;
+  dhs.set_empty_key(-1);
+
+  // Test we are using the correct allocator
+  CHECK(shs.get_allocator().is_custom_alloc());
+  CHECK(dhs.get_allocator().is_custom_alloc());
+
+  // Test size_type overflow in insert(it, it)
+  try {
+    dhs.insert(test_data.begin(), test_data.end());
+    LOGF << "dense_hash_map insert(it,it) should have failed\n";
+    abort();
+  } catch (const std::length_error&) {
+  }
+  try {
+    shs.insert(test_data.begin(), test_data.end());
+    LOGF << "sparse_hash_map insert(it,it) should have failed\n";
+    abort();
+  } catch (const std::length_error&) {
+  }
+
+  // Test max_size overflow
+  try {
+    dhs.insert(test_data.begin(), test_data.begin() + 11);
+    LOGF << "dense_hash_map max_size check should have failed\n";
+    abort();
+  } catch (const std::length_error&) {
+  }
+  try {
+    shs.insert(test_data.begin(), test_data.begin() + 11);
+    LOGF << "sparse_hash_map max_size check should have failed\n";
+    abort();
+  } catch (const std::length_error&) {
+  }
+
+  // Test min-buckets overflow, when we want to resize too close to size_type
+  try {
+    dhs.resize(250);
+  } catch (const std::length_error&) {
+  }
+  try {
+    shs.resize(250);
+  } catch (const std::length_error&) {
+  }
+
+  // Test size_type overflow in resize_delta()
+  sparse_hash_set<int, SPARSEHASH_HASH<int>, equal_to<int>, Alloc<int, uint8, 1000> > shs2;
+  dense_hash_set<int, SPARSEHASH_HASH<int>, equal_to<int>, Alloc<int, uint8, 1000> > dhs2;
+  dhs2.set_empty_key(-1);
+  for (int i = 0; i < 9; i++) {
+    dhs2.insert(i);
+    shs2.insert(i);
+  }
+  try {
+    dhs2.insert(test_data.begin(), test_data.begin() + 250);
+    LOGF << "dense_hash_map insert-check should have failed (9+250 > 256)\n";
+    abort();
+  } catch (const std::length_error&) {
+  }
+  try {
+    shs2.insert(test_data.begin(), test_data.begin() + 250);
+    LOGF << "sparse_hash_map insert-check should have failed (9+250 > 256)\n";
+    abort();
+  } catch (const std::length_error&) {
+  }
+}
+
+class DataCounter {
+ public:
+  DataCounter() {
+    ++ctors_;
+  }
+  static int ctors() { int r = ctors_; ctors_ = 0; return r; }
+ private:
+  static int ctors_;
+};
+int DataCounter::ctors_ = 0;
+
+class HashCounter {
+ public:
+  size_t operator()(int x) const {
+    ++hashes_;
+    return x;
+  }
+  static int hashes() { int r = hashes_; hashes_ = 0; return r; }
+ private:
+  static int hashes_;
+};
+int HashCounter::hashes_ = 0;
+
+template<class HT>
+void TestHashCounts() {
+  HT ht;
+  set_empty_key(&ht, -1);
+  const int kIter = 2000;   // enough for some resizing to happen
+
+  ht.clear();
+  for (int i = 0; i < kIter; i++)
+    insert(&ht, i);
+  const int insert_hashes = HashCounter::hashes();
+  int actual_ctors = DataCounter::ctors();
+  // dense_hash_* has an extra ctor during resizes, for emptykey,
+  // so allow for a log_2(kIter) slack, which we estimate as .01*kIter.
+  if (actual_ctors != 0)   // will be 0 for hash_sets, >0 for maps.
+    CHECK_LT(kIter, actual_ctors + kIter/100);
+
+  // Make sure that do-nothing inserts don't result in extra hashes or
+  // ctors.  insert() itself (in this test file) does one ctor call;
+  // that should be all we see.
+  for (int i = 0; i < kIter; i++)
+    insert(&ht, i);
+  CHECK_EQ(kIter, HashCounter::hashes());
+  actual_ctors = DataCounter::ctors();
+  if (actual_ctors != 0)   // will be 0 for hash_sets, >0 for maps.
+    CHECK_EQ(kIter, actual_ctors);   // no resizing is happening here.
+
+  // Make sure we never do any extraneous hashes in find() calls.
+  for (int i = 0; i < kIter; i++)
+    (void)ht.find(i);
+  CHECK_EQ(kIter, HashCounter::hashes());
+  CHECK_EQ(0, DataCounter::ctors());
+
+  // Make sure that whether we use insert() or operator[], we hash the
+  // same.  Actually that's not quite true: we do an extra hash per
+  // hashtable-resize with operator[] (we could avoid this, but I
+  // don't think it's worth the work), so allow for a log_2(kIter)
+  // slack, which we estimate as .01*kIter.
+  HT ht2;
+  set_empty_key(&ht2, -1);
+  for (int i = 0; i < kIter; i++)
+    bracket_insert(&ht2, i);
+  CHECK_LT(HashCounter::hashes(), insert_hashes + kIter/100);
+  actual_ctors = DataCounter::ctors();
+  // We expect two ctor calls per insert, one by operator[] when it
+  // creates a new object that wasn't in the hashtable before, and one
+  // by bracket_insert() itself.
+  if (actual_ctors != 0)   // will be 0 for hash_sets, >0 for maps.
+    CHECK_LT(kIter*2, actual_ctors + kIter/100);
+
+  // Like insert(), bracket_insert() itself does one ctor call.  But
+  // the hashtable implementation shouldn't do any, since these
+  // objects already exist.
+  for (int i = 0; i < kIter; i++)
+    bracket_insert(&ht, i);
+  CHECK_EQ(kIter, HashCounter::hashes());
+  actual_ctors = DataCounter::ctors();
+  if (actual_ctors != 0)   // will be 0 for hash_sets, >0 for maps.
+    CHECK_EQ(kIter, actual_ctors);
 }
 
 template<class Key>
@@ -1467,6 +1795,15 @@ struct Identity {
 
 
 int main(int argc, char **argv) {
+  typedef sparse_hash_set<int, SPARSEHASH_HASH<int>,equal_to<int>, Alloc<int,int,8> > Shs;
+  typedef dense_hash_set<int, SPARSEHASH_HASH<int>,equal_to<int>, Alloc<int,int,8> > Dhs;
+  Shs shs;
+  Dhs dhs;
+  LOGF << "<sizeof, max_size>:  sparse_hash_set<int>=(" << sizeof(Shs)
+            << "," << static_cast<size_t>(shs.max_size())
+            << "); dense_hash_set<int>=(" << sizeof(Dhs)
+            << "," << static_cast<size_t>(dhs.max_size()) << ")";
+
   TestCopyConstructor();
   TestOperatorEquals();
 
@@ -1598,16 +1935,16 @@ int main(int argc, char **argv) {
 
   LOGF << "\n\nTesting constructors, hashers, and key_equals\n";
   TestSparseConstructors< sparse_hash_map<int, int, TestHashFcn, TestEqualTo,
-                                          allocator<int> >,
+                                          Alloc<int,int,10000> >,
                           map<int, int> >();
   TestSparseConstructors< sparse_hash_set<int, TestHashFcn, TestEqualTo,
-                                          allocator<int> >,
+                                          Alloc<int,int,10000> >,
                           set<int, int> >();
   TestDenseConstructors< dense_hash_map<int, int, TestHashFcn, TestEqualTo,
-                                        allocator<int> >,
+                                        Alloc<int,int,10000> >,
                          map<int, int> >();
   TestDenseConstructors< dense_hash_set<int, TestHashFcn, TestEqualTo,
-                                        allocator<int> >,
+                                        Alloc<int,int,10000> >,
                          set<int, int> >();
 
   LOGF << "\n\nTesting tr1 API\n";
@@ -1615,12 +1952,28 @@ int main(int argc, char **argv) {
   TestTR1API<dense_hash_map<int, int> >();
   TestTR1API<sparse_hash_set<int> >();
   TestTR1API<dense_hash_set<int> >();
+  TestTR1API<dense_hash_map<int, int, HashWithEqual, HashWithEqual> >();
+  TestTR1API<sparse_hash_map<int, int, HashWithEqual, HashWithEqual> >();
+  TestTR1API<dense_hash_set<int, HashWithEqual, HashWithEqual> >();
+  TestTR1API<sparse_hash_set<int, HashWithEqual, HashWithEqual> >();
+
+  LOGF << "\n\nTesting nested hashtables\n";
+  TestNestedHashtable<sparse_hash_map<string, sparse_hash_map<string, int> > >();
+  TestNestedHashtable<sparse_hash_map<string, sparse_hash_set<string> > >();
+  TestNestedHashtable<dense_hash_map<string, DenseStringMap<int> > >();
+  TestNestedHashtable<dense_hash_map<string, DenseStringSet> >();
 
   // Test memory management when the keys and values are non-trivial
   LOGF << "\n\nTesting memory management\n";
   TestMemoryManagement();
-
   TestHugeResize();
+
+  // Make sure we don't hash more than we need to
+  LOGF << "\n\nTesting hash counts\n";
+  TestHashCounts<sparse_hash_map<int, DataCounter, HashCounter> >();
+  TestHashCounts<sparse_hash_set<int, HashCounter> >();
+  TestHashCounts<dense_hash_map<int, DataCounter, HashCounter> >();
+  TestHashCounts<dense_hash_set<int, HashCounter> >();
 
   LOGF << "\nAll tests pass.\n";
   return 0;
