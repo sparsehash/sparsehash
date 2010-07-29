@@ -59,17 +59,17 @@
 // <google/sparse_hash_table> or <google/sparse_hash_set> instead.
 //
 // You can modify the following, below:
-// HT_OCCUPANCY_FLT            -- how full before we double size
-// HT_EMPTY_FLT                -- how empty before we halve size
+// HT_OCCUPANCY_PCT            -- how full before we double size
+// HT_EMPTY_PCT                -- how empty before we halve size
 // HT_MIN_BUCKETS              -- smallest bucket size
 // HT_DEFAULT_STARTING_BUCKETS -- default bucket size at construct-time
 //
 // You can also change enlarge_factor (which defaults to
-// HT_OCCUPANCY_FLT), and shrink_factor (which defaults to
-// HT_EMPTY_FLT) with set_resizing_parameters().
+// HT_OCCUPANCY_PCT), and shrink_factor (which defaults to
+// HT_EMPTY_PCT) with set_resizing_parameters().
 //
 // How to decide what values to use?
-// shrink_factor's default of .4 * OCCUPANCY_FLT, is probably good.
+// shrink_factor's default of .4 * OCCUPANCY_PCT, is probably good.
 // HT_MIN_BUCKETS is probably unnecessary since you can specify
 // (indirectly) the starting number of buckets at construct-time.
 // For enlarge_factor, you can use this chart to try to trade-off
@@ -111,6 +111,7 @@
 #include <algorithm>              // For swap(), eg
 #include <stdexcept>              // For length_error
 #include <iterator>               // for facts about iterator tags
+#include <limits>                 // for numeric_limits<>
 #include <utility>                // for pair<>
 #include <google/sparsehash/hashtable-common.h>
 #include <google/sparsetable>     // Since that's basically what we are
@@ -349,12 +350,12 @@ class sparse_hashtable {
   // How full we let the table get before we resize, by default.
   // Knuth says .8 is good -- higher causes us to probe too much,
   // though it saves memory.
-  static const float HT_OCCUPANCY_FLT; // = 0.8f;
+  static const int HT_OCCUPANCY_PCT; // = 80 (out of 100);
 
   // How empty we let the table get before we resize lower, by default.
   // (0.0 means never resize lower.)
-  // It should be less than OCCUPANCY_FLT / 2 or we thrash resizing
-  static const float HT_EMPTY_FLT; // = 0.4 * HT_OCCUPANCY_FLT;
+  // It should be less than OCCUPANCY_PCT / 2 or we thrash resizing
+  static const int HT_EMPTY_PCT; // = 0.4 * HT_OCCUPANCY_PCT;
 
   // Minimum size we're willing to let hashtables be.
   // Must be a power of two, and at least 4.
@@ -482,7 +483,8 @@ class sparse_hashtable {
     settings.set_use_deleted(false);
   }
   key_type deleted_key() const {
-    assert(settings.use_deleted());
+    assert(settings.use_deleted()
+           && "Must set deleted key before calling deleted_key");
     return key_info.delkey;
   }
 
@@ -598,7 +600,7 @@ class sparse_hashtable {
         did_resize = true;
     }
     if (table.num_nonempty() >=
-        STL_NAMESPACE::numeric_limits<size_type>::max() - delta)
+        (STL_NAMESPACE::numeric_limits<size_type>::max)() - delta)
       throw std::length_error("resize overflow");
     if ( bucket_count() >= HT_MIN_BUCKETS &&
          (table.num_nonempty() + delta) <= settings.enlarge_threshold() )
@@ -619,7 +621,7 @@ class sparse_hashtable {
         settings.min_buckets(table.num_nonempty() - num_deleted + delta,
                              bucket_count());
     if (resize_to < needed_size &&    // may double resize_to
-        resize_to < STL_NAMESPACE::numeric_limits<size_type>::max() / 2) {
+        resize_to < (STL_NAMESPACE::numeric_limits<size_type>::max)() / 2) {
       // This situation means that we have enough deleted elements,
       // that once we purge them, we won't actually have needed to
       // grow.  But we may want to grow anyway: if we just purge one
@@ -664,7 +666,8 @@ class sparse_hashtable {
            table.test(bucknum);                          // not empty
            bucknum = (bucknum + JUMP_(key, num_probes)) & bucket_count_minus_one) {
         ++num_probes;
-        assert(num_probes < bucket_count()); // or else the hashtable is full
+        assert(num_probes < bucket_count()
+               && "Hashtable is full: an error in key_equal<> or hash<>");
       }
       table.set(bucknum, *it);               // copies the value to here
     }
@@ -702,7 +705,8 @@ class sparse_hashtable {
             table.test(bucknum);                          // not empty
             bucknum = (bucknum + JUMP_(key, num_probes)) & (bucket_count()-1) ) {
         ++num_probes;
-        assert(num_probes < bucket_count()); // or else the hashtable is full
+        assert(num_probes < bucket_count()
+               && "Hashtable is full: an error in key_equal<> or hash<>");
       }
       table.set(bucknum, *it);               // copies the value to here
     }
@@ -837,7 +841,8 @@ class sparse_hashtable {
       }
       ++num_probes;                        // we're doing another probe
       bucknum = (bucknum + JUMP_(key, num_probes)) & bucket_count_minus_one;
-      assert(num_probes < bucket_count()); // don't probe too many times!
+      assert(num_probes < bucket_count()
+             && "Hashtable is full: an error in key_equal<> or hash<>");
     }
   }
 
@@ -913,7 +918,8 @@ class sparse_hashtable {
   // If you know *this is big enough to hold obj, use this routine
   pair<iterator, bool> insert_noresize(const_reference obj) {
     // First, double-check we're not inserting delkey
-    assert(!settings.use_deleted() || !equals(get_key(obj), key_info.delkey));
+    assert((!settings.use_deleted() || !equals(get_key(obj), key_info.delkey))
+           && "Inserting the deleted key");
     const pair<size_type,size_type> pos = find_position(get_key(obj));
     if ( pos.first != ILLEGAL_BUCKET) {      // object was already there
       return pair<iterator,bool>(iterator(this, table.get_iter(pos.first),
@@ -929,7 +935,7 @@ class sparse_hashtable {
   template <class ForwardIterator>
   void insert(ForwardIterator f, ForwardIterator l, STL_NAMESPACE::forward_iterator_tag) {
     size_t dist = STL_NAMESPACE::distance(f, l);
-    if (dist >= std::numeric_limits<size_type>::max())
+    if (dist >= (std::numeric_limits<size_type>::max)())
       throw std::length_error("insert-range overflow");
     resize_delta(static_cast<size_type>(dist));
     for ( ; dist > 0; --dist, ++f) {
@@ -963,7 +969,8 @@ class sparse_hashtable {
   template <class DataType>
   DataType& find_or_insert(const key_type& key) {
     // First, double-check we're not inserting delkey
-    assert(!settings.use_deleted() || !equals(key, key_info.delkey));
+    assert((!settings.use_deleted() || !equals(key, key_info.delkey))
+           && "Inserting the deleted key");
     const pair<size_type,size_type> pos = find_position(key);
     if ( pos.first != ILLEGAL_BUCKET) {  // object was already there
       return table.get_iter(pos.first)->second;
@@ -978,6 +985,8 @@ class sparse_hashtable {
   // DELETION ROUTINES
   size_type erase(const key_type& key) {
     // First, double-check we're not erasing delkey.
+    assert((!settings.use_deleted() || !equals(key, key_info.delkey))
+           && "Erasing the deleted key");
     assert(!settings.use_deleted() || !equals(key, key_info.delkey));
     const_iterator pos = find(key);   // shrug: shouldn't need to be const
     if ( pos != end() ) {
@@ -1097,7 +1106,7 @@ class sparse_hashtable {
       sh_hashtable_settings<key_type, hasher, size_type, HT_MIN_BUCKETS> {
     explicit Settings(const hasher& hf)
         : sh_hashtable_settings<key_type, hasher, size_type, HT_MIN_BUCKETS>(
-            hf, HT_OCCUPANCY_FLT, HT_EMPTY_FLT) {}
+            hf, HT_OCCUPANCY_PCT / 100.0f, HT_EMPTY_PCT / 100.0f) {}
   };
 
   // KeyInfo stores delete key and packages zero-size functors:
@@ -1119,8 +1128,9 @@ class sparse_hashtable {
       return key_equal::operator()(a, b);
     }
 
+    // Which key marks deleted entries.
     // TODO(csilvers): make a pointer, and get rid of use_deleted (benchmark!)
-    key_type delkey;
+    typename remove_const<key_type>::type delkey;
   };
 
   // Utility functions to access the templated operators
@@ -1162,13 +1172,14 @@ const typename sparse_hashtable<V,K,HF,ExK,SetK,EqK,A>::size_type
 // How full we let the table get before we resize.  Knuth says .8 is
 // good -- higher causes us to probe too much, though saves memory
 template <class V, class K, class HF, class ExK, class SetK, class EqK, class A>
-const float sparse_hashtable<V,K,HF,ExK,SetK,EqK,A>::HT_OCCUPANCY_FLT = 0.8f;
+const int sparse_hashtable<V,K,HF,ExK,SetK,EqK,A>::HT_OCCUPANCY_PCT = 80;
 
 // How empty we let the table get before we resize lower.
-// It should be less than OCCUPANCY_FLT / 2 or we thrash resizing
+// It should be less than OCCUPANCY_PCT / 2 or we thrash resizing
 template <class V, class K, class HF, class ExK, class SetK, class EqK, class A>
-const float sparse_hashtable<V,K,HF,ExK,SetK,EqK,A>::HT_EMPTY_FLT
-    = 0.4f * sparse_hashtable<V,K,HF,ExK,SetK,EqK,A>::HT_OCCUPANCY_FLT;
+const int sparse_hashtable<V,K,HF,ExK,SetK,EqK,A>::HT_EMPTY_PCT
+  = static_cast<int>(0.4 *
+                     sparse_hashtable<V,K,HF,ExK,SetK,EqK,A>::HT_OCCUPANCY_PCT);
 
 _END_GOOGLE_NAMESPACE_
 

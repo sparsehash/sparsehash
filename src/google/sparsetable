@@ -188,7 +188,7 @@ class table_iterator {
   }
 
   // Arithmetic: we just do arithmetic on pos.  We don't even need to
-  // do bounds checking, since STL doesn't consider that it's job.  :-)
+  // do bounds checking, since STL doesn't consider that its job.  :-)
   iterator& operator+=(size_type t) { pos += t; check(); return *this; }
   iterator& operator-=(size_type t) { pos -= t; check(); return *this; }
   iterator& operator++()            { ++pos; check(); return *this; }
@@ -271,7 +271,7 @@ class const_table_iterator {
   }
 
   // Arithmetic: we just do arithmetic on pos.  We don't even need to
-  // do bounds checking, since STL doesn't consider that it's job.  :-)
+  // do bounds checking, since STL doesn't consider that its job.  :-)
   const_iterator& operator+=(size_type t) { pos += t; check(); return *this; }
   const_iterator& operator-=(size_type t) { pos -= t; check(); return *this; }
   const_iterator& operator++()            { ++pos; check(); return *this; }
@@ -388,7 +388,7 @@ class two_d_iterator {
   pointer operator->() const     { return &(operator*()); }
 
   // Arithmetic: we just do arithmetic on pos.  We don't even need to
-  // do bounds checking, since STL doesn't consider that it's job.  :-)
+  // do bounds checking, since STL doesn't consider that its job.  :-)
   // NOTE: this is not amortized constant time!  What do we do about it?
   void advance_past_end() {          // used when col_current points to end()
     while ( col_current == row_current->TWOD_END_() ) {  // end of current row
@@ -929,10 +929,10 @@ class sparsegroup {
 
   // We let you see if a bucket is non-empty without retrieving it
   bool test(size_type i) const {
-    return bmtest(i) ? true : false;   // cast an int to a bool
+    return bmtest(i) != 0;
   }
   bool test(iterator pos) const {
-    return bmtest(pos.pos) ? true : false;
+    return bmtest(pos.pos) != 0;
   }
 
  private:
@@ -1257,7 +1257,7 @@ class sparsetable {
         table_size(sz), num_buckets(0), allocator(alloc) {
     groups.resize(num_groups(sz), group_type(allocator));
   }
-  // We'll can get away with using the default copy constructor,
+  // We can get away with using the default copy constructor,
   // and default destructor, and hence the default operator=.  Huzzah!
 
   // Many STL algorithms use swap instead of copy constructors
@@ -1285,7 +1285,7 @@ class sparsetable {
   // of not-empty buckets (use num_nonempty() for that).  Instead
   // it says whether you've allocated any buckets or not.
   size_type size() const           { return table_size; }
-  size_type max_size() const       { return groups.max_size(); }
+  size_type max_size() const       { return allocator.max_size(); }
   bool empty() const               { return table_size == 0; }
   // We also may want to know how many *used* buckets there are
   size_type num_nonempty() const   { return num_buckets; }

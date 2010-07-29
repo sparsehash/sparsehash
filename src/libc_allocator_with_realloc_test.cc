@@ -109,11 +109,11 @@ void TestSTL() {
     "abhorrent", "abhorrer", "abhorring", "abhors", "abide", "abided",
     "abides", "abiding"};
   cstring_vector v;
-  for (int i = 0; i < arraysize(test_strings); ++i) {
+  for (size_t i = 0; i < arraysize(test_strings); ++i) {
     v.push_back(test_strings[i]);
   }
-  for (int i = arraysize(test_strings) - 1; i >=0; --i) {
-    EXPECT_EQ(cstring(test_strings[i]), v.back());
+  for (size_t i = arraysize(test_strings); i > 0; --i) {
+    EXPECT_EQ(cstring(test_strings[i-1]), v.back());
     v.pop_back();
   }
 }

@@ -55,7 +55,7 @@
   }                                                                     \
 } while (0)
 
-int main(int argc, char** argv) {
+int main(int argc, char**) {
   // Run with an argument to get verbose output
   const bool verbose = argc > 1;
 

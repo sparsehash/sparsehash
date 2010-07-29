@@ -8,7 +8,7 @@ AM_CPPFLAGS = -I$(top_srcdir)/src
 
 # These are good warnings to turn on by default
 if GCC
-AM_CXXFLAGS = -Wall -Wwrite-strings -Woverloaded-virtual -Wno-sign-compare -Wshadow
+AM_CXXFLAGS = -Wall -W -Wwrite-strings -Woverloaded-virtual -Wshadow
 endif
 
 googleincludedir = $(includedir)/google
@@ -96,6 +96,7 @@ sparsehashincludedir = $(googleincludedir)/sparsehash
 sparsehashinclude_HEADERS =			\
    src/google/sparsehash/densehashtable.h	\
    src/google/sparsehash/sparsehashtable.h      \
+   src/google/sparsehash/hashtable-common.h     \
    src/google/sparsehash/libc_allocator_with_realloc.h
 nodist_sparsehashinclude_HEADERS = src/google/sparsehash/sparseconfig.h
 
@@ -123,32 +124,15 @@ sparsetable_unittest_SOURCES =			\
    src/google/sparsetable
 nodist_sparsetable_unittest_SOURCES = $(nodist_sparsehashinclude_HEADERS)
 
-TESTS += sparsehashtable_test
-WINDOWS_PROJECTS += vsprojects/sparsehashtable_test/sparsehashtable_test.vcproj
-sparsehashtable_test_SOURCES =			\
-   src/sparsehashtable_test.cc			\
-   src/testutil.h                               \
+TESTS += hashtable_test
+WINDOWS_PROJECTS += vsprojects/hashtable_test/hashtable_test.vcproj
+hashtable_test_SOURCES =			\
+   src/hashtable_test.cc			\
+   src/hash_test_interface.h			\
+   src/testutil.h				\
    $(googleinclude_HEADERS)			\
    $(sparsehashinclude_HEADERS)
-nodist_sparsehashtable_test_SOURCES = $(nodist_sparsehashinclude_HEADERS)
-
-TESTS += densehashtable_test
-WINDOWS_PROJECTS += vsprojects/densehashtable_test/densehashtable_test.vcproj
-densehashtable_test_SOURCES =			\
-   src/densehashtable_test.cc			\
-   src/testutil.h                               \
-   $(googleinclude_HEADERS)			\
-   $(densehashinclude_HEADERS)
-nodist_densehashtable_test_SOURCES = $(nodist_sparsehashinclude_HEADERS)
-
-TESTS += hashtable_unittest
-WINDOWS_PROJECTS += vsprojects/hashtable_unittest/hashtable_unittest.vcproj
-hashtable_unittest_SOURCES =			\
-   src/hashtable_unittest.cc			\
-   $(googleinclude_HEADERS)			\
-   $(sparsehashinclude_HEADERS)			\
-   src/words
-nodist_hashtable_unittest_SOURCES = $(nodist_sparsehashinclude_HEADERS)
+nodist_hashtable_test_SOURCES = $(nodist_sparsehashinclude_HEADERS)
 
 TESTS += simple_test
 WINDOWS_PROJECTS += vsprojects/simple_test/simple_test.vcproj

@@ -92,10 +92,10 @@ class sh_hashtable_settings : public HashFunc {
   }
 
   size_type enlarge_size(size_type x) const {
-    return x * enlarge_factor_;
+    return static_cast<size_type>(x * enlarge_factor_);
   }
   size_type shrink_size(size_type x) const {
-    return x * shrink_factor_;
+    return static_cast<size_type>(x * shrink_factor_);
   }
 
   bool consider_shrink() const {

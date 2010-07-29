@@ -873,15 +873,15 @@ static const char g_expected[] = (
     );
 
 // defined at bottom of file for ease of maintainence
-int main(int argc, char **argv) {          // though we ignore the args
+int main(int /*argc*/, char ** /*argv*/) {
   TestInt();
   TestString();
   TestAllocator();
 
   // Finally, check to see if our output (in out) is what it's supposed to be.
   const size_t r = sizeof(g_expected) - 1;
-  if ( r != out - outbuf ||               // output not the same size
-       memcmp(outbuf, g_expected, r) ) {  // or bytes differed
+  if ( r != static_cast<size_t>(out - outbuf) ||   // output not the same size
+       memcmp(outbuf, g_expected, r) ) {           // or bytes differed
     fprintf(stderr, "TESTS FAILED\n\nEXPECTED:\n\n%s\n\nACTUAL:\n\n%s\n\n",
             g_expected, outbuf);
     return 1;
