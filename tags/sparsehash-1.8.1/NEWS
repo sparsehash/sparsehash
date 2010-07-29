@@ -1,0 +1,71 @@
+=== 29 July 2010 ===
+
+I've just released sparsehash 1.8.  This includes improved support for
+`Allocator`, including supporting the allocator constructor arg and
+`get_allocator()` access method.
+
+To work around a bug in gcc 4.0.x, I've renamed the static variables
+`HT_OCCUPANCY_FLT` and `HT_SHRINK_FLT` to `HT_OCCUPANCY_PCT` and
+`HT_SHRINK_PCT`, and changed their type from float to int.  This
+should not be a user-visible change, since these variables are only
+used in the internal hashtable classes (sparsehash clients should use
+`max_load_factor()` and `min_load_factor()` instead of modifying these
+static variables), but if you do access these constants, you will need
+to change your code.
+
+Internally, the biggest change is a revamp of the test suite.  It now
+has more complete coverage, and a more capable timing tester.  There
+are other, more minor changes as well.  A full list of changes is
+described in the
+[http://google-sparsehash.googlecode.com/svn/tags/sparsehash-1.8/ChangeLog
+ChangeLog].
+
+=== 31 March 2010 ===
+
+I've just released sparsehash 1.7.  The major news here is the
+addition of `Allocator` support.  Previously, these hashtable classes
+would just ignore the `Allocator` template parameter.  They now
+respect it, and even inherit `size_type`, `pointer`, etc. from the
+allocator class.  By default, they use a special allocator we provide
+that uses libc `malloc` and `free` to allocate.  The hash classes
+notice when this special allocator is being used, and use `realloc`
+when it can.  This means that the default allocator is significantly
+faster than custom allocators are likely to be (since realloc-like
+functionality is not supported by STL allocators).
+
+There are a few more minor changes as well.  A full list of changes is
+described in the
+[http://google-sparsehash.googlecode.com/svn/tags/sparsehash-1.7/ChangeLog
+ChangeLog].
+
+=== 11 January 2010 ===
+
+I've just released sparsehash 1.6.  The API has widened a bit with the
+addition of `deleted_key()` and `empty_key()`, which let you query
+what values these keys have.  A few rather obscure bugs have been
+fixed (such as an error when copying one hashtable into another when
+the empty_keys differ).  A full list of changes is described in the
+[http://google-sparsehash.googlecode.com/svn/tags/sparsehash-1.6/ChangeLog
+ChangeLog].
+
+=== 9 May 2009 ===
+
+I've just released sparsehash 1.5.1.  Hot on the heels of sparsehash
+1.5, this release fixes a longstanding bug in the sparsehash code,
+where `equal_range` would always return an empty range.  It now works
+as documented.  All sparsehash users are encouraged to upgrade.
+
+=== 7 May 2009 ===
+
+I've just released sparsehash 1.5.  This release introduces tr1
+compatibility: I've added `rehash`, `begin(i)`, and other methods that
+are expected to be part of the `unordered_map` API once `tr1` in
+introduced.  This allows `sparse_hash_map`, `dense_hash_map`,
+`sparse_hash_set`, and `dense_hash_set` to be (almost) drop-in
+replacements for `unordered_map` and `unordered_set`.
+
+There is no need to upgrade unless you need this functionality, or
+need one of the other, more minor, changes described in the
+[http://google-sparsehash.googlecode.com/svn/tags/sparsehash-1.5/ChangeLog
+ChangeLog].
+
