@@ -91,9 +91,9 @@ static const int kDefaultIters = 10000000;
 // the inlined code ends up as efficient as possible.
 
 // These are operations that are supported on some hash impls but not others
-template<class MapType> inline void SET_DELETED_KEY(MapType& m, int key) {}
-template<class MapType> inline void SET_EMPTY_KEY(MapType& m, int key) {}
-template<class MapType> inline void RESIZE(MapType& m, int iters) {}
+template<class MapType> inline void SET_DELETED_KEY(MapType&, int /*key*/) {}
+template<class MapType> inline void SET_EMPTY_KEY(MapType&, int /*key*/) {}
+template<class MapType> inline void RESIZE(MapType&, int /*iters*/) {}
 
 template<class K, class V, class H, class E, class A>
 inline void SET_DELETED_KEY(sparse_hash_map<K,V,H,E,A>& m, int key) {
@@ -178,7 +178,7 @@ template<int Size, int Hashsize> class HashObject {
   size_t Hash() const {
     g_num_hashes++;
     int hashval = i_;
-    for (int i = 0; i < Hashsize - sizeof(i_); ++i) {
+    for (size_t i = 0; i < Hashsize - sizeof(i_); ++i) {
       hashval += buffer_[i];
     }
     return SPARSEHASH_HASH<int>()(hashval);   // defined in sparseconfig.h

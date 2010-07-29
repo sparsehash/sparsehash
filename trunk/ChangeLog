@@ -1,3 +1,24 @@
+Thu Jul 29 15:01:29 2010  Google Inc. <opensource@google.com>
+
+	* sparsehash: version 1.8.1 release
+	* Remove -Werror from Makefile: gcc 4.3 gives spurious warnings
+
+Thu Jul 29 09:53:26 2010  Google Inc. <opensource@google.com>
+
+	* sparsehash: version 1.8 release
+	* More support for Allocator, including allocator ctor arg (csilvers)
+	* Repack hasthable vars to reduce container size *more* (giao)
+	* Speed up clear() (csilvers)
+	* Change HT_{OCCUPANCY,SHRINK}_FLT from float to int (csilvers)
+	* Revamp test suite for more complete code & timing coverage (csilvers)
+	* BUGFIX: Enforce max_size for dense/sparse_hashtable (giao, csilvers)
+	* BUGFIX: Raise exception instead of crashing on overflow (csilvers)
+	* BUGFIX: Allow extraneous const in key type (csilvers)
+	* BUGFIX: Allow same functor for both hasher and key_equals (giao)
+	* PORTING: remove is_convertible, which gives AIX cc fits (csilvers)
+	* PORTING: Renamed README.windows to README_windows.txt (csilvers)
+	* Created non-empty NEWS file (csilvers)
+
 Wed Mar 31 12:32:03 2010  Google Inc. <opensource@google.com>
 
 	* sparsehash: version 1.7 release

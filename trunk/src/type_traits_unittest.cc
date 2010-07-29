@@ -477,28 +477,12 @@ class TypeTraitsTest {
     ASSERT_FALSE((GOOGLE_NAMESPACE::is_same<Derived*, Base*>::value));
   }
 
-  static void TestIsConvertible() {
-#ifndef _MSC_VER
-    ASSERT_TRUE((GOOGLE_NAMESPACE::is_convertible<int, int>::value));
-    ASSERT_TRUE((GOOGLE_NAMESPACE::is_convertible<int, long>::value));
-    ASSERT_TRUE((GOOGLE_NAMESPACE::is_convertible<long, int>::value));
-
-    ASSERT_TRUE((GOOGLE_NAMESPACE::is_convertible<int*, void*>::value));
-    ASSERT_FALSE((GOOGLE_NAMESPACE::is_convertible<void*, int*>::value));
-
-    ASSERT_TRUE((GOOGLE_NAMESPACE::is_convertible<Derived*, Base*>::value));
-    ASSERT_FALSE((GOOGLE_NAMESPACE::is_convertible<Base*, Derived*>::value));
-    ASSERT_TRUE((GOOGLE_NAMESPACE::is_convertible<Derived*, const Base*>::value));
-    ASSERT_FALSE((GOOGLE_NAMESPACE::is_convertible<const Derived*, Base*>::value));
-#endif  // #ifdef MSC_VER
-  }
-
 };  // end class TypeTraitsTest
 
 }   // end anonymous namespace
 
 
-int main(int argc, char **argv) {
+int main(int /*argc*/, char ** /*argv*/) {
   TypeTraitsTest::TestIsInteger();
   TypeTraitsTest::TestIsFloating();
   TypeTraitsTest::TestIsReference();
@@ -513,7 +497,6 @@ int main(int argc, char **argv) {
   TypeTraitsTest::TestRemoveReference();
   TypeTraitsTest::TestRemoveCV();
   TypeTraitsTest::TestIsSame();
-  TypeTraitsTest::TestIsConvertible();
   printf("PASS\n");
   return 0;
 }

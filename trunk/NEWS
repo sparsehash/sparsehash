@@ -1,3 +1,25 @@
+=== 29 July 2010 ===
+
+I've just released sparsehash 1.8.  This includes improved support for
+`Allocator`, including supporting the allocator constructor arg and
+`get_allocator()` access method.
+
+To work around a bug in gcc 4.0.x, I've renamed the static variables
+`HT_OCCUPANCY_FLT` and `HT_SHRINK_FLT` to `HT_OCCUPANCY_PCT` and
+`HT_SHRINK_PCT`, and changed their type from float to int.  This
+should not be a user-visible change, since these variables are only
+used in the internal hashtable classes (sparsehash clients should use
+`max_load_factor()` and `min_load_factor()` instead of modifying these
+static variables), but if you do access these constants, you will need
+to change your code.
+
+Internally, the biggest change is a revamp of the test suite.  It now
+has more complete coverage, and a more capable timing tester.  There
+are other, more minor changes as well.  A full list of changes is
+described in the
+[http://google-sparsehash.googlecode.com/svn/tags/sparsehash-1.8/ChangeLog
+ChangeLog].
+
 === 31 March 2010 ===
 
 I've just released sparsehash 1.7.  The major news here is the

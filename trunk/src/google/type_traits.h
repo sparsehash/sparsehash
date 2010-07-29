@@ -219,37 +219,6 @@ template<typename T> struct remove_pointer<T* const volatile> {
 template<typename T, typename U> struct is_same : public false_type { };
 template<typename T> struct is_same<T, T> : public true_type { };
 
-// Specified by TR1 [4.6] Relationships between types
-#ifndef _MSC_VER
-namespace internal {
-
-// This class is an implementation detail for is_convertible, and you
-// don't need to know how it works to use is_convertible. For those
-// who care: we declare two different functions, one whose argument is
-// of type To and one with a variadic argument list. We give them
-// return types of different size, so we can use sizeof to trick the
-// compiler into telling us which function it would have chosen if we
-// had called it with an argument of type From.  See Alexandrescu's
-// _Modern C++ Design_ for more details on this sort of trick.
-
-template <typename From, typename To>
-struct ConvertHelper {
-  static small_ Test(To);
-  static big_ Test(...);
-  static From Create();
-};
-}  // namespace internal
-
-// Inherits from true_type if From is convertible to To, false_type otherwise.
-template <typename From, typename To>
-struct is_convertible
-    : integral_constant<bool,
-                        sizeof(internal::ConvertHelper<From, To>::Test(
-                                  internal::ConvertHelper<From, To>::Create()))
-                        == sizeof(small_)> {
-};
-#endif
-
 _END_GOOGLE_NAMESPACE_
 
 #endif  // BASE_TYPE_TRAITS_H_
