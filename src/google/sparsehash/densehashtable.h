@@ -218,7 +218,8 @@ struct dense_hashtable_const_iterator {
     : ht(h), pos(it), end(it_end)   {
     if (advance)  advance_past_empty_and_deleted();
   }
-  dense_hashtable_const_iterator() { }
+  dense_hashtable_const_iterator()
+    : ht(NULL), pos(pointer()), end(pointer()) { }
   // This lets us convert regular iterators to const iterators
   dense_hashtable_const_iterator(const iterator &it)
     : ht(it.ht), pos(it.pos), end(it.end) { }
@@ -336,7 +337,9 @@ class dense_hashtable {
   // ACCESSOR FUNCTIONS for the things we templatize on, basically
   hasher hash_funct() const               { return settings; }
   key_equal key_eq() const                { return key_info; }
-  allocator_type get_allocator() const    { return allocator; }
+  allocator_type get_allocator() const {
+    return allocator_type(val_info);
+  }
 
   // Accessor function for statistics gathering.
   int num_table_copies() const { return settings.num_ht_copies(); }
@@ -383,7 +386,7 @@ class dense_hashtable {
   void set_deleted_key(const key_type &key) {
     // the empty indicator (if specified) and the deleted indicator
     // must be different
-    assert((!settings.use_empty() || !equals(key, get_key(emptyval)))
+    assert((!settings.use_empty() || !equals(key, get_key(val_info.emptyval)))
            && "Passed the empty-key to set_deleted_key");
     // It's only safe to change what "deleted" means if we purge deleted guys
     squash_deleted();
@@ -456,20 +459,20 @@ class dense_hashtable {
   // True if the item at position bucknum is "empty" marker
   bool test_empty(size_type bucknum) const {
     assert(settings.use_empty());  // we always need to know what's empty!
-    return equals(get_key(emptyval), get_key(table[bucknum]));
+    return equals(get_key(val_info.emptyval), get_key(table[bucknum]));
   }
   bool test_empty(const iterator &it) const {
     assert(settings.use_empty());  // we always need to know what's empty!
-    return equals(get_key(emptyval), get_key(*it));
+    return equals(get_key(val_info.emptyval), get_key(*it));
   }
   bool test_empty(const const_iterator &it) const {
     assert(settings.use_empty());  // we always need to know what's empty!
-    return equals(get_key(emptyval), get_key(*it));
+    return equals(get_key(val_info.emptyval), get_key(*it));
   }
 
  private:
   void fill_range_with_empty(pointer table_start, pointer table_end) {
-    STL_NAMESPACE::uninitialized_fill(table_start, table_end, emptyval);
+    STL_NAMESPACE::uninitialized_fill(table_start, table_end, val_info.emptyval);
   }
 
  public:
@@ -483,24 +486,24 @@ class dense_hashtable {
     assert((!settings.use_deleted() || !equals(get_key(val), key_info.delkey))
            && "Setting the empty key the same as the deleted key");
     settings.set_use_empty(true);
-    set_value(&emptyval, val);
+    set_value(&val_info.emptyval, val);
 
     assert(!table);                  // must set before first use
     // num_buckets was set in constructor even though table was NULL
-    table = allocator.allocate(num_buckets);
+    table = val_info.allocate(num_buckets);
     assert(table);
     fill_range_with_empty(table, table + num_buckets);
   }
   // TODO(sjackman): return a key_type rather than a value_type
   value_type empty_key() const {
     assert(settings.use_empty());
-    return emptyval;
+    return val_info.emptyval;
   }
 
   // FUNCTIONS CONCERNING SIZE
  public:
   size_type size() const      { return num_elements - num_deleted; }
-  size_type max_size() const  { return allocator.max_size(); }
+  size_type max_size() const  { return val_info.max_size(); }
   bool empty() const          { return size() == 0; }
   size_type bucket_count() const      { return num_buckets; }
   size_type max_bucket_count() const  { return max_size(); }
@@ -599,12 +602,12 @@ class dense_hashtable {
   // We require table be not-NULL and empty before calling this.
   void resize_table(size_type /*old_size*/, size_type new_size,
                     true_type) {
-    table = allocator.realloc_or_die(table, new_size);
+    table = val_info.realloc_or_die(table, new_size);
   }
 
   void resize_table(size_type old_size, size_type new_size, false_type) {
-    allocator.deallocate(table, old_size);
-    table = allocator.allocate(new_size);
+    val_info.deallocate(table, old_size);
+    table = val_info.allocate(new_size);
   }
 
   // Used to actually do the rehashing when we grow/shrink a hashtable
@@ -669,13 +672,12 @@ class dense_hashtable {
                            const Alloc& alloc = Alloc())
       : settings(hf),
         key_info(ext, set, eql),
-        allocator(alloc),
         num_deleted(0),
         num_elements(0),
         num_buckets(expected_max_items_in_table == 0
                     ? HT_DEFAULT_STARTING_BUCKETS
                     : settings.min_buckets(expected_max_items_in_table, 0)),
-        emptyval(),
+        val_info(alloc_impl<value_alloc_type>(alloc)),
         table(NULL) {
     // table is NULL until emptyval is set.  However, we set num_buckets
     // here so we know how much space to allocate once emptyval is set
@@ -688,11 +690,10 @@ class dense_hashtable {
                   size_type min_buckets_wanted = HT_DEFAULT_STARTING_BUCKETS)
       : settings(ht.settings),
         key_info(ht.key_info),
-        allocator(ht.allocator),
         num_deleted(0),
         num_elements(0),
         num_buckets(0),
-        emptyval(ht.emptyval),
+        val_info(ht.val_info),
         table(NULL) {
     if (!ht.settings.use_empty()) {
       // If use_empty isn't set, copy_from will crash, so we do our own copying.
@@ -715,7 +716,7 @@ class dense_hashtable {
     }
     settings = ht.settings;
     key_info = ht.key_info;
-    set_value(&emptyval, ht.emptyval);
+    set_value(&val_info.emptyval, ht.val_info.emptyval);
     // copy_from() calls clear and sets num_deleted to 0 too
     copy_from(ht, HT_MIN_BUCKETS);
     // we purposefully don't copy the allocator, which may not be copyable
@@ -725,7 +726,7 @@ class dense_hashtable {
   ~dense_hashtable() {
     if (table) {
       destroy_buckets(0, num_buckets);
-      allocator.deallocate(table, num_buckets);
+      val_info.deallocate(table, num_buckets);
     }
   }
 
@@ -737,9 +738,9 @@ class dense_hashtable {
     STL_NAMESPACE::swap(num_elements, ht.num_elements);
     STL_NAMESPACE::swap(num_buckets, ht.num_buckets);
     { value_type tmp;     // for annoying reasons, swap() doesn't work
-      set_value(&tmp, emptyval);
-      set_value(&emptyval, ht.emptyval);
-      set_value(&ht.emptyval, tmp);
+      set_value(&tmp, val_info.emptyval);
+      set_value(&val_info.emptyval, ht.val_info.emptyval);
+      set_value(&ht.val_info.emptyval, tmp);
     }
     STL_NAMESPACE::swap(table, ht.table);
     settings.reset_thresholds(bucket_count());  // this also resets consider_shrink
@@ -750,7 +751,7 @@ class dense_hashtable {
  private:
   void clear_to_size(size_type new_num_buckets) {
     if (!table) {
-      table = allocator.allocate(new_num_buckets);
+      table = val_info.allocate(new_num_buckets);
     } else {
       destroy_buckets(0, num_buckets);
       if (new_num_buckets != num_buckets) {   // resize, if necessary
@@ -904,7 +905,8 @@ class dense_hashtable {
   // If you know *this is big enough to hold obj, use this routine
   pair<iterator, bool> insert_noresize(const_reference obj) {
     // First, double-check we're not inserting delkey or emptyval
-    assert((!settings.use_empty() || !equals(get_key(obj), get_key(emptyval)))
+    assert((!settings.use_empty() || !equals(get_key(obj),
+                                             get_key(val_info.emptyval)))
            && "Inserting the empty key");
     assert((!settings.use_deleted() || !equals(get_key(obj), key_info.delkey))
            && "Inserting the deleted key");
@@ -952,30 +954,31 @@ class dense_hashtable {
     insert(f, l, typename STL_NAMESPACE::iterator_traits<InputIterator>::iterator_category());
   }
 
-  // This is public only because dense_hash_map::operator[] uses it.
-  // It does the minimal amount of work to implement operator[].
-  template <class DataType>
-  DataType& find_or_insert(const key_type& key) {
+  // DefaultValue is a functor that takes a key and returns a value_type
+  // representing the default value to be inserted if none is found.
+  template <class DefaultValue>
+  value_type& find_or_insert(const key_type& key) {
     // First, double-check we're not inserting emptykey or delkey
-    assert((!settings.use_empty() || !equals(key, get_key(emptyval)))
+    assert((!settings.use_empty() || !equals(key, get_key(val_info.emptyval)))
            && "Inserting the empty key");
     assert((!settings.use_deleted() || !equals(key, key_info.delkey))
            && "Inserting the deleted key");
     const pair<size_type,size_type> pos = find_position(key);
+    DefaultValue default_value;
     if ( pos.first != ILLEGAL_BUCKET) {  // object was already there
-      return table[pos.first].second;
+      return table[pos.first];
     } else if (resize_delta(1)) {        // needed to rehash to make room
       // Since we resized, we can't use pos, so recalculate where to insert.
-      return insert_noresize(value_type(key, DataType())).first->second;
+      return *insert_noresize(default_value(key)).first;
     } else {                             // no need to rehash, insert right here
-      return insert_at(value_type(key, DataType()), pos.second)->second;
+      return *insert_at(default_value(key), pos.second);
     }
   }
 
   // DELETION ROUTINES
   size_type erase(const key_type& key) {
     // First, double-check we're not trying to erase delkey or emptyval.
-    assert((!settings.use_empty() || !equals(key, get_key(emptyval)))
+    assert((!settings.use_empty() || !equals(key, get_key(val_info.emptyval)))
            && "Erasing the empty key");
     assert((!settings.use_deleted() || !equals(key, key_info.delkey))
            && "Erasing the deleted key");
@@ -1058,19 +1061,19 @@ class dense_hashtable {
   // sure everything but the table is the same.  We compact before writing
   //
   // NOTE: These functions are currently TODO.  They've not been implemented.
-  bool write_metadata(FILE *fp) {
+  bool write_metadata(FILE * /*fp*/) {
     squash_deleted();           // so we don't have to worry about delkey
     return false;               // TODO
   }
 
-  bool read_metadata(FILE *fp) {
+  bool read_metadata(FILE* /*fp*/) {
     num_deleted = 0;            // since we got rid before writing
     assert(settings.use_empty() && "empty_key not set for read_metadata");
-    if (table)  allocator.deallocate(table, num_buckets);  // we'll make our own
+    if (table)  val_info.deallocate(table, num_buckets);  // we'll make our own
     // TODO: read magic number
     // TODO: read num_buckets
     settings.reset_thresholds(bucket_count());
-    table = allocator.allocate(num_buckets);
+    table = val_info.allocate(num_buckets);
     assert(table);
     fill_range_with_empty(table, table + num_buckets);
     // TODO: read num_elements
@@ -1115,7 +1118,7 @@ class dense_hashtable {
 
     // realloc_or_die should only be used when using the default
     // allocator (libc_allocator_with_realloc).
-    pointer realloc_or_die(pointer ptr, size_type n) {
+    pointer realloc_or_die(pointer /*ptr*/, size_type /*n*/) {
       fprintf(stderr, "realloc_or_die is only supported for "
                       "libc_allocator_with_realloc");
       exit(1);
@@ -1149,6 +1152,22 @@ class dense_hashtable {
       return retval;
     }
   };
+
+  // Package allocator with emptyval to eliminate memory needed for
+  // the zero-size allocator.
+  // If new fields are added to this class, we should add them to
+  // operator= and swap.
+  template <class A>
+  class ValInfo : public A {
+   public:
+    typedef typename A::value_type value_type;
+
+    ValInfo(const A& a) : A(a), emptyval() { }
+    ValInfo(const ValInfo& v) : A(v), emptyval(v.emptyval) { }
+
+    value_type emptyval;    // which key marks unused entries
+  };
+
 
   // Package functors with another class to eliminate memory needed for
   // zero-size functors.  Since ExtractKey and hasher's operator() might
@@ -1202,12 +1221,11 @@ class dense_hashtable {
   // Actual data
   Settings settings;
   KeyInfo key_info;
-  alloc_impl<value_alloc_type> allocator;
 
   size_type num_deleted;  // how many occupied buckets are marked deleted
   size_type num_elements;
   size_type num_buckets;
-  value_type emptyval;    // which key marks unused entries
+  ValInfo<alloc_impl<value_alloc_type> > val_info;
   pointer table;
 };
 

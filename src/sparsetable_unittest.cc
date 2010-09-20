@@ -43,10 +43,10 @@
 #include <stdlib.h>         // defines unlink() on some windows platforms(?)
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>         // for unlink()
+#endif
 #include <sys/types.h>      // for size_t
 #include <string>
 #include <memory>           // for allocator
-#endif
 #include <google/sparsetable>
 
 using STL_NAMESPACE::string;
