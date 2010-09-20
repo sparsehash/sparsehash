@@ -15,7 +15,7 @@ COMPILING
 To compile test applications with these classes, run ./configure
 followed by make.  To install these header files on your system, run
 'make install'.  (On Windows, the instructions are different; see
-README.windows.)  See INSTALL for more details.
+README_windows.txt.)  See INSTALL for more details.
 
 This code should work on any modern C++ system.  It has been tested on
 Linux (Ubuntu, Fedora, RedHat, Debian), Solaris 10 x86, FreeBSD 6.0,
@@ -75,15 +75,9 @@ There are also some smaller differences:
         if (...) ht.erase(it);
    As another consequence, a series of erase() calls can leave your
    hashtable using more memory than it needs to.  The hashtable will
-   automatically compact() at the next call to insert(), but to
+   automatically compact at the next call to insert(), but to
    manually compact a hashtable, you can call
       ht.resize(0)
-
-3) While sparse_hash_map et al. accept an Allocator template argument,
-   they ignore it.  They use malloc() and free() for all memory
-   allocations.
-
-4) sparse_hash_map et al. do not use exceptions.
 
 I/O
 ---
@@ -146,4 +140,4 @@ and performance data.
 
 ---
 16 March 2005
-(Last updated: 20 March 2007)
+(Last updated: 12 September 2010)

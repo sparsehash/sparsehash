@@ -121,6 +121,12 @@ class sparse_hash_map {
       value->second = T();
     }
   };
+  // For operator[].
+  struct DefaultValue {
+    STL_NAMESPACE::pair<const Key, T> operator()(const Key& key) {
+      return STL_NAMESPACE::make_pair(key, T());
+    }
+  };
 
   // The actual data
   typedef sparse_hashtable<pair<const Key, T>, Key, HashFcn, SelectKey,
@@ -242,7 +248,7 @@ class sparse_hash_map {
     // If key is in the hashtable, returns find(key)->second,
     // otherwise returns insert(value_type(key, T()).first->second.
     // Note it does not create an empty T unless the find fails.
-    return rep.template find_or_insert<data_type>(key);
+    return rep.template find_or_insert<DefaultValue>(key).second;
   }
 
   size_type count(const key_type& key) const         { return rep.count(key); }

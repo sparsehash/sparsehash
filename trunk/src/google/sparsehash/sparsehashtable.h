@@ -964,21 +964,22 @@ class sparse_hashtable {
     insert(f, l, typename STL_NAMESPACE::iterator_traits<InputIterator>::iterator_category());
   }
 
-  // This is public only because sparse_hash_map::operator[] uses it.
-  // It does the minimal amount of work to implement operator[].
-  template <class DataType>
-  DataType& find_or_insert(const key_type& key) {
+  // DefaultValue is a functor that takes a key and returns a value_type
+  // representing the default value to be inserted if none is found.
+  template <class DefaultValue>
+  value_type& find_or_insert(const key_type& key) {
     // First, double-check we're not inserting delkey
     assert((!settings.use_deleted() || !equals(key, key_info.delkey))
            && "Inserting the deleted key");
     const pair<size_type,size_type> pos = find_position(key);
+    DefaultValue default_value;
     if ( pos.first != ILLEGAL_BUCKET) {  // object was already there
-      return table.get_iter(pos.first)->second;
+      return *table.get_iter(pos.first);
     } else if (resize_delta(1)) {        // needed to rehash to make room
       // Since we resized, we can't use pos, so recalculate where to insert.
-      return insert_noresize(value_type(key, DataType())).first->second;
+      return *insert_noresize(default_value(key)).first;
     } else {                             // no need to rehash, insert right here
-      return insert_at(value_type(key, DataType()), pos.second)->second;
+      return *insert_at(default_value(key), pos.second);
     }
   }
 
