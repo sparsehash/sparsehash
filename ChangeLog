@@ -1,3 +1,13 @@
+Fri Sep 24 11:37:50 2010  Google Inc. <opensource@google.com>
+
+	* sparsehash: version 1.9 release
+	* Add is_enum; make all enums PODs by default (romanp)
+	* Make find_or_insert() usable directly (dawidk)
+	* Use zero-memory trick for allocators to reduce space use (guilin)
+	* Fix some compiler warnings (chandlerc, eraman)
+	* BUGFIX: int -> size_type in one function we missed (csilvers)
+	* Added sparsehash.pc, for pkg-config (csilvers)
+
 Thu Jul 29 15:01:29 2010  Google Inc. <opensource@google.com>
 
 	* sparsehash: version 1.8.1 release

@@ -127,7 +127,7 @@ class sh_hashtable_settings : public HashFunc {
   }
 
   // Reset the enlarge and shrink thresholds
-  void reset_thresholds(int num_buckets) {
+  void reset_thresholds(size_type num_buckets) {
     set_enlarge_threshold(enlarge_size(num_buckets));
     set_shrink_threshold(shrink_size(num_buckets));
     // whatever caused us to reset already considered

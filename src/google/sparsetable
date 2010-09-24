@@ -1131,18 +1131,19 @@ class sparsegroup {
   // zero-size allocator.
   // If new fields are added to this class, we should add them to
   // operator= and swap.
-  template <class A>
-  class Settings : public A {
+  class Settings : public alloc_impl<value_alloc_type> {
    public:
-    Settings(const A& a, uint16_t n = 0) : A(a), num_buckets(n) { }
-    Settings(const Settings& s) : A(s), num_buckets(s.num_buckets) { }
+    Settings(const alloc_impl<value_alloc_type>& a, u_int16_t n = 0)
+        : alloc_impl<value_alloc_type>(a), num_buckets(n) { }
+    Settings(const Settings& s)
+        : alloc_impl<value_alloc_type>(s), num_buckets(s.num_buckets) { }
 
-    uint16_t num_buckets;                      // limits GROUP_SIZE to 64K
+    u_int16_t num_buckets;                    // limits GROUP_SIZE to 64K
   };
 
   // The actual data
-  pointer group;                                // (small) array of T's
-  Settings<alloc_impl<value_alloc_type> > settings;
+  pointer group;                              // (small) array of T's
+  Settings settings;                          // allocator and num_buckets
   unsigned char bitmap[(GROUP_SIZE-1)/8 + 1]; // fancy math is so we round up
 };
 
@@ -1562,24 +1563,24 @@ class sparsetable {
   // needed for the zero-size allocator.
   // If new fields are added to this class, we should add them to
   // operator= and swap.
-  template <class A>
-  class Settings : public A {
+  class Settings : public allocator_type {
    public:
-    typedef typename A::size_type size_type;
+    typedef typename allocator_type::size_type size_type;
 
-    Settings(const A& a, size_type sz = 0, size_type n = 0)
-        : A(a), table_size(sz), num_buckets(n) { }
+    Settings(const allocator_type& a, size_type sz = 0, size_type n = 0)
+        : allocator_type(a), table_size(sz), num_buckets(n) { }
 
     Settings(const Settings& s)
-        : A(s), table_size(s.table_size), num_buckets(s.num_buckets) { }
+        : allocator_type(s),
+          table_size(s.table_size), num_buckets(s.num_buckets) { }
 
     size_type table_size;          // how many buckets they want
     size_type num_buckets;         // number of non-empty buckets
   };
 
   // The actual data
-  group_vector_type groups;           // our list of groups
-  Settings<allocator_type> settings;  // allocator, table size, buckets
+  group_vector_type groups;        // our list of groups
+  Settings settings;               // allocator, table size, buckets
 };
 
 // We need a global swap as well

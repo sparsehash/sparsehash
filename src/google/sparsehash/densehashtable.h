@@ -1157,13 +1157,14 @@ class dense_hashtable {
   // the zero-size allocator.
   // If new fields are added to this class, we should add them to
   // operator= and swap.
-  template <class A>
-  class ValInfo : public A {
+  class ValInfo : public alloc_impl<value_alloc_type> {
    public:
-    typedef typename A::value_type value_type;
+    typedef typename alloc_impl<value_alloc_type>::value_type value_type;
 
-    ValInfo(const A& a) : A(a), emptyval() { }
-    ValInfo(const ValInfo& v) : A(v), emptyval(v.emptyval) { }
+    ValInfo(const alloc_impl<value_alloc_type>& a)
+        : alloc_impl<value_alloc_type>(a), emptyval() { }
+    ValInfo(const ValInfo& v)
+        : alloc_impl<value_alloc_type>(v), emptyval(v.emptyval) { }
 
     value_type emptyval;    // which key marks unused entries
   };
@@ -1225,7 +1226,7 @@ class dense_hashtable {
   size_type num_deleted;  // how many occupied buckets are marked deleted
   size_type num_elements;
   size_type num_buckets;
-  ValInfo<alloc_impl<value_alloc_type> > val_info;
+  ValInfo val_info;       // holds emptyval, and also the allocator
   pointer table;
 };
 
