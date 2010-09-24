@@ -51,8 +51,10 @@ using GOOGLE_NAMESPACE::has_trivial_assign;
 using GOOGLE_NAMESPACE::has_trivial_constructor;
 using GOOGLE_NAMESPACE::has_trivial_copy;
 using GOOGLE_NAMESPACE::has_trivial_destructor;
+#if !defined(_MSC_VER) && !(defined(__GNUC__) && __GNUC__ <= 3)
 using GOOGLE_NAMESPACE::is_convertible;
 using GOOGLE_NAMESPACE::is_enum;
+#endif
 using GOOGLE_NAMESPACE::is_floating_point;
 using GOOGLE_NAMESPACE::is_integral;
 using GOOGLE_NAMESPACE::is_pod;
@@ -203,7 +205,8 @@ TEST(TypeTraitsTest, TestIsFloating) {
 }
 
 TEST(TypeTraitsTest, TestIsEnum) {
-#ifndef _MSC_VER    // is_enum isn't supported on MSVC
+// is_enum isn't supported on MSVC or gcc 3.x
+#if !defined(_MSC_VER) && !(defined(__GNUC__) && __GNUC__ <= 3)
   // Verify that is_enum is true for enum types.
   EXPECT_TRUE(is_enum<G>::value);
   EXPECT_TRUE(is_enum<const G>::value);
@@ -280,7 +283,7 @@ TEST(TypeTraitsTest, TestIsPod) {
   EXPECT_TRUE(is_pod<A*>::value);
   EXPECT_TRUE(is_pod<const B*>::value);
   EXPECT_TRUE(is_pod<C**>::value);
-#ifndef _MSC_VER    // is_enum isn't supported on MSVC
+#if !defined(_MSC_VER) && !(defined(__GNUC__) && __GNUC__ <= 3)
   EXPECT_TRUE(is_pod<G>::value);
   EXPECT_TRUE(is_pod<const G>::value);
 #endif
@@ -537,6 +540,7 @@ TEST(TypeTraitsTest, TestIsSame) {
 }
 
 TEST(TypeTraitsTest, TestConvertible) {
+#if !defined(_MSC_VER) && !(defined(__GNUC__) && __GNUC__ <= 3)
   EXPECT_TRUE((is_convertible<int, int>::value));
   EXPECT_TRUE((is_convertible<int, long>::value));
   EXPECT_TRUE((is_convertible<long, int>::value));
@@ -548,6 +552,7 @@ TEST(TypeTraitsTest, TestConvertible) {
   EXPECT_FALSE((is_convertible<Base*, Derived*>::value));
   EXPECT_TRUE((is_convertible<Derived*, const Base*>::value));
   EXPECT_FALSE((is_convertible<const Derived*, Base*>::value));
+#endif
 }
 
 }  // namespace

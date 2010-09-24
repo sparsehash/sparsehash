@@ -85,9 +85,15 @@ using STL_NAMESPACE::vector;
 namespace {
 
 #ifndef _MSC_VER   // windows defines its own version
+# ifdef __MINGW32__ // mingw has trouble writing to /tmp
+static string TmpFile(const char* basename) {
+  return string("./#") + basename;
+}
+# else
 static string TmpFile(const char* basename) {
   return string("/tmp/") + basename;
 }
+# endif
 #endif
 
 typedef unsigned char uint8;
@@ -1310,7 +1316,7 @@ TEST(HashtableTest, IntIO) {
   ht_out.erase(563);   // just to test having some erased keys when we write.
   ht_out.erase(22);
 
-  string file(TmpFile("/intio"));
+  string file(TmpFile("intio"));
   FILE* fp = fopen(file.c_str(), "wb");
   EXPECT_TRUE(fp != NULL);
   EXPECT_TRUE(ht_out.write_metadata(fp));
@@ -1346,7 +1352,7 @@ TEST(HashtableTest, StringIO) {
   ht_out.erase("c");   // just to test having some erased keys when we write.
   ht_out.erase("y");
 
-  string file(TmpFile("/stringio"));
+  string file(TmpFile("stringio"));
   FILE* fp = fopen(file.c_str(), "wb");
   EXPECT_TRUE(fp != NULL);
   EXPECT_TRUE(ht_out.write_metadata(fp));

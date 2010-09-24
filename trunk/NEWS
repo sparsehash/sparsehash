@@ -1,3 +1,15 @@
+=== 24 September 2010 ===
+
+I've just released sparsehash 1.9.  This fixes a size regression in
+sparsehash 1.8, where the new allocator would take up space in
+`sparse_hash_map`, doubling the sparse_hash_map overhead (from 1-2
+bits per bucket to 3 or so).  All users are encouraged to upgrade.
+
+This change also marks enums as being Plain Old Data, which can speed
+up hashtables with enum keys and/or values.  A full list of changes is
+described in
+[http://google-sparsehash.googlecode.com/svn/tags/sparsehash-1.9/ChangeLog ChangeLog].
+
 === 29 July 2010 ===
 
 I've just released sparsehash 1.8.  This includes improved support for
@@ -17,8 +29,7 @@ Internally, the biggest change is a revamp of the test suite.  It now
 has more complete coverage, and a more capable timing tester.  There
 are other, more minor changes as well.  A full list of changes is
 described in the
-[http://google-sparsehash.googlecode.com/svn/tags/sparsehash-1.8/ChangeLog
-ChangeLog].
+[http://google-sparsehash.googlecode.com/svn/tags/sparsehash-1.8/ChangeLog ChangeLog].
 
 === 31 March 2010 ===
 
@@ -35,8 +46,7 @@ functionality is not supported by STL allocators).
 
 There are a few more minor changes as well.  A full list of changes is
 described in the
-[http://google-sparsehash.googlecode.com/svn/tags/sparsehash-1.7/ChangeLog
-ChangeLog].
+[http://google-sparsehash.googlecode.com/svn/tags/sparsehash-1.7/ChangeLog ChangeLog].
 
 === 11 January 2010 ===
 
@@ -45,8 +55,7 @@ addition of `deleted_key()` and `empty_key()`, which let you query
 what values these keys have.  A few rather obscure bugs have been
 fixed (such as an error when copying one hashtable into another when
 the empty_keys differ).  A full list of changes is described in the
-[http://google-sparsehash.googlecode.com/svn/tags/sparsehash-1.6/ChangeLog
-ChangeLog].
+[http://google-sparsehash.googlecode.com/svn/tags/sparsehash-1.6/ChangeLog ChangeLog].
 
 === 9 May 2009 ===
 
@@ -66,6 +75,5 @@ replacements for `unordered_map` and `unordered_set`.
 
 There is no need to upgrade unless you need this functionality, or
 need one of the other, more minor, changes described in the
-[http://google-sparsehash.googlecode.com/svn/tags/sparsehash-1.5/ChangeLog
-ChangeLog].
+[http://google-sparsehash.googlecode.com/svn/tags/sparsehash-1.5/ChangeLog ChangeLog].
 
