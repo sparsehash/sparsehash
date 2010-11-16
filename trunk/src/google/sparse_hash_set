@@ -111,7 +111,7 @@ class sparse_hash_set {
  private:
   // Apparently identity is not stl-standard, so we define our own
   struct Identity {
-    Value& operator()(Value& v) const { return v; }
+    typedef const Value& result_type;
     const Value& operator()(const Value& v) const { return v; }
   };
   struct SetKey {
