@@ -58,6 +58,7 @@
 #include <string.h>
 #include <iostream>
 #include <set>
+#include <typeinfo>   // for class typeinfo (returned by typeid)
 #include <vector>
 #include <google/type_traits.h>
 #include <google/sparsetable>
@@ -263,11 +264,13 @@ struct Alloc {
 // be their own inverse: f(f(x)) == x.
 template<class Value>
 struct Negation {
+  typedef Value result_type;
   Value operator()(Value& v) { return -v; }
   const Value operator()(const Value& v) const { return -v; }
 };
 
 struct Capital {
+  typedef string result_type;
   string operator()(string& s) {
     return string(1, s[0] ^ 32) + s.substr(1);
   }
@@ -277,6 +280,7 @@ struct Capital {
 };
 
 struct Identity {   // lame, I know, but an important case to test.
+  typedef const char* result_type;
   const char* operator()(const char* s) const {
     return s;
   }
@@ -630,18 +634,20 @@ TYPED_TEST(HashtableIntTest, Constructors) {
   EXPECT_LE(1, alloc_count);
   int old_alloc_count = alloc_count;
 
-  vector<typename TypeParam::value_type> input(4);
-  // We have to use placement-new because value_type may be const.
-  new(&input[0]) typename TypeParam::value_type(this->UniqueObject(1));
-  new(&input[1]) typename TypeParam::value_type(this->UniqueObject(2));
-  new(&input[2]) typename TypeParam::value_type(this->UniqueObject(4));
-  new(&input[3]) typename TypeParam::value_type(this->UniqueObject(8));
-  TypeParam ht_iter_noarg(input.begin(), input.end());
-  TypeParam ht_iter_onearg(input.begin(), input.end(), 100);
-  TypeParam ht_iter_twoarg(input.begin(), input.end(), 100, hasher);
-  TypeParam ht_iter_threearg(input.begin(), input.end(), 100, hasher, hasher);
-  TypeParam ht_iter_fourarg(input.begin(), input.end(), 100, hasher, hasher,
-                            alloc);
+  const typename TypeParam::value_type input[] = {
+    this->UniqueObject(1),
+    this->UniqueObject(2),
+    this->UniqueObject(4),
+    this->UniqueObject(8)
+  };
+  const int num_inputs = sizeof(input) / sizeof(input[0]);
+  const typename TypeParam::value_type *begin = &input[0];
+  const typename TypeParam::value_type *end = begin + num_inputs;
+  TypeParam ht_iter_noarg(begin, end);
+  TypeParam ht_iter_onearg(begin, end, 100);
+  TypeParam ht_iter_twoarg(begin, end, 100, hasher);
+  TypeParam ht_iter_threearg(begin, end, 100, hasher, hasher);
+  TypeParam ht_iter_fourarg(begin, end, 100, hasher, hasher, alloc);
   // Now the allocator should have been called more.
   EXPECT_GT(alloc_count, old_alloc_count);
   old_alloc_count = alloc_count;
@@ -1117,13 +1123,13 @@ TYPED_TEST(HashtableIntTest, InsertRange) {
   ht_source.insert(this->UniqueObject(100000));
   ht_source.insert(this->UniqueObject(1000000));
 
-  vector<typename TypeParam::value_type> input(4);
-  // We have to use placement-new because value_type may be const.
-  // This is a copy of the first element in ht_source.
-  new(&input[0]) typename TypeParam::value_type(*ht_source.begin());
-  new(&input[1]) typename TypeParam::value_type(this->UniqueObject(2));
-  new(&input[2]) typename TypeParam::value_type(this->UniqueObject(4));
-  new(&input[3]) typename TypeParam::value_type(this->UniqueObject(8));
+  const typename TypeParam::value_type input[] = {
+    // This is a copy of the first element in ht_source.
+    *ht_source.begin(),
+    this->UniqueObject(2),
+    this->UniqueObject(4),
+    this->UniqueObject(8)
+  };
 
   set<typename TypeParam::value_type> set_input;
   set_input.insert(this->UniqueObject(1111111));
@@ -1158,7 +1164,7 @@ TYPED_TEST(HashtableIntTest, InsertRange) {
   // Insert from input as well, a separate, random-access iterator.
   // The first element of input overlaps with an existing element
   // of ht_, so this should only up the size by 2.
-  this->ht_.insert(input.begin(), input.begin() + 3);
+  this->ht_.insert(&input[0], &input[3]);
   EXPECT_EQ(8u, this->ht_.size());
 }
 

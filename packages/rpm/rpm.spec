@@ -59,4 +59,4 @@ rm -rf $RPM_BUILD_ROOT
 %{prefix}/share/doc/%{NAME}-%{VERSION}/*
 
 %{_includedir}/google
-%{_libdir}/pkgconfig/*
+%{_libdir}/pkgconfig/*.pc

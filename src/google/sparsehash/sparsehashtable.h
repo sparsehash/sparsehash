@@ -134,6 +134,8 @@ static const u_int16_t DEFAULT_GROUP_SIZE = 48;   // fits in 1.5 words
 //      to search for a Value in the table (find() takes a Key).
 // HashFcn: Takes a Key and returns an integer, the more unique the better.
 // ExtractKey: given a Value, returns the unique Key associated with it.
+//             Must inherit from unary_function, or at least have a
+//             result_type enum indicating the return type of operator().
 // SetKey: given a Value* and a Key, modifies the value such that
 //         ExtractKey(value) == key.  We guarantee this is only called
 //         with key == deleted_key.
@@ -1119,7 +1121,8 @@ class sparse_hashtable {
           SetKey(sk),
           key_equal(eq) {
     }
-    const key_type get_key(const_reference v) const {
+    // We want to return the exact same type as ExtractKey: Key or const Key&
+    const typename ExtractKey::result_type get_key(const_reference v) const {
       return ExtractKey::operator()(v);
     }
     void set_key(pointer v, const key_type& k) const {
@@ -1141,7 +1144,7 @@ class sparse_hashtable {
   bool equals(const key_type& a, const key_type& b) const {
     return key_info.equals(a, b);
   }
-  const key_type get_key(const_reference v) const {
+  const typename ExtractKey::result_type get_key(const_reference v) const {
     return key_info.get_key(v);
   }
   void set_key(pointer v, const key_type& k) const {

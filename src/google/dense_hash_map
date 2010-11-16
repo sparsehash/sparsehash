@@ -120,6 +120,7 @@ class dense_hash_map {
  private:
   // Apparently select1st is not stl-standard, so we define our own
   struct SelectKey {
+    typedef const Key& result_type;
     const Key& operator()(const pair<const Key, T>& p) const {
       return p.first;
     }
