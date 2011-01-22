@@ -1,3 +1,10 @@
+Thu Jan 20 16:07:39 2011  Google Inc. <opensource@google.com>
+
+	* sparsehash: version 1.10 release
+	* Follow ExtractKey return type, allowing it to return a reference
+	* PORTING: fix MSVC 10 warnings (constifying result_type, placement-new)
+	* Update from autoconf 2.61 to autoconf 2.65
+	
 Fri Sep 24 11:37:50 2010  Google Inc. <opensource@google.com>
 
 	* sparsehash: version 1.9 release

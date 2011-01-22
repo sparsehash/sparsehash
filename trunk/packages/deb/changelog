@@ -1,3 +1,9 @@
+sparsehash (1.10-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Google Inc. <opensource@google.com>  Thu, 20 Jan 2011 16:07:39 -0800
+
 sparsehash (1.9-1) unstable; urgency=low
 
   * New upstream release.

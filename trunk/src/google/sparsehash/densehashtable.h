@@ -1193,7 +1193,7 @@ class dense_hashtable {
     }
 
     // We want to return the exact same type as ExtractKey: Key or const Key&
-    const typename ExtractKey::result_type get_key(const_reference v) const {
+    typename ExtractKey::result_type get_key(const_reference v) const {
       return ExtractKey::operator()(v);
     }
     void set_key(pointer v, const key_type& k) const {
@@ -1215,7 +1215,7 @@ class dense_hashtable {
   bool equals(const key_type& a, const key_type& b) const {
     return key_info.equals(a, b);
   }
-  const typename ExtractKey::result_type get_key(const_reference v) const {
+  typename ExtractKey::result_type get_key(const_reference v) const {
     return key_info.get_key(v);
   }
   void set_key(pointer v, const key_type& k) const {
