@@ -1,3 +1,17 @@
+== 21 January 2011 ==
+
+I've just released sparsehash 1.10.  This fixes a performance
+regression in sparsehash 1.8, where sparse_hash_map would copy
+hashtable keys by value even when the key was explicitly a reference.
+It also fixes compiler warnings from MSVC 10, which uses some c++0x
+features that did not interact well with sparsehash.
+
+There is no reason to upgrade unless you use references for your
+hashtable keys, or compile with MSVC 10.  A full list of changes is
+described in
+[http://google-sparsehash.googlecode.com/svn/tags/sparsehash-1.10/ChangeLog ChangeLog].
+
+
 === 24 September 2010 ===
 
 I've just released sparsehash 1.9.  This fixes a size regression in

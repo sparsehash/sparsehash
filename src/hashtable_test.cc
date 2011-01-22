@@ -1381,14 +1381,14 @@ TEST(HashtableTest, StringIO) {
   for (sparse_hash_map<string, string, Hasher, Hasher>::iterator
            it = ht_in.begin(); it != ht_in.end(); ++it) {
     string::size_type first_size;
-    fread(&first_size, sizeof(first_size), 1, fp);
+    EXPECT_EQ(1u, fread(&first_size, sizeof(first_size), 1, fp));
     char* first = new char[first_size];
-    fread(first, first_size, 1, fp);
+    EXPECT_EQ(1u, fread(first, first_size, 1, fp));
 
     string::size_type second_size;
-    fread(&second_size, sizeof(second_size), 1, fp);
+    EXPECT_EQ(1u, fread(&second_size, sizeof(second_size), 1, fp));
     char* second = new char[second_size];
-    fread(second, second_size, 1, fp);
+    EXPECT_EQ(1u, fread(second, second_size, 1, fp));
 
     // it points to garbage, so we have to use placement-new to initialize.
     // We also have to use const-cast since it->first is const.
