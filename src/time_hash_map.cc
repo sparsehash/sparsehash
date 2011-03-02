@@ -32,6 +32,13 @@
 //
 // Time various hash map implementations
 //
+// The tests generally yield best-case performance because the
+// code uses sequential keys; on the other hand, "map_fetch_random" does
+// lookups in a pseudorandom order.  Also, "stresshashfunction" is
+// a stress test of sorts.  It uses keys from an arithmetic sequence, which,
+// if combined with a quick-and-dirty hash function, will yield worse
+// performance than the otherwise similar "map_predict/grow."
+//
 // Consider doing the following to get good numbers:
 //
 // 1. Run the tests on a machine with no X service. Make sure no other
@@ -62,6 +69,11 @@ extern "C" {
 #endif
 }
 
+#include <algorithm>  // for swap()
+#include <vector>
+using STL_NAMESPACE::swap;
+using STL_NAMESPACE::vector;
+
 // The functions that we call on each map, that differ for different types.
 // By default each is a noop, but we redefine them for types that need them.
 
@@ -82,6 +94,7 @@ static bool FLAGS_test_hash_map = true;
 static bool FLAGS_test_map = true;
 
 static bool FLAGS_test_4_bytes = true;
+static bool FLAGS_test_8_bytes = true;
 static bool FLAGS_test_16_bytes = true;
 static bool FLAGS_test_256_bytes = true;
 
@@ -419,7 +432,8 @@ static void time_map_replace(int iters) {
 }
 
 template<class MapType>
-static void time_map_fetch(int iters) {
+static void time_map_fetch(int iters, const vector<int>& indices,
+                           char const* title) {
   MapType set;
   Rusage t;
   int r;
@@ -433,12 +447,39 @@ static void time_map_fetch(int iters) {
   r = 1;
   t.Reset();
   for (i = 0; i < iters; i++) {
-    r ^= static_cast<int>(set.find(i) != set.end());
+    r ^= static_cast<int>(set.find(indices[i]) != set.end());
   }
   double ut = t.UserTime();
 
   srand(r);   // keep compiler from optimizing away r (we never call rand())
-  report("map_fetch", ut, iters, 0, 0);
+  report(title, ut, iters, 0, 0);
+}
+
+template<class MapType>
+static void time_map_fetch_sequential(int iters) {
+  vector<int> v(iters);
+  for (int i = 0; i < iters; i++) {
+    v[i] = i;
+  }
+  time_map_fetch<MapType>(iters, v, "map_fetch_sequential");
+}
+
+// Apply a pseudorandom permutation to the given vector.
+static void shuffle(vector<int>* v) {
+  srand(9);
+  for (int n = v->size(); n >= 2; n--) {
+    swap((*v)[n - 1], (*v)[static_cast<unsigned>(rand()) % n]);
+  }
+}
+
+template<class MapType>
+static void time_map_fetch_random(int iters) {
+  vector<int> v(iters);
+  for (int i = 0; i < iters; i++) {
+    v[i] = i;
+  }
+  shuffle(&v);
+  time_map_fetch<MapType>(iters, v, "map_fetch_random");
 }
 
 template<class MapType>
@@ -503,37 +544,93 @@ static void time_map_toggle(int iters) {
 }
 
 template<class MapType>
-static void measure_map(const char* label, int obj_size, int iters) {
+static void stresshashfunction(int desired_insertions,
+                               int map_size,
+                               int stride) {
+  Rusage t;
+  int num_insertions = 0;
+  // One measurement of user time (in seconds) is done for each iteration of
+  // the outer loop.  The times are summed.
+  double total_seconds = 0;
+  const int k = desired_insertions / map_size;
+  MapType set;
+  SET_EMPTY_KEY(set, -2);
+  for (int o = 0; o < k; o++) {
+    set.clear();
+    RESIZE(set, map_size);
+    t.Reset();
+    const int maxint = (1ull << (sizeof(int) * 8 - 1)) - 1;
+    // Use n arithmetic sequences.  Using just one may lead to overflow
+    // if stride * map_size > maxint.  Compute n by requiring
+    // stride * map_size/n < maxint, i.e., map_size/(maxint/stride) < n
+    const int n = map_size / (maxint / stride) + 1;
+    for (int i = 0; i < n; i++) {
+      for (int j = 0; j < map_size/n; j++) {
+        set[j * stride + i] = ++num_insertions;
+      }
+    }
+    total_seconds += t.UserTime();
+  }
+  printf("stresshashfunction map_size=%d stride=%d: %.1fns/insertion\n",
+         map_size, stride, total_seconds * 1e9 / num_insertions);
+}
+
+template<class MapType>
+static void stresshashfunction(int num_inserts) {
+  static const int kMapSizes[] = {256, 1024};
+  for (unsigned i = 0; i < sizeof(kMapSizes) / sizeof(kMapSizes[0]); i++) {
+    const int map_size = kMapSizes[i];
+    for (int stride = 1; stride <= map_size; stride *= map_size) {
+      stresshashfunction<MapType>(num_inserts, map_size, stride);
+    }
+  }
+}
+
+template<class MapType>
+static void measure_map(const char* label, int obj_size, int iters,
+                        bool stress_hash_function) {
   printf("\n%s (%d byte objects, %d iterations):\n", label, obj_size, iters);
   if (1) time_map_grow<MapType>(iters);
   if (1) time_map_grow_predicted<MapType>(iters);
   if (1) time_map_replace<MapType>(iters);
-  if (1) time_map_fetch<MapType>(iters);
+  if (1) time_map_fetch_random<MapType>(iters);
+  if (1) time_map_fetch_sequential<MapType>(iters);
   if (1) time_map_fetch_empty<MapType>(iters);
   if (1) time_map_remove<MapType>(iters);
   if (1) time_map_toggle<MapType>(iters);
+  // This last test is useful only if the map type uses hashing.
+  // And it's slow, so use fewer iterations.
+  if (stress_hash_function) {
+    // Blank line in the output makes clear that what follows isn't part of the
+    // table of results that we just printed.
+    puts("");
+    stresshashfunction<MapType>(iters / 4);
+  }
 }
 
 template<class ObjType>
 static void test_all_maps(int obj_size, int iters) {
+  const bool stress_hash_function = obj_size <= 8;
   if (FLAGS_test_sparse_hash_map)
     measure_map< sparse_hash_map<ObjType, int, HashFn> >("SPARSE_HASH_MAP",
-                                                 obj_size, iters);
+                                                 obj_size, iters,
+                                                 stress_hash_function);
   if (FLAGS_test_dense_hash_map)
     measure_map< dense_hash_map<ObjType, int, HashFn> >("DENSE_HASH_MAP",
-                                                obj_size, iters);
+                                                obj_size, iters,
+                                                stress_hash_function);
 #if defined(HAVE_UNORDERED_MAP)
   if (FLAGS_test_hash_map)
     measure_map< HASH_NAMESPACE::unordered_map<ObjType, int, HashFn> >(
-        "TR1 UNORDERED_MAP", obj_size, iters);
+        "TR1 UNORDERED_MAP", obj_size, iters, stress_hash_function);
 #elif defined(HAVE_HASH_MAP)
   if (FLAGS_test_hash_map)
     measure_map< HASH_NAMESPACE::hash_map<ObjType, int, HashFn> >(
-        "STANDARD HASH_MAP", obj_size, iters);
+        "STANDARD HASH_MAP", obj_size, iters, stress_hash_function);
 #endif
   if (FLAGS_test_map)
     measure_map< STL_NAMESPACE::map<ObjType, int, HashFn> >("STANDARD MAP",
-                                     obj_size, iters);
+                                     obj_size, iters, false);
 }
 
 int main(int argc, char** argv) {
@@ -555,6 +652,7 @@ int main(int argc, char** argv) {
   // buffer.  To keep memory use similar, we normalize the number of
   // iterations based on size.
   if (FLAGS_test_4_bytes)  test_all_maps< HashObject<4,4> >(4, iters/1);
+  if (FLAGS_test_8_bytes)  test_all_maps< HashObject<8,8> >(8, iters/2);
   if (FLAGS_test_16_bytes)  test_all_maps< HashObject<16,16> >(16, iters/4);
   if (FLAGS_test_256_bytes)  test_all_maps< HashObject<256,256> >(256, iters/32);
 

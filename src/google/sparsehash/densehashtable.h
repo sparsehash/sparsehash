@@ -96,6 +96,23 @@
 // Quadratic probing
 #define JUMP_(key, num_probes)    ( num_probes )
 
+// The weird mod in the offset is entirely to quiet compiler warnings
+// as is the cast to int after doing the "x mod 256"
+#define PUT_(take_from, offset)  do {                                    \
+    if (putc(static_cast<int>(offset >= sizeof(take_from)*8)             \
+                              ? 0 : ((take_from) >> (offset)) % 256, fp) \
+        == EOF)                                                          \
+    return false;                                                        \
+} while (0)
+
+#define GET_(add_to, offset)  do {                                      \
+  if ((x=getc(fp)) == EOF)                                              \
+    return false;                                                       \
+  else if (offset >= sizeof(add_to) * 8)                                \
+    assert(x == 0);   /* otherwise it's too big for us to represent */  \
+  else                                                                  \
+    add_to |= (static_cast<size_type>(x) << ((offset) % (sizeof(add_to)*8))); \
+} while (0)
 
 #include <google/sparsehash/sparseconfig.h>
 #include <stdio.h>
@@ -1062,28 +1079,88 @@ class dense_hashtable {
   // I don't know how to write a hasher or key_equal, you have to make
   // sure everything but the table is the same.  We compact before writing
   //
-  // NOTE: These functions are currently TODO.  They've not been implemented.
-  bool write_metadata(FILE * /*fp*/) {
-    squash_deleted();           // so we don't have to worry about delkey
-    return false;               // TODO
+ private:
+  // Every time the disk format changes, this should probably change too
+  static const size_type MAGIC_NUMBER = 0x13578642;
+
+  // Could make these faster with built-ins, but no real need.
+  static bool write64(FILE *fp, size_type value) {
+    PUT_(value, 56);
+    PUT_(value, 48);
+    PUT_(value, 40);
+    PUT_(value, 32);
+    PUT_(value, 24);
+    PUT_(value, 16);
+    PUT_(value, 8);
+    PUT_(value, 0);
+    return true;
   }
 
-  bool read_metadata(FILE* /*fp*/) {
+  static bool read64(FILE *fp, size_type *value) {  // reads into value
+    int x;   // used by GET_
+    GET_(*value, 56);
+    GET_(*value, 48);
+    GET_(*value, 40);
+    GET_(*value, 32);
+    GET_(*value, 24);
+    GET_(*value, 16);
+    GET_(*value, 8);
+    GET_(*value, 0);
+    return true;
+  }
+
+ public:
+  // NOTE: These functions are currently TODO.  They've not been implemented.
+  bool write_metadata(FILE *fp) {
+    squash_deleted();           // so we don't have to worry about delkey
+    if ( !write64(fp, MAGIC_NUMBER) )  return false;
+    if ( !write64(fp, num_buckets) )  return false;
+    if ( !write64(fp, num_elements) )  return false;
+    // Now write a bitmap of non-empty buckets.
+    for (int i = 0; i < num_buckets; i += 8) {
+      unsigned char bits = 0;
+      for (int bit = 0; bit < 8; ++bit) {
+        if (i + bit < num_buckets && !test_empty(i + bit))
+          bits |= (1 << bit);
+      }
+      PUT_(bits, 0);
+    }
+    return true;
+  }
+
+  bool read_metadata(FILE *fp) {
     num_deleted = 0;            // since we got rid before writing
     assert(settings.use_empty() && "empty_key not set for read_metadata");
     if (table)  val_info.deallocate(table, num_buckets);  // we'll make our own
-    // TODO: read magic number
-    // TODO: read num_buckets
+
+    size_type magic_read = 0;
+    if ( !read64(fp, &magic_read) )  return false;
+    if ( magic_read != MAGIC_NUMBER ) {
+      clear();                        // just to be consistent
+      return false;
+    }
+    if ( !read64(fp, &num_buckets) )  return false;
+    if ( !read64(fp, &num_elements) )  return false;
+
     settings.reset_thresholds(bucket_count());
     table = val_info.allocate(num_buckets);
     assert(table);
     fill_range_with_empty(table, table + num_buckets);
-    // TODO: read num_elements
-    for ( size_type i = 0; i < num_elements; ++i ) {
-      // TODO: read bucket_num
-      // TODO: set with non-empty, non-deleted value
+
+    // Read the bitmap of non-empty buckets.
+    for (int i = 0; i < num_buckets; i += 8) {
+      int x;   // used by GET_
+      unsigned char bits;
+      GET_(bits, 0);
+      for (int bit = 0; bit < 8; ++bit) {
+        if (i + bit < num_buckets && (bits & (1 << bit)) ) {  // not empty
+          // TODO(csilvers): mark that this bucket is non-empty somehow
+          return false;
+        }
+      }
     }
-    return false;               // TODO
+
+    return true;
   }
 
   // If your keys and values are simple enough, we can write them to
@@ -1092,7 +1169,6 @@ class dense_hashtable {
   // endianness
   bool write_nopointer_data(FILE *fp) const {
     for ( const_iterator it = begin(); it != end(); ++it ) {
-      // TODO: skip empty/deleted values
       if ( !fwrite(&*it, sizeof(*it), 1, fp) )  return false;
     }
     return false;
@@ -1101,7 +1177,6 @@ class dense_hashtable {
   // When reading, we have to override the potential const-ness of *it
   bool read_nopointer_data(FILE *fp) {
     for ( iterator it = begin(); it != end(); ++it ) {
-      // TODO: skip empty/deleted values
       if ( !fread(reinterpret_cast<void*>(&(*it)), sizeof(*it), 1, fp) )
         return false;
     }
@@ -1243,6 +1318,8 @@ inline void swap(dense_hashtable<V,K,HF,ExK,SetK,EqK,A> &x,
 }
 
 #undef JUMP_
+#undef PUT_
+#undef GET_
 
 template <class V, class K, class HF, class ExK, class SetK, class EqK, class A>
 const typename dense_hashtable<V,K,HF,ExK,SetK,EqK,A>::size_type
