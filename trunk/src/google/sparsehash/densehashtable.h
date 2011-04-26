@@ -762,8 +762,8 @@ class dense_hashtable {
       set_value(&ht.val_info.emptyval, tmp);
     }
     STL_NAMESPACE::swap(table, ht.table);
-    settings.reset_thresholds(bucket_count());  // this also resets consider_shrink
-    ht.settings.reset_thresholds(bucket_count());
+    settings.reset_thresholds(bucket_count());  // also resets consider_shrink
+    ht.settings.reset_thresholds(ht.bucket_count());
     // we purposefully don't swap the allocator, which may not be swap-able
   }
 

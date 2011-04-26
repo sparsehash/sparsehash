@@ -810,6 +810,19 @@ TYPED_TEST(HashtableAllTest, Swap) {
   EXPECT_EQ(1u, other_ht.size());
   EXPECT_EQ(1u, this->ht_.count(this->UniqueKey(111)));
   EXPECT_EQ(0u, other_ht.count(this->UniqueKey(111)));
+
+  // A user reported a crash with this code using swap to clear.
+  TypeParam swap_to_clear_ht;
+  swap_to_clear_ht.set_deleted_key(this->UniqueKey(1));
+  for (int i = 2; i < 10000; ++i) {
+    swap_to_clear_ht.insert(this->UniqueObject(i));
+  }
+  TypeParam empty_ht;
+  swap(empty_ht, swap_to_clear_ht);
+  swap_to_clear_ht.set_deleted_key(this->UniqueKey(1));
+  for (int i = 2; i < 10000; ++i) {
+    swap_to_clear_ht.insert(this->UniqueObject(i));
+  }
 }
 
 TYPED_TEST(HashtableAllTest, Size) {

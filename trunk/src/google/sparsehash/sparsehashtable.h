@@ -801,6 +801,9 @@ class sparse_hashtable {
     STL_NAMESPACE::swap(key_info, ht.key_info);
     STL_NAMESPACE::swap(num_deleted, ht.num_deleted);
     table.swap(ht.table);
+    settings.reset_thresholds(bucket_count());  // also resets consider_shrink
+    ht.settings.reset_thresholds(ht.bucket_count());
+    // we purposefully don't swap the allocator, which may not be swap-able
   }
 
   // It's always nice to be able to clear a table without deallocating it
