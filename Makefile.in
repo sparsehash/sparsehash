@@ -1037,8 +1037,8 @@ uninstall-am: uninstall-dist_docDATA uninstall-googleincludeHEADERS \
 # Thus, we create a "minimal" config.h, called sparseconfig.h, that
 # includes only the #defines we really need, and that are unlikely to
 # change from system to system.  NOTE: The awk command is equivalent to
-#    fgrep -B2 -f- $(top_builddir)/src/config.h \
-#    fgrep -vx -e -- > _sparsehash_config
+#  fgrep -B2 -f$(top_builddir)/src/config.h.include $(top_builddir)/src/config.h
+#  | fgrep -vx -e -- > _sparsehash_config
 # For correctness, it depends on the fact config.h.include does not have
 # any lines starting with #.
 src/google/sparsehash/sparseconfig.h: $(top_builddir)/src/config.h \
