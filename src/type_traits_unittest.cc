@@ -28,24 +28,25 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // ----
-// Author: Matt Austern
 
-#include "config.h"
+#include <google/sparsehash/sparseconfig.h>
+#include <config.h>
+ #include "config.h"
+#include <google/type_traits.h>
+
 #include <stdlib.h>   // for exit()
 #include <stdio.h>
-#include <iostream>
 #include <string>
 #include <vector>
-#include <google/type_traits.h>
 #include "testutil.h"
 
 typedef int int32;
 typedef long int64;
 
-using STL_NAMESPACE::string;
-using STL_NAMESPACE::vector;
-using STL_NAMESPACE::pair;
-using STL_NAMESPACE::cout;
+using std::string;
+using std::vector;
+using std::pair;
+
 using GOOGLE_NAMESPACE::add_reference;
 using GOOGLE_NAMESPACE::has_trivial_assign;
 using GOOGLE_NAMESPACE::has_trivial_constructor;
@@ -65,6 +66,7 @@ using GOOGLE_NAMESPACE::remove_cv;
 using GOOGLE_NAMESPACE::remove_pointer;
 using GOOGLE_NAMESPACE::remove_reference;
 using GOOGLE_NAMESPACE::remove_volatile;
+
 
 // This assertion produces errors like "error: invalid use of
 // incomplete type 'struct <unnamed>::AssertTypesEq<const int, int>'"
@@ -557,9 +559,12 @@ TEST(TypeTraitsTest, TestConvertible) {
 
 }  // namespace
 
+#include <iostream>
+
 int main(int, char **) {
   // All the work is done in the static constructors.  If they don't
   // die, the tests have all passed.
-  cout << "PASS\n";
+  std::cout << "PASS\n";
   return 0;
 }
+

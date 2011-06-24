@@ -28,7 +28,10 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // ----
-// Author: Matt Austern
+//
+// This code is compiled directly on many platforms, including client
+// platforms like Windows, Mac, and embedded systems.  Before making
+// any changes here, make sure that you're not breaking any platforms.
 //
 // Define a small subset of tr1 type traits. The traits we define are:
 //   is_integral
@@ -56,6 +59,7 @@
 
 #include <google/sparsehash/sparseconfig.h>
 #include <utility>                  // For pair
+#include <google/sparsehash/sparseconfig.h>
 
 _START_GOOGLE_NAMESPACE_
 
@@ -135,7 +139,6 @@ template<> struct is_integral<unsigned long> : true_type { };
 template<> struct is_integral<long long> : true_type { };
 template<> struct is_integral<unsigned long long> : true_type { };
 #endif
-
 
 // is_floating_point is false except for the built-in floating-point types.
 template <class T> struct is_floating_point : false_type { };
@@ -332,5 +335,6 @@ struct is_convertible
 #endif
 
 _END_GOOGLE_NAMESPACE_
+
 
 #endif  // BASE_TYPE_TRAITS_H_

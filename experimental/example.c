@@ -1,3 +1,4 @@
+#include <google/sparsehash/sparseconfig.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>

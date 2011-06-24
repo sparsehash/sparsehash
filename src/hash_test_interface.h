@@ -27,8 +27,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// ----
-// Author: Craig Silverstein
+// ---
 //
 // This implements a uniform interface for all 6 hash implementations:
 //    dense_hashtable, dense_hash_map, dense_hash_set
@@ -46,15 +45,15 @@
 #ifndef UTIL_GTL_HASH_TEST_INTERFACE_H_
 #define UTIL_GTL_HASH_TEST_INTERFACE_H_
 
-#include "config.h"
-#include HASH_MAP_H    // for hash<>
-#include <functional>  // for equal_to<>
+#include <google/sparsehash/sparseconfig.h>
+#include <functional>          // for equal_to<>
 #include <google/sparsehash/sparsehashtable.h>
 #include <google/sparse_hash_map>
 #include <google/sparse_hash_set>
 #include <google/sparsehash/densehashtable.h>
 #include <google/dense_hash_map>
 #include <google/dense_hash_set>
+#include HASH_FUN_H    // for hash<>
 
 _START_GOOGLE_NAMESPACE_
 
@@ -271,17 +270,18 @@ class BaseHashtableInterface {
 
   size_type count(const key_type& key) const { return ht_.count(key); }
 
-  pair<iterator, iterator> equal_range(const key_type& key) {
-    pair<typename HT::iterator, typename HT::iterator> r
+  std::pair<iterator, iterator> equal_range(const key_type& key) {
+    std::pair<typename HT::iterator, typename HT::iterator> r
         = ht_.equal_range(key);
-    return pair<iterator, iterator>(iterator(r.first, this),
+    return std::pair<iterator, iterator>(iterator(r.first, this),
                                     iterator(r.second, this));
   }
-  pair<const_iterator, const_iterator> equal_range(const key_type& key) const {
-    pair<typename HT::const_iterator, typename HT::const_iterator> r
+  std::pair<const_iterator, const_iterator> equal_range(const key_type& key)
+      const {
+    std::pair<typename HT::const_iterator, typename HT::const_iterator> r
         = ht_.equal_range(key);
-    return pair<const_iterator, const_iterator>(const_iterator(r.first, this),
-                                                const_iterator(r.second, this));
+    return std::pair<const_iterator, const_iterator>(
+        const_iterator(r.first, this), const_iterator(r.second, this));
   }
 
   const_iterator random_element(class ACMRandom* r) const {
@@ -291,9 +291,9 @@ class BaseHashtableInterface {
     return iterator(ht_.random_element(r), this);
   }
 
-  pair<iterator, bool> insert(const value_type& obj) {
-    pair<typename HT::iterator, bool> r = ht_.insert(obj);
-    return pair<iterator, bool>(iterator(r.first, this), r.second);
+  std::pair<iterator, bool> insert(const value_type& obj) {
+    std::pair<typename HT::iterator, bool> r = ht_.insert(obj);
+    return std::pair<iterator, bool>(iterator(r.first, this), r.second);
   }
   template <class InputIterator>
   void insert(InputIterator f, InputIterator l) {
@@ -378,9 +378,9 @@ class BaseHashtableInterface {
 // ---------------------------------------------------------------------
 
 template <class Key, class T,
-          class HashFcn = HASH_NAMESPACE::hash<Key>,
-          class EqualKey = STL_NAMESPACE::equal_to<Key>,
-          class Alloc = libc_allocator_with_realloc<pair<const Key, T> > >
+          class HashFcn = SPARSEHASH_HASH<Key>,
+          class EqualKey = std::equal_to<Key>,
+          class Alloc = libc_allocator_with_realloc<std::pair<const Key, T> > >
 class HashtableInterface_SparseHashMap
     : public BaseHashtableInterface< sparse_hash_map<Key, T, HashFcn,
                                                      EqualKey, Alloc> > {
@@ -456,8 +456,8 @@ void swap(HashtableInterface_SparseHashMap<K,T,H,E,A>& a,
 // ---------------------------------------------------------------------
 
 template <class Value,
-          class HashFcn = HASH_NAMESPACE::hash<Value>,
-          class EqualKey = STL_NAMESPACE::equal_to<Value>,
+          class HashFcn = SPARSEHASH_HASH<Value>,
+          class EqualKey = std::equal_to<Value>,
           class Alloc = libc_allocator_with_realloc<Value> >
 class HashtableInterface_SparseHashSet
     : public BaseHashtableInterface< sparse_hash_set<Value, HashFcn,
@@ -684,9 +684,9 @@ void swap(HashtableInterface_SparseHashtable<V,K,HF,EK,SK,Eq,A>& a,
 // value saying what the empty key is.
 
 template <class Key, class T, const Key& EMPTY_KEY,
-          class HashFcn = HASH_NAMESPACE::hash<Key>,
-          class EqualKey = STL_NAMESPACE::equal_to<Key>,
-          class Alloc = libc_allocator_with_realloc<pair<const Key, T> > >
+          class HashFcn = SPARSEHASH_HASH<Key>,
+          class EqualKey = std::equal_to<Key>,
+          class Alloc = libc_allocator_with_realloc<std::pair<const Key, T> > >
 class HashtableInterface_DenseHashMap
     : public BaseHashtableInterface< dense_hash_map<Key, T, HashFcn,
                                                     EqualKey, Alloc> > {
@@ -776,8 +776,8 @@ void swap(HashtableInterface_DenseHashMap<K,T,Empty,H,E,A>& a,
 // value saying what the empty key is.
 
 template <class Value, const Value& EMPTY_KEY,
-          class HashFcn = HASH_NAMESPACE::hash<Value>,
-          class EqualKey = STL_NAMESPACE::equal_to<Value>,
+          class HashFcn = SPARSEHASH_HASH<Value>,
+          class EqualKey = std::equal_to<Value>,
           class Alloc = libc_allocator_with_realloc<Value> >
 class HashtableInterface_DenseHashSet
     : public BaseHashtableInterface< dense_hash_set<Value, HashFcn,

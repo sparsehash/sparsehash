@@ -28,7 +28,6 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // ---
-// Author: Craig Silverstein
 //
 // A sparse hashtable is a particular implementation of
 // a hashtable: one that is meant to minimize memory use.
@@ -56,7 +55,7 @@
 // the hashtable is insert_only until you set it again.
 //
 // You probably shouldn't use this code directly.  Use
-// <google/sparse_hash_table> or <google/sparse_hash_set> instead.
+// sparse_hash_map<> or sparse_hash_set<> instead.
 //
 // You can modify the following, below:
 // HT_OCCUPANCY_PCT            -- how full before we double size
@@ -96,6 +95,23 @@
 #ifndef _SPARSEHASHTABLE_H_
 #define _SPARSEHASHTABLE_H_
 
+#include <google/sparsehash/sparseconfig.h>
+#include <assert.h>
+#include <algorithm>                 // For swap(), eg
+#include <iterator>                  // for iterator tags
+#include <limits>                    // for numeric_limits
+#include <utility>                   // for pair
+#include <google/type_traits.h>        // for remove_const
+#include <google/sparsehash/hashtable-common.h>
+#include <google/sparsetable>    // IWYU pragma: export
+#include <stdexcept>                 // For length_error
+
+_START_GOOGLE_NAMESPACE_
+
+namespace base {   // just to make google->opensource transition easier
+using GOOGLE_NAMESPACE::remove_const;
+}
+
 #ifndef SPARSEHASH_STAT_UPDATE
 #define SPARSEHASH_STAT_UPDATE(x) ((void) 0)
 #endif
@@ -105,20 +121,6 @@
 // #define JUMP_(key, num_probes)    ( 1 )
 // Quadratic probing
 #define JUMP_(key, num_probes)    ( num_probes )
-
-#include <google/sparsehash/sparseconfig.h>
-#include <assert.h>
-#include <algorithm>              // For swap(), eg
-#include <stdexcept>              // For length_error
-#include <iterator>               // for facts about iterator tags
-#include <limits>                 // for numeric_limits<>
-#include <utility>                // for pair<>
-#include <google/sparsehash/hashtable-common.h>
-#include <google/sparsetable>     // Since that's basically what we are
-
-_START_GOOGLE_NAMESPACE_
-
-using STL_NAMESPACE::pair;
 
 // The smaller this is, the faster lookup is (because the group bitmap is
 // smaller) and the faster insert is, because there's less to move.
@@ -166,7 +168,7 @@ struct sparse_hashtable_iterator {
   typedef typename sparsetable<V,DEFAULT_GROUP_SIZE,A>::nonempty_iterator
       st_iterator;
 
-  typedef STL_NAMESPACE::forward_iterator_tag iterator_category;
+  typedef std::forward_iterator_tag iterator_category;  // very little defined!
   typedef V value_type;
   typedef typename value_alloc_type::difference_type difference_type;
   typedef typename value_alloc_type::size_type size_type;
@@ -218,7 +220,7 @@ struct sparse_hashtable_const_iterator {
   typedef typename sparsetable<V,DEFAULT_GROUP_SIZE,A>::const_nonempty_iterator
       st_iterator;
 
-  typedef STL_NAMESPACE::forward_iterator_tag iterator_category;
+  typedef std::forward_iterator_tag iterator_category;  // very little defined!
   typedef V value_type;
   typedef typename value_alloc_type::difference_type difference_type;
   typedef typename value_alloc_type::size_type size_type;
@@ -272,7 +274,7 @@ struct sparse_hashtable_destructive_iterator {
   typedef typename sparsetable<V,DEFAULT_GROUP_SIZE,A>::destructive_iterator
       st_iterator;
 
-  typedef STL_NAMESPACE::forward_iterator_tag iterator_category;
+  typedef std::forward_iterator_tag iterator_category;  // very little defined!
   typedef V value_type;
   typedef typename value_alloc_type::difference_type difference_type;
   typedef typename value_alloc_type::size_type size_type;
@@ -510,10 +512,15 @@ class sparse_hashtable {
   }
 
  private:
+  void check_use_deleted(const char* caller) {
+    (void)caller;    // could log it if the assert failed
+    assert(settings.use_deleted());
+  }
+
   // Set it so test_deleted is true.  true if object didn't used to be deleted.
   // TODO(csilvers): make these private (also in densehashtable.h)
   bool set_deleted(iterator &it) {
-    assert(settings.use_deleted());
+    check_use_deleted("set_deleted()");
     bool retval = !test_deleted(it);
     // &* converts from iterator to value-type.
     set_key(&(*it), key_info.delkey);
@@ -521,7 +528,7 @@ class sparse_hashtable {
   }
   // Set it so test_deleted is false.  true if object used to be deleted.
   bool clear_deleted(iterator &it) {
-    assert(settings.use_deleted());
+    check_use_deleted("clear_deleted()");
     // Happens automatically when we assign something else in its place.
     return test_deleted(it);
   }
@@ -532,14 +539,14 @@ class sparse_hashtable {
   // 'it' after it's been deleted anyway, so its const-ness doesn't
   // really matter.
   bool set_deleted(const_iterator &it) {
-    assert(settings.use_deleted());   // bad if set_deleted_key() wasn't called
+    check_use_deleted("set_deleted()");
     bool retval = !test_deleted(it);
     set_key(const_cast<pointer>(&(*it)), key_info.delkey);
     return retval;
   }
   // Set it so test_deleted is false.  true if object used to be deleted.
   bool clear_deleted(const_iterator &it) {
-    assert(settings.use_deleted());   // bad if set_deleted_key() wasn't called
+    check_use_deleted("clear_deleted()");
     return test_deleted(it);
   }
 
@@ -602,8 +609,9 @@ class sparse_hashtable {
         did_resize = true;
     }
     if (table.num_nonempty() >=
-        (STL_NAMESPACE::numeric_limits<size_type>::max)() - delta)
+        (std::numeric_limits<size_type>::max)() - delta) {
       throw std::length_error("resize overflow");
+    }
     if ( bucket_count() >= HT_MIN_BUCKETS &&
          (table.num_nonempty() + delta) <= settings.enlarge_threshold() )
       return did_resize;                       // we're ok as we are
@@ -623,7 +631,7 @@ class sparse_hashtable {
         settings.min_buckets(table.num_nonempty() - num_deleted + delta,
                              bucket_count());
     if (resize_to < needed_size &&    // may double resize_to
-        resize_to < (STL_NAMESPACE::numeric_limits<size_type>::max)() / 2) {
+        resize_to < (std::numeric_limits<size_type>::max)() / 2) {
       // This situation means that we have enough deleted elements,
       // that once we purge them, we won't actually have needed to
       // grow.  But we may want to grow anyway: if we just purge one
@@ -797,9 +805,9 @@ class sparse_hashtable {
 
   // Many STL algorithms use swap instead of copy constructors
   void swap(sparse_hashtable& ht) {
-    STL_NAMESPACE::swap(settings, ht.settings);
-    STL_NAMESPACE::swap(key_info, ht.key_info);
-    STL_NAMESPACE::swap(num_deleted, ht.num_deleted);
+    std::swap(settings, ht.settings);
+    std::swap(key_info, ht.key_info);
+    std::swap(num_deleted, ht.num_deleted);
     table.swap(ht.table);
     settings.reset_thresholds(bucket_count());  // also resets consider_shrink
     ht.settings.reset_thresholds(ht.bucket_count());
@@ -822,7 +830,7 @@ class sparse_hashtable {
   // if object is not found; 2nd is ILLEGAL_BUCKET if it is.
   // Note: because of deletions where-to-insert is not trivial: it's the
   // first deleted bucket we see, as long as we don't find the key later
-  pair<size_type, size_type> find_position(const key_type &key) const {
+  std::pair<size_type, size_type> find_position(const key_type &key) const {
     size_type num_probes = 0;              // how many times we've probed
     const size_type bucket_count_minus_one = bucket_count() - 1;
     size_type bucknum = hash(key) & bucket_count_minus_one;
@@ -832,9 +840,9 @@ class sparse_hashtable {
       if ( !table.test(bucknum) ) {        // bucket is empty
         SPARSEHASH_STAT_UPDATE(total_probes += num_probes);
         if ( insert_pos == ILLEGAL_BUCKET )  // found no prior place to insert
-          return pair<size_type,size_type>(ILLEGAL_BUCKET, bucknum);
+          return std::pair<size_type,size_type>(ILLEGAL_BUCKET, bucknum);
         else
-          return pair<size_type,size_type>(ILLEGAL_BUCKET, insert_pos);
+          return std::pair<size_type,size_type>(ILLEGAL_BUCKET, insert_pos);
 
       } else if ( test_deleted(bucknum) ) {// keep searching, but mark to insert
         if ( insert_pos == ILLEGAL_BUCKET )
@@ -842,7 +850,7 @@ class sparse_hashtable {
 
       } else if ( equals(key, get_key(table.unsafe_get(bucknum))) ) {
         SPARSEHASH_STAT_UPDATE(total_probes += num_probes);
-        return pair<size_type,size_type>(bucknum, ILLEGAL_BUCKET);
+        return std::pair<size_type,size_type>(bucknum, ILLEGAL_BUCKET);
       }
       ++num_probes;                        // we're doing another probe
       bucknum = (bucknum + JUMP_(key, num_probes)) & bucket_count_minus_one;
@@ -852,9 +860,10 @@ class sparse_hashtable {
   }
 
  public:
+
   iterator find(const key_type& key) {
     if ( size() == 0 ) return end();
-    pair<size_type, size_type> pos = find_position(key);
+    std::pair<size_type, size_type> pos = find_position(key);
     if ( pos.first == ILLEGAL_BUCKET )     // alas, not there
       return end();
     else
@@ -863,7 +872,7 @@ class sparse_hashtable {
 
   const_iterator find(const key_type& key) const {
     if ( size() == 0 ) return end();
-    pair<size_type, size_type> pos = find_position(key);
+    std::pair<size_type, size_type> pos = find_position(key);
     if ( pos.first == ILLEGAL_BUCKET )     // alas, not there
       return end();
     else
@@ -874,33 +883,34 @@ class sparse_hashtable {
   // This is a tr1 method: the bucket a given key is in, or what bucket
   // it would be put in, if it were to be inserted.  Shrug.
   size_type bucket(const key_type& key) const {
-    pair<size_type, size_type> pos = find_position(key);
+    std::pair<size_type, size_type> pos = find_position(key);
     return pos.first == ILLEGAL_BUCKET ? pos.second : pos.first;
   }
 
   // Counts how many elements have key key.  For maps, it's either 0 or 1.
   size_type count(const key_type &key) const {
-    pair<size_type, size_type> pos = find_position(key);
+    std::pair<size_type, size_type> pos = find_position(key);
     return pos.first == ILLEGAL_BUCKET ? 0 : 1;
   }
 
   // Likewise, equal_range doesn't really make sense for us.  Oh well.
-  pair<iterator,iterator> equal_range(const key_type& key) {
+  std::pair<iterator,iterator> equal_range(const key_type& key) {
     iterator pos = find(key);      // either an iterator or end
     if (pos == end()) {
-      return pair<iterator,iterator>(pos, pos);
+      return std::pair<iterator,iterator>(pos, pos);
     } else {
       const iterator startpos = pos++;
-      return pair<iterator,iterator>(startpos, pos);
+      return std::pair<iterator,iterator>(startpos, pos);
     }
   }
-  pair<const_iterator,const_iterator> equal_range(const key_type& key) const {
+  std::pair<const_iterator,const_iterator> equal_range(const key_type& key)
+      const {
     const_iterator pos = find(key);      // either an iterator or end
     if (pos == end()) {
-      return pair<const_iterator,const_iterator>(pos, pos);
+      return std::pair<const_iterator,const_iterator>(pos, pos);
     } else {
       const const_iterator startpos = pos++;
-      return pair<const_iterator,const_iterator>(startpos, pos);
+      return std::pair<const_iterator,const_iterator>(startpos, pos);
     }
   }
 
@@ -909,8 +919,9 @@ class sparse_hashtable {
  private:
   // Private method used by insert_noresize and find_or_insert.
   iterator insert_at(const_reference obj, size_type pos) {
-    if (size() >= max_size())
+    if (size() >= max_size()) {
       throw std::length_error("insert overflow");
+    }
     if ( test_deleted(pos) ) {      // just replace if it's been deleted
       // The set() below will undelete this object.  We just worry about stats
       assert(num_deleted > 0);
@@ -921,27 +932,28 @@ class sparse_hashtable {
   }
 
   // If you know *this is big enough to hold obj, use this routine
-  pair<iterator, bool> insert_noresize(const_reference obj) {
+  std::pair<iterator, bool> insert_noresize(const_reference obj) {
     // First, double-check we're not inserting delkey
     assert((!settings.use_deleted() || !equals(get_key(obj), key_info.delkey))
            && "Inserting the deleted key");
-    const pair<size_type,size_type> pos = find_position(get_key(obj));
+    const std::pair<size_type,size_type> pos = find_position(get_key(obj));
     if ( pos.first != ILLEGAL_BUCKET) {      // object was already there
-      return pair<iterator,bool>(iterator(this, table.get_iter(pos.first),
-                                          table.nonempty_end()),
-                                 false);          // false: we didn't insert
+      return std::pair<iterator,bool>(iterator(this, table.get_iter(pos.first),
+                                               table.nonempty_end()),
+                                      false);     // false: we didn't insert
     } else {                                 // pos.second says where to put it
-      return pair<iterator,bool>(insert_at(obj, pos.second), true);
+      return std::pair<iterator,bool>(insert_at(obj, pos.second), true);
     }
   }
 
   // Specializations of insert(it, it) depending on the power of the iterator:
   // (1) Iterator supports operator-, resize before inserting
   template <class ForwardIterator>
-  void insert(ForwardIterator f, ForwardIterator l, STL_NAMESPACE::forward_iterator_tag) {
-    size_t dist = STL_NAMESPACE::distance(f, l);
-    if (dist >= (std::numeric_limits<size_type>::max)())
+  void insert(ForwardIterator f, ForwardIterator l, std::forward_iterator_tag) {
+    size_t dist = std::distance(f, l);
+    if (dist >= (std::numeric_limits<size_type>::max)()) {
       throw std::length_error("insert-range overflow");
+    }
     resize_delta(static_cast<size_type>(dist));
     for ( ; dist > 0; --dist, ++f) {
       insert_noresize(*f);
@@ -950,14 +962,14 @@ class sparse_hashtable {
 
   // (2) Arbitrary iterator, can't tell how much to resize
   template <class InputIterator>
-  void insert(InputIterator f, InputIterator l, STL_NAMESPACE::input_iterator_tag) {
+  void insert(InputIterator f, InputIterator l, std::input_iterator_tag) {
     for ( ; f != l; ++f)
       insert(*f);
   }
 
  public:
   // This is the normal insert routine, used by the outside world
-  pair<iterator, bool> insert(const_reference obj) {
+  std::pair<iterator, bool> insert(const_reference obj) {
     resize_delta(1);                      // adding an object, grow if need be
     return insert_noresize(obj);
   }
@@ -966,7 +978,8 @@ class sparse_hashtable {
   template <class InputIterator>
   void insert(InputIterator f, InputIterator l) {
     // specializes on iterator type
-    insert(f, l, typename STL_NAMESPACE::iterator_traits<InputIterator>::iterator_category());
+    insert(f, l,
+           typename std::iterator_traits<InputIterator>::iterator_category());
   }
 
   // DefaultValue is a functor that takes a key and returns a value_type
@@ -976,7 +989,7 @@ class sparse_hashtable {
     // First, double-check we're not inserting delkey
     assert((!settings.use_deleted() || !equals(key, key_info.delkey))
            && "Inserting the deleted key");
-    const pair<size_type,size_type> pos = find_position(key);
+    const std::pair<size_type,size_type> pos = find_position(key);
     DefaultValue default_value;
     if ( pos.first != ILLEGAL_BUCKET) {  // object was already there
       return *table.get_iter(pos.first);
@@ -1078,12 +1091,20 @@ class sparse_hashtable {
   // actually put in the hashtable!  Alas, since I don't know how to
   // write a hasher or key_equal, you have to make sure everything
   // but the table is the same.  We compact before writing.
-  bool write_metadata(FILE *fp) {
+  //
+  // The OUTPUT type needs to support a Write() operation. File and
+  // OutputBuffer are appropriate types to pass in.
+  //
+  // The INPUT type needs to support a Read() operation. File and
+  // InputBuffer are appropriate types to pass in.
+  template <typename OUTPUT>
+  bool write_metadata(OUTPUT *fp) {
     squash_deleted();           // so we don't have to worry about delkey
     return table.write_metadata(fp);
   }
 
-  bool read_metadata(FILE *fp) {
+  template <typename INPUT>
+  bool read_metadata(INPUT *fp) {
     num_deleted = 0;            // since we got rid before writing
     bool result = table.read_metadata(fp);
     settings.reset_thresholds(bucket_count());
@@ -1091,12 +1112,14 @@ class sparse_hashtable {
   }
 
   // Only meaningful if value_type is a POD.
-  bool write_nopointer_data(FILE *fp) {
+  template <typename OUTPUT>
+  bool write_nopointer_data(OUTPUT *fp) {
     return table.write_nopointer_data(fp);
   }
 
   // Only meaningful if value_type is a POD.
-  bool read_nopointer_data(FILE *fp) {
+  template <typename INPUT>
+  bool read_nopointer_data(INPUT *fp) {
     return table.read_nopointer_data(fp);
   }
 
@@ -1117,12 +1140,12 @@ class sparse_hashtable {
 
   // KeyInfo stores delete key and packages zero-size functors:
   // ExtractKey and SetKey.
-  class KeyInfo : public ExtractKey, public SetKey, public key_equal {
+  class KeyInfo : public ExtractKey, public SetKey, public EqualKey {
    public:
-    KeyInfo(const ExtractKey& ek, const SetKey& sk, const key_equal& eq)
+    KeyInfo(const ExtractKey& ek, const SetKey& sk, const EqualKey& eq)
         : ExtractKey(ek),
           SetKey(sk),
-          key_equal(eq) {
+          EqualKey(eq) {
     }
     // We want to return the exact same type as ExtractKey: Key or const Key&
     typename ExtractKey::result_type get_key(const_reference v) const {
@@ -1132,12 +1155,12 @@ class sparse_hashtable {
       SetKey::operator()(v, k);
     }
     bool equals(const key_type& a, const key_type& b) const {
-      return key_equal::operator()(a, b);
+      return EqualKey::operator()(a, b);
     }
 
     // Which key marks deleted entries.
     // TODO(csilvers): make a pointer, and get rid of use_deleted (benchmark!)
-    typename remove_const<key_type>::type delkey;
+    typename base::remove_const<key_type>::type delkey;
   };
 
   // Utility functions to access the templated operators

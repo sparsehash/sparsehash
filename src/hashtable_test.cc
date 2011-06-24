@@ -27,35 +27,31 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// ----
-// Author: Craig Silverstein
+// ---
 //
-// This tests common/densehashtable.h
-// This tests common/dense_hash_set.h
-// This tests common/dense_hash_map.h
-// This tests common/sparsehashtable.h
-// This tests common/sparse_hash_set.h
-// This tests common/sparse_hash_map.h
+// This tests densehashtable
+// This tests dense_hash_set
+// This tests dense_hash_map
+// This tests sparsehashtable
+// This tests sparse_hash_set
+// This tests sparse_hash_map
 //
-// This test replacess hashtable_unittest.cc, which was becoming
-// unreadable.
+// This test replaces hashtable_unittest.cc, which was becoming
+// unreadable.  This file is opaque but hopefully not unreadable -- at
+// least, not the tests!
 //
 // Note that since all these classes are templatized, it's important
 // to call every public method on the class: not just to make sure
 // they work, but to make sure they even compile.
 
-#ifdef _MSC_VER
-// Below, we purposefully test having a very small allocator size.
-// This causes some "type conversion too small" errors when using this
-// allocator with sparsetable buckets.  We're testing to make sure we
-// handle that situation ok, so we don't need the compiler warnings.
-#pragma warning(disable:4244)
-#endif
-
-#include "config.h"
+#include <google/sparsehash/sparseconfig.h>
+#include <config.h>
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef HAVE_STDINT_H
+# include <stdint.h>
+#endif   // for uintptr_t
 #include <iostream>
 #include <set>
 #include <typeinfo>   // for class typeinfo (returned by typeid)
@@ -64,24 +60,34 @@
 #include <google/sparsetable>
 #include "hash_test_interface.h"
 #include "testutil.h"
+namespace testing = GOOGLE_NAMESPACE::testing;
 
-using GOOGLE_NAMESPACE::sparsetable;
-using GOOGLE_NAMESPACE::sparse_hash_map;
-using GOOGLE_NAMESPACE::sparse_hash_set;
+using std::cout;
+using std::pair;
+using std::set;
+using std::string;
+using std::vector;
 using GOOGLE_NAMESPACE::dense_hash_map;
 using GOOGLE_NAMESPACE::dense_hash_set;
+using GOOGLE_NAMESPACE::sparse_hash_map;
+using GOOGLE_NAMESPACE::sparse_hash_set;
+using GOOGLE_NAMESPACE::sparsetable;
 using GOOGLE_NAMESPACE::HashtableInterface_SparseHashMap;
 using GOOGLE_NAMESPACE::HashtableInterface_SparseHashSet;
 using GOOGLE_NAMESPACE::HashtableInterface_SparseHashtable;
 using GOOGLE_NAMESPACE::HashtableInterface_DenseHashMap;
 using GOOGLE_NAMESPACE::HashtableInterface_DenseHashSet;
 using GOOGLE_NAMESPACE::HashtableInterface_DenseHashtable;
-namespace testing = GOOGLE_NAMESPACE::testing;
-using STL_NAMESPACE::cout;
-using STL_NAMESPACE::pair;
-using STL_NAMESPACE::set;
-using STL_NAMESPACE::string;
-using STL_NAMESPACE::vector;
+
+typedef unsigned char uint8;
+
+#ifdef _MSC_VER
+// Below, we purposefully test having a very small allocator size.
+// This causes some "type conversion too small" errors when using this
+// allocator with sparsetable buckets.  We're testing to make sure we
+// handle that situation ok, so we don't need the compiler warnings.
+#pragma warning(disable:4244)
+#endif
 
 namespace {
 
@@ -92,12 +98,11 @@ static string TmpFile(const char* basename) {
 }
 # else
 static string TmpFile(const char* basename) {
-  return string("/tmp/") + basename;
+  string kTmpdir = "/tmp";
+  return kTmpdir + "/" + basename;
 }
 # endif
 #endif
-
-typedef unsigned char uint8;
 
 // Used as a value in some of the hashtable tests.  It's just some
 // arbitrary user-defined type with non-trivial memory management.
@@ -167,6 +172,10 @@ struct Hasher {
     for (size_t i = 0; i < a.length(); i++ )
       hash = 33 * hash + a[i];
     return hash;
+  }
+  size_t operator()(const int* a) const {
+    num_hashes_++;
+    return static_cast<size_t>(reinterpret_cast<uintptr_t>(a));
   }
   bool operator()(int a, int b) const {
     num_compares_++;
@@ -339,7 +348,7 @@ template<> pair<const char* const,ValueType> UniqueObjectHelper(int index) {
 }
 
 template <typename HashtableType>
-class HashtableTest {
+class HashtableTest : public ::testing::Test {
  public:
   HashtableTest() : ht_() { }
   // Give syntactically-prettier access to UniqueObjectHelper.
@@ -429,26 +438,56 @@ namespace {
 // We need to define the same class 4 times due to limitations in the
 // testing framework.  Basically, we associate each class below with
 // the set of types we want to run tests on it with.
-typedef testing::TypeList6<INT_HASHTABLES> IntHashtables;
 template <typename HashtableType> class HashtableIntTest
     : public HashtableTest<HashtableType> { };
-TYPED_TEST_CASE_6(HashtableIntTest, IntHashtables);
-
-typedef testing::TypeList6<STRING_HASHTABLES> StringHashtables;
 template <typename HashtableType> class HashtableStringTest
     : public HashtableTest<HashtableType> { };
-TYPED_TEST_CASE_6(HashtableStringTest, StringHashtables);
-
-typedef testing::TypeList6<CHARSTAR_HASHTABLES> CharStarHashtables;
 template <typename HashtableType> class HashtableCharStarTest
     : public HashtableTest<HashtableType> { };
-TYPED_TEST_CASE_6(HashtableCharStarTest, CharStarHashtables);
-
-typedef testing::TypeList18<INT_HASHTABLES, STRING_HASHTABLES,
-                            CHARSTAR_HASHTABLES> AllHashtables;
 template <typename HashtableType> class HashtableAllTest
     : public HashtableTest<HashtableType> { };
+
+typedef testing::TypeList6<INT_HASHTABLES> IntHashtables;
+typedef testing::TypeList6<STRING_HASHTABLES> StringHashtables;
+typedef testing::TypeList6<CHARSTAR_HASHTABLES> CharStarHashtables;
+typedef testing::TypeList18<INT_HASHTABLES, STRING_HASHTABLES,
+                            CHARSTAR_HASHTABLES> AllHashtables;
+
+TYPED_TEST_CASE_6(HashtableIntTest, IntHashtables);
+TYPED_TEST_CASE_6(HashtableStringTest, StringHashtables);
+TYPED_TEST_CASE_6(HashtableCharStarTest, CharStarHashtables);
 TYPED_TEST_CASE_18(HashtableAllTest, AllHashtables);
+
+// ------------------------------------------------------------------------
+// First, some testing of the underlying infrastructure.
+
+TEST(HashtableCommonTest, HashMunging) {
+  const Hasher hasher;
+
+  // We don't munge the hash value on non-pointer template types.
+  {
+    const sh_hashtable_settings<int, Hasher, size_t, 1>
+        settings(hasher, 0.0, 0.0);
+    const int v = 1000;
+    EXPECT_EQ(hasher(v), settings.hash(v));
+  }
+
+  {
+    // We do munge the hash value on pointer template types.
+    const sh_hashtable_settings<int*, Hasher, size_t, 1>
+        settings(hasher, 0.0, 0.0);
+    int* v = NULL;
+    v += 0x10000;    // get a non-trivial pointer value
+    EXPECT_NE(hasher(v), settings.hash(v));
+  }
+  {
+    const sh_hashtable_settings<const int*, Hasher, size_t, 1>
+        settings(hasher, 0.0, 0.0);
+    const int* v = NULL;
+    v += 0x10000;    // get a non-trivial pointer value
+    EXPECT_NE(hasher(v), settings.hash(v));
+  }
+}
 
 // ------------------------------------------------------------------------
 // If the first arg to TYPED_TEST is HashtableIntTest, it will run
@@ -793,7 +832,7 @@ TYPED_TEST(HashtableAllTest, Swap) {
 
   // We purposefully don't swap allocs -- they're not necessarily swappable.
 
-  // Now swap back, using the free-function swap.
+  // Now swap back, using the free-function swap
   // NOTE: MSVC seems to have trouble with this free swap, not quite
   // sure why.  I've given up trying to fix it though.
 #ifdef _MSC_VER
@@ -812,13 +851,14 @@ TYPED_TEST(HashtableAllTest, Swap) {
   EXPECT_EQ(0u, other_ht.count(this->UniqueKey(111)));
 
   // A user reported a crash with this code using swap to clear.
+  // We've since fixed the bug; this prevents a regression.
   TypeParam swap_to_clear_ht;
   swap_to_clear_ht.set_deleted_key(this->UniqueKey(1));
   for (int i = 2; i < 10000; ++i) {
     swap_to_clear_ht.insert(this->UniqueObject(i));
   }
   TypeParam empty_ht;
-  swap(empty_ht, swap_to_clear_ht);
+  empty_ht.swap(swap_to_clear_ht);
   swap_to_clear_ht.set_deleted_key(this->UniqueKey(1));
   for (int i = 2; i < 10000; ++i) {
     swap_to_clear_ht.insert(this->UniqueObject(i));
@@ -1097,6 +1137,7 @@ TYPED_TEST(HashtableAllTest, BracketInsert) {
   ht.bracket_assign(this->UniqueKey(2), ht.get_data(this->UniqueObject(2)));
   EXPECT_EQ(2, ht.hash_funct().num_hashes());
 }
+
 
 TYPED_TEST(HashtableAllTest, InsertValue) {
   // First, try some straightforward insertions.
@@ -1619,20 +1660,12 @@ TEST(HashtableTest, NestedHashtables) {
 
 TEST(HashtableDeathTest, ResizeOverflow) {
   dense_hash_map<int, int> ht;
-  try {
-    ht.resize(static_cast<size_t>(-1));
-    EXPECT_TRUE(false && "dense_hash_map reszie should have failed");
-  } catch (const STL_NAMESPACE::length_error&) {
-    // Good, the resize failed.
-  }
+  EXPECT_DEATH(ht.resize(static_cast<size_t>(-1)),
+               "overflows size_type");
 
   sparse_hash_map<int, int> ht2;
-  try {
-    ht2.resize(static_cast<size_t>(-1));
-    EXPECT_TRUE(false && "sparse_hash_map reszie should have failed");
-  } catch (const STL_NAMESPACE::length_error&) {
-    // Good, the resize failed.
-  }
+  EXPECT_DEATH(ht2.resize(static_cast<size_t>(-1)),
+               "overflows size_type");
 }
 
 TEST(HashtableDeathTest, InsertSizeTypeOverflow) {
@@ -1651,18 +1684,10 @@ TEST(HashtableDeathTest, InsertSizeTypeOverflow) {
   EXPECT_TRUE(dhs.get_allocator().is_custom_alloc());
 
   // Test size_type overflow in insert(it, it)
-  try {
-    dhs.insert(test_data.begin(), test_data.end());
-    EXPECT_TRUE(false && "dense_hash_map::insert(it,it) should have overflown");
-  } catch (const STL_NAMESPACE::length_error&) {
-    // Good, the operation failed.
-  }
-  try {
-    shs.insert(test_data.begin(), test_data.end());
-    EXPECT_TRUE(false && "sparse_hash_map::insert(it,it) should have overflown");
-  } catch (const STL_NAMESPACE::length_error&) {
-    // Good, the operation failed.
-  }
+  EXPECT_DEATH(dhs.insert(test_data.begin(), test_data.end()),
+               "overflows size_type");
+  EXPECT_DEATH(shs.insert(test_data.begin(), test_data.end()),
+               "overflows size_type");
 }
 
 TEST(HashtableDeathTest, InsertMaxSizeOverflow) {
@@ -1677,18 +1702,10 @@ TEST(HashtableDeathTest, InsertMaxSizeOverflow) {
   dhs.set_empty_key(-1);
 
   // Test max_size overflow
-  try {
-    dhs.insert(test_data.begin(), test_data.begin() + 11);
-    EXPECT_TRUE(false && "dense_hash_map max_size check should have failed");
-  } catch (const STL_NAMESPACE::length_error&) {
-    // Good, the operation failed.
-  }
-  try {
-    shs.insert(test_data.begin(), test_data.begin() + 11);
-    EXPECT_TRUE(false && "sparse_hash_map max_size check should have failed");
-  } catch (const STL_NAMESPACE::length_error&) {
-    // Good, the operation failed.
-  }
+  EXPECT_DEATH(dhs.insert(test_data.begin(), test_data.begin() + 11),
+               "exceed max_size");
+  EXPECT_DEATH(shs.insert(test_data.begin(), test_data.begin() + 11),
+               "exceed max_size");
 }
 
 TEST(HashtableDeathTest, ResizeSizeTypeOverflow) {
@@ -1697,18 +1714,8 @@ TEST(HashtableDeathTest, ResizeSizeTypeOverflow) {
   dense_hash_set<int, Hasher, Hasher, Alloc<int, uint8, 10> > dhs;
   dhs.set_empty_key(-1);
 
-  try {
-    dhs.resize(250);  // 9+250 > 25
-    EXPECT_TRUE(false && "dense_hash_map resize should have seen overflow");
-  } catch (const STL_NAMESPACE::length_error&) {
-    // Good, the operation failed.
-  }
-  try {
-    shs.resize(250);
-    EXPECT_TRUE(false && "sparse_hash_map resize should have seen overflow");
-  } catch (const STL_NAMESPACE::length_error&) {
-    // Good, the operation failed.
-  }
+  EXPECT_DEATH(dhs.resize(250), "overflows size_type");  // 9+250 > 256
+  EXPECT_DEATH(shs.resize(250), "overflows size_type");
 }
 
 TEST(HashtableDeathTest, ResizeDeltaOverflow) {
@@ -1725,18 +1732,10 @@ TEST(HashtableDeathTest, ResizeDeltaOverflow) {
     dhs.insert(i);
     shs.insert(i);
   }
-  try {
-    dhs.insert(test_data.begin(), test_data.begin() + 250);
-    EXPECT_TRUE(false && "dense_hash_map big insert should have overflowed");
-  } catch (const STL_NAMESPACE::length_error&) {
-    // Good, the operation failed.
-  }
-  try {
-    shs.insert(test_data.begin(), test_data.begin() + 250);
-    EXPECT_TRUE(false && "sparse_hash_map big insert should have overflowed");
-  } catch (const STL_NAMESPACE::length_error&) {
-    // Good, the operation failed.
-  }
+  EXPECT_DEATH(dhs.insert(test_data.begin(), test_data.begin() + 250),
+               "overflows size_type");              // 9+250 > 256
+  EXPECT_DEATH(shs.insert(test_data.begin(), test_data.begin() + 250),
+               "overflows size_type");
 }
 
 // ------------------------------------------------------------------------
@@ -1744,8 +1743,8 @@ TEST(HashtableDeathTest, ResizeDeltaOverflow) {
 // Also, benchmarks.
 
 TYPED_TEST(HashtableAllTest, ClassSizes) {
-  cout << "sizeof(" << typeid(TypeParam).name() << "): "
-       << sizeof(this->ht_) << "\n";
+  std::cout << "sizeof(" << typeid(TypeParam).name() << "): "
+            << sizeof(this->ht_) << "\n";
 }
 
 }  // unnamed namespace

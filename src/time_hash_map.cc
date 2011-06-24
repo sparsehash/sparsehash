@@ -1,6 +1,6 @@
 // Copyright (c) 2005, Google Inc.
 // All rights reserved.
-// 
+//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
@@ -14,7 +14,7 @@
 //     * Neither the name of Google Inc. nor the names of its
 // contributors may be used to endorse or promote products derived from
 // this software without specific prior written permission.
-// 
+//
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 // "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
 // LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -29,8 +29,13 @@
 
 // ---
 // Authors: Sanjay Ghemawat and Craig Silverstein
-//
+
 // Time various hash map implementations
+//
+// Below, times are per-call.  "Memory use" is "bytes in use by
+// application" as reported by tcmalloc, compared before and after the
+// function call.  This does not really report fragmentation, which is
+// not bad for the sparse* routines but bad for the dense* ones.
 //
 // The tests generally yield best-case performance because the
 // code uses sequential keys; on the other hand, "map_fetch_random" does
@@ -49,44 +54,43 @@
 //
 // See PERFORMANCE for the output of one example run.
 
-#include "config.h"
+#include <google/sparsehash/sparseconfig.h>
+#include <config.h>
+#ifdef HAVE_INTTYPES_H
+# include <inttypes.h>
+#endif         // for uintptr_t
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 extern "C" {
 #include <time.h>
 #ifdef HAVE_SYS_TIME_H
-#include <sys/time.h>
+# include <sys/time.h>
 #endif
 #ifdef HAVE_SYS_RESOURCE_H
-#include <sys/resource.h>
+# include <sys/resource.h>
 #endif
 #ifdef HAVE_SYS_UTSNAME_H
-#include <sys/utsname.h>      // for uname()
-#endif
-#ifdef HAVE_WINDOWS_H
-#include <Windows.h>          // for GetTickCount()
-#endif
+# include <sys/utsname.h>
+#endif      // for uname()
 }
-
-#include <algorithm>  // for swap()
-#include <vector>
-using STL_NAMESPACE::swap;
-using STL_NAMESPACE::vector;
 
 // The functions that we call on each map, that differ for different types.
 // By default each is a noop, but we redefine them for types that need them.
 
 #include <map>
 #include HASH_MAP_H
+#include <algorithm>
+#include <vector>
 #include <google/type_traits.h>
-
-#include <google/sparse_hash_map>
-using GOOGLE_NAMESPACE::sparse_hash_map;
-
 #include <google/dense_hash_map>
-using GOOGLE_NAMESPACE::dense_hash_map;
+#include <google/sparse_hash_map>
 
+using std::map;
+using std::swap;
+using std::vector;
+using GOOGLE_NAMESPACE::dense_hash_map;
+using GOOGLE_NAMESPACE::sparse_hash_map;
 
 static bool FLAGS_test_sparse_hash_map = true;
 static bool FLAGS_test_dense_hash_map = true;
@@ -98,54 +102,81 @@ static bool FLAGS_test_8_bytes = true;
 static bool FLAGS_test_16_bytes = true;
 static bool FLAGS_test_256_bytes = true;
 
+#if defined(HAVE_UNORDERED_MAP)
+using HASH_NAMESPACE::unordered_map;
+#elif defined(HAVE_HASH_MAP) || defined(_MSC_VER)
+using HASH_NAMESPACE::hash_map;
+#endif
+
 static const int kDefaultIters = 10000000;
 
-// Normally I don't like non-const references, but using them here ensures
-// the inlined code ends up as efficient as possible.
+// A version of each of the hashtable classes we test, that has been
+// augumented to provide a common interface.  For instance, the
+// sparse_hash_map and dense_hash_map versions set empty-key and
+// deleted-key (we can do this because all our tests use int-like
+// keys), so the users don't have to.  The hash_map version adds
+// resize(), so users can just call resize() for all tests without
+// worrying about whether the map-type supports it or not.
 
-// These are operations that are supported on some hash impls but not others
-template<class MapType> inline void SET_DELETED_KEY(MapType&, int /*key*/) {}
-template<class MapType> inline void SET_EMPTY_KEY(MapType&, int /*key*/) {}
-template<class MapType> inline void RESIZE(MapType&, int /*iters*/) {}
+template<typename K, typename V, typename H>
+class EasyUseSparseHashMap : public sparse_hash_map<K,V,H> {
+ public:
+  EasyUseSparseHashMap() {
+    this->set_deleted_key(-1);
+  }
+};
 
-template<class K, class V, class H, class E, class A>
-inline void SET_DELETED_KEY(sparse_hash_map<K,V,H,E,A>& m, int key) {
-  m.set_deleted_key(key);
-}
-template<class K, class V, class H, class E, class A>
-inline void SET_DELETED_KEY(dense_hash_map<K,V,H,E,A>& m, int key) {
-  m.set_deleted_key(key);
-}
+template<typename K, typename V, typename H>
+class EasyUseDenseHashMap : public dense_hash_map<K,V,H> {
+ public:
+  EasyUseDenseHashMap() {
+    this->set_empty_key(-1);
+    this->set_deleted_key(-2);
+  }
+};
 
-template<class K, class V, class H, class E, class A>
-inline void SET_EMPTY_KEY(dense_hash_map<K,V,H,E,A>& m, int key) {
-  m.set_empty_key(key);
-}
+// For pointers, we only set the empty key.
+template<typename K, typename V, typename H>
+class EasyUseSparseHashMap<K*, V, H> : public sparse_hash_map<K*,V,H> {
+ public:
+  EasyUseSparseHashMap() { }
+};
 
-template<class K, class V, class H, class E, class A>
-inline void RESIZE(sparse_hash_map<K,V,H,E,A>& m, int iters) {
-  m.resize(iters);
-}
-template<class K, class V, class H, class E, class A>
-inline void RESIZE(dense_hash_map<K,V,H,E,A>& m, int iters) {
-  m.resize(iters);
-}
+template<typename K, typename V, typename H>
+class EasyUseDenseHashMap<K*, V, H> : public dense_hash_map<K*,V,H> {
+ public:
+  EasyUseDenseHashMap() {
+    this->set_empty_key((K*)(~0));
+  }
+};
+
 #if defined(HAVE_UNORDERED_MAP)
-template<class K, class V, class H, class E, class A>
-inline void RESIZE(HASH_NAMESPACE::unordered_map<K,V,H,E,A>& m, int iters) {
-  m.rehash(iters);   // the tr1 name for resize()
-}
+template<typename K, typename V, typename H>
+class EasyUseHashMap : public unordered_map<K,V,H> {
+ public:
+  // resize() is called rehash() in tr1
+  void resize(size_t r) { this->rehash(r); }
+};
 #elif defined(_MSC_VER)
-// MSVC/Dinkumware hash impl has fewer template args, and no resize support.
-template<class K, class V, class H, class A>
-inline void RESIZE(HASH_NAMESPACE::hash_map<K,V,H,A>& m, int iters) {
-}
+template<typename K, typename V, typename H>
+class EasyUseHashMap : public hash_map<K,V,H> {
+ public:
+  void resize(size_t r) { }
+};
 #elif defined(HAVE_HASH_MAP)
-template<class K, class V, class H, class E, class A>
-inline void RESIZE(HASH_NAMESPACE::hash_map<K,V,H,E,A>& m, int iters) {
-  m.resize(iters);
-}
-#endif  // HAVE_HASH_MAP
+template<typename K, typename V, typename H>
+class EasyUseHashMap : public hash_map<K,V,H> {
+ public:
+  // Don't need to do anything: hash_map is already easy to use!
+};
+#endif
+
+template<typename K, typename V>
+class EasyUseMap : public map<K,V> {
+ public:
+  void resize(size_t) { }   // map<> doesn't support resize
+};
+
 
 // Returns the number of hashes that have been done since the last
 // call to NumHashesSinceLastCall().  This is shared across all
@@ -194,7 +225,7 @@ template<int Size, int Hashsize> class HashObject {
     for (size_t i = 0; i < Hashsize - sizeof(i_); ++i) {
       hashval += buffer_[i];
     }
-    return SPARSEHASH_HASH<int>()(hashval);   // defined in sparseconfig.h
+    return SPARSEHASH_HASH<int>()(hashval);
   }
 
   bool operator==(const class_type& that) const { return this->i_ == that.i_; }
@@ -233,15 +264,17 @@ template<> class HashObject<sizeof(int), sizeof(int)> {
   int i_;        // the key used for hashing
 };
 
+_START_GOOGLE_NAMESPACE_
+
 // Let the hashtable implementations know it can use an optimized memcpy,
 // because the compiler defines both the destructor and copy constructor.
 
-_START_GOOGLE_NAMESPACE_
 template<int Size, int Hashsize>
 struct has_trivial_copy< HashObject<Size, Hashsize> > : true_type { };
 
 template<int Size, int Hashsize>
 struct has_trivial_destructor< HashObject<Size, Hashsize> > : true_type { };
+
 _END_GOOGLE_NAMESPACE_
 
 class HashFn {
@@ -250,10 +283,21 @@ class HashFn {
   size_t operator()(const HashObject<Size,Hashsize>& obj) const {
     return obj.Hash();
   }
-  // For windows
+  // Do the identity hash for pointers.
+  template<int Size, int Hashsize>
+  size_t operator()(const HashObject<Size,Hashsize>* obj) const {
+    return reinterpret_cast<uintptr_t>(obj);
+  }
+
+  // Less operator for MSVC's hash containers.
   template<int Size, int Hashsize>
   bool operator()(const HashObject<Size,Hashsize>& a,
                   const HashObject<Size,Hashsize>& b) const {
+    return a < b;
+  }
+  template<int Size, int Hashsize>
+  bool operator()(const HashObject<Size,Hashsize>* a,
+                  const HashObject<Size,Hashsize>* b) const {
     return a < b;
   }
   // These two public members are required by msvc.  4 and 8 are defaults.
@@ -273,7 +317,7 @@ class Rusage {
   /* Reset collection */
   void Reset();
 
-  /* Show usage */
+  /* Show usage, in seconds */
   double UserTime();
 
  private:
@@ -316,7 +360,6 @@ inline double Rusage::UserTime() {
 #endif
 }
 
-
 static void print_uname() {
 #ifdef HAVE_SYS_UTSNAME_H
   struct utsname u;
@@ -339,9 +382,11 @@ static void stamp_run(int iters) {
   printf("Current time (GMT): %s", asctime(gmtime(&now)));
 }
 
-// If you have google-perftools (http://code.google.com/p/google-perftools),
-// then you can figure out how much memory these implementations use
-// as well.
+// This depends on the malloc implementation for exactly what it does
+// -- and thus requires work after the fact to make sense of the
+// numbers -- and also is likely thrown off by the memory management
+// STL tries to do on its own.
+
 #ifdef HAVE_GOOGLE_MALLOC_EXTENSION_H
 #include <google/malloc_extension.h>
 
@@ -383,7 +428,6 @@ static void time_map_grow(int iters) {
   MapType set;
   Rusage t;
 
-  SET_EMPTY_KEY(set, -2);
   const size_t start = CurrentMemoryUsage();
   t.Reset();
   for (int i = 0; i < iters; i++) {
@@ -399,9 +443,8 @@ static void time_map_grow_predicted(int iters) {
   MapType set;
   Rusage t;
 
-  SET_EMPTY_KEY(set, -2);
   const size_t start = CurrentMemoryUsage();
-  RESIZE(set, iters);
+  set.resize(iters);
   t.Reset();
   for (int i = 0; i < iters; i++) {
     set[i] = i+1;
@@ -417,7 +460,6 @@ static void time_map_replace(int iters) {
   Rusage t;
   int i;
 
-  SET_EMPTY_KEY(set, -2);
   for (i = 0; i < iters; i++) {
     set[i] = i+1;
   }
@@ -439,7 +481,6 @@ static void time_map_fetch(int iters, const vector<int>& indices,
   int r;
   int i;
 
-  SET_EMPTY_KEY(set, -2);
   for (i = 0; i < iters; i++) {
     set[i] = i+1;
   }
@@ -489,7 +530,6 @@ static void time_map_fetch_empty(int iters) {
   int r;
   int i;
 
-  SET_EMPTY_KEY(set, -2);
   r = 1;
   t.Reset();
   for (i = 0; i < iters; i++) {
@@ -507,13 +547,11 @@ static void time_map_remove(int iters) {
   Rusage t;
   int i;
 
-  SET_EMPTY_KEY(set, -2);
   for (i = 0; i < iters; i++) {
     set[i] = i+1;
   }
 
   t.Reset();
-  SET_DELETED_KEY(set, -1);
   for (i = 0; i < iters; i++) {
     set.erase(i);
   }
@@ -530,8 +568,6 @@ static void time_map_toggle(int iters) {
 
   const size_t start = CurrentMemoryUsage();
   t.Reset();
-  SET_DELETED_KEY(set, -1);
-  SET_EMPTY_KEY(set, -2);
   for (i = 0; i < iters; i++) {
     set[i] = i+1;
     set.erase(i);
@@ -554,19 +590,23 @@ static void stresshashfunction(int desired_insertions,
   double total_seconds = 0;
   const int k = desired_insertions / map_size;
   MapType set;
-  SET_EMPTY_KEY(set, -2);
   for (int o = 0; o < k; o++) {
     set.clear();
-    RESIZE(set, map_size);
+    set.resize(map_size);
     t.Reset();
     const int maxint = (1ull << (sizeof(int) * 8 - 1)) - 1;
     // Use n arithmetic sequences.  Using just one may lead to overflow
     // if stride * map_size > maxint.  Compute n by requiring
     // stride * map_size/n < maxint, i.e., map_size/(maxint/stride) < n
+    char* key;   // something we can do math on
     const int n = map_size / (maxint / stride) + 1;
     for (int i = 0; i < n; i++) {
+      key = NULL;
+      key += i;
       for (int j = 0; j < map_size/n; j++) {
-        set[j * stride + i] = ++num_insertions;
+        key += stride;
+        set[reinterpret_cast<typename MapType::key_type>(key)]
+            = ++num_insertions;
       }
     }
     total_seconds += t.UserTime();
@@ -586,7 +626,7 @@ static void stresshashfunction(int num_inserts) {
   }
 }
 
-template<class MapType>
+template<class MapType, class StressMapType>
 static void measure_map(const char* label, int obj_size, int iters,
                         bool stress_hash_function) {
   printf("\n%s (%d byte objects, %d iterations):\n", label, obj_size, iters);
@@ -604,36 +644,37 @@ static void measure_map(const char* label, int obj_size, int iters,
     // Blank line in the output makes clear that what follows isn't part of the
     // table of results that we just printed.
     puts("");
-    stresshashfunction<MapType>(iters / 4);
+    stresshashfunction<StressMapType>(iters / 4);
   }
 }
 
 template<class ObjType>
 static void test_all_maps(int obj_size, int iters) {
   const bool stress_hash_function = obj_size <= 8;
+
   if (FLAGS_test_sparse_hash_map)
-    measure_map< sparse_hash_map<ObjType, int, HashFn> >("SPARSE_HASH_MAP",
-                                                 obj_size, iters,
-                                                 stress_hash_function);
+    measure_map< EasyUseSparseHashMap<ObjType, int, HashFn>,
+                 EasyUseSparseHashMap<ObjType*, int, HashFn> >(
+        "SPARSE_HASH_MAP", obj_size, iters, stress_hash_function);
+
   if (FLAGS_test_dense_hash_map)
-    measure_map< dense_hash_map<ObjType, int, HashFn> >("DENSE_HASH_MAP",
-                                                obj_size, iters,
-                                                stress_hash_function);
-#if defined(HAVE_UNORDERED_MAP)
+    measure_map< EasyUseDenseHashMap<ObjType, int, HashFn>,
+                 EasyUseDenseHashMap<ObjType*, int, HashFn> >(
+        "DENSE_HASH_MAP", obj_size, iters, stress_hash_function);
+
   if (FLAGS_test_hash_map)
-    measure_map< HASH_NAMESPACE::unordered_map<ObjType, int, HashFn> >(
-        "TR1 UNORDERED_MAP", obj_size, iters, stress_hash_function);
-#elif defined(HAVE_HASH_MAP)
-  if (FLAGS_test_hash_map)
-    measure_map< HASH_NAMESPACE::hash_map<ObjType, int, HashFn> >(
+    measure_map< EasyUseHashMap<ObjType, int, HashFn>,
+                 EasyUseHashMap<ObjType*, int, HashFn> >(
         "STANDARD HASH_MAP", obj_size, iters, stress_hash_function);
-#endif
+
   if (FLAGS_test_map)
-    measure_map< STL_NAMESPACE::map<ObjType, int, HashFn> >("STANDARD MAP",
-                                     obj_size, iters, false);
+    measure_map< EasyUseMap<ObjType, int>,
+                 EasyUseMap<ObjType*, int> >(
+        "STANDARD MAP", obj_size, iters, false);
 }
 
 int main(int argc, char** argv) {
+
   int iters = kDefaultIters;
   if (argc > 1) {            // first arg is # of iterations
     iters = atoi(argv[1]);

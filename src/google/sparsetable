@@ -1,10 +1,10 @@
 // Copyright (c) 2005, Google Inc.
 // All rights reserved.
-// 
+//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
-// 
+//
 //     * Redistributions of source code must retain the above copyright
 // notice, this list of conditions and the following disclaimer.
 //     * Redistributions in binary form must reproduce the above
@@ -14,7 +14,7 @@
 //     * Neither the name of Google Inc. nor the names of its
 // contributors may be used to endorse or promote products derived from
 // this software without specific prior written permission.
-// 
+//
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 // "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
 // LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -28,7 +28,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // ---
-// Author: Craig Silverstein
+//
 //
 // A sparsetable is a random container that implements a sparse array,
 // that is, an array that uses very little memory to store unassigned
@@ -50,39 +50,202 @@
 // because of this container's memory economy, each insert and delete
 // causes a memory reallocation.
 //
-// See doc/sparsetable.html for information about how to use this class.
+// NOTE: You should not test(), get(), or set() any index that is
+// greater than sparsetable.size().  If you need to do that, call
+// resize() first.
+//
+// --- Template parameters
+// PARAMETER   DESCRIPTION                           DEFAULT
+// T           The value of the array: the type of   --
+//             object that is stored in the array.
+//
+// GROUP_SIZE  How large each "group" in the table   48
+//             is (see below).  Larger values use
+//             a little less memory but cause most
+//             operations to be a little slower
+//
+// Alloc:      Allocator to use to allocate memory.  libc_allocator_with_realloc
+//
+// --- Model of
+// Random Access Container
+//
+// --- Type requirements
+// T must be Copy Constructible. It need not be Assignable.
+//
+// --- Public base classes
+// None.
+//
+// --- Members
+// Type members
+//
+// MEMBER           WHERE DEFINED DESCRIPTION
+// value_type       container     The type of object, T, stored in the array
+// allocator_type   container     Allocator to use
+// pointer          container     Pointer to p
+// const_pointer    container     Const pointer to p
+// reference        container     Reference to t
+// const_reference  container     Const reference to t
+// size_type        container     An unsigned integral type
+// difference_type  container     A signed integral type
+// iterator [*]     container     Iterator used to iterate over a sparsetable
+// const_iterator   container     Const iterator used to iterate over a table
+// reverse_iterator reversible    Iterator used to iterate backwards over
+//                  container     a sparsetable
+// const_reverse_iterator   reversible container   Guess
+// nonempty_iterator [+]           sparsetable     Iterates over assigned
+//                                                 array elements only
+// const_nonempty_iterator         sparsetable     Iterates over assigned
+//                                                 array elements only
+// reverse_nonempty_iterator       sparsetable     Iterates backwards over
+//                                                 assigned array elements only
+// const_reverse_nonempty_iterator sparsetable     Iterates backwards over
+//                                                 assigned array elements only
+//
+// [*] All iterators are const in a sparsetable (though nonempty_iterators
+//     may not be).  Use get() and set() to assign values, not iterators.
+//
+// [+] iterators are random-access iterators.  nonempty_iterators are
+//     bidirectional iterators.
 
-#ifndef _SPARSETABLE_H_
-#define _SPARSETABLE_H_
+// Iterator members
+// MEMBER              WHERE DEFINED  DESCRIPTION
+//
+// iterator begin()    container      An iterator to the beginning of the table
+// iterator end()      container      An iterator to the end of the table
+// const_iterator      container      A const_iterator pointing to the
+//   begin() const                    beginning of a sparsetable
+// const_iterator      container      A const_iterator pointing to the
+//   end() const                      end of a sparsetable
+//
+// reverse_iterator          reversable     Points to beginning of a reversed
+//   rbegin()                container      sparsetable
+// reverse_iterator          reversable     Points to end of a reversed table
+//   rend()                  container
+// const_reverse_iterator    reversable     Points to beginning of a
+//   rbegin() const          container      reversed sparsetable
+// const_reverse_iterator    reversable     Points to end of a reversed table
+//   rend() const            container
+//
+// nonempty_iterator         sparsetable    Points to first assigned element
+//    begin()                               of a sparsetable
+// nonempty_iterator         sparsetable    Points past last assigned element
+//    end()                                 of a sparsetable
+// const_nonempty_iterator   sparsetable    Points to first assigned element
+//    begin() const                         of a sparsetable
+// const_nonempty_iterator   sparsetable    Points past last assigned element
+//    end() const                           of a sparsetable
+//
+// reverse_nonempty_iterator sparsetable    Points to first assigned element
+//    begin()                               of a reversed sparsetable
+// reverse_nonempty_iterator sparsetable    Points past last assigned element
+//    end()                                 of a reversed sparsetable
+// const_reverse_nonempty_iterator sparsetable    Points to first assigned
+//    begin() const                               elt of a reversed sparsetable
+// const_reverse_nonempty_iterator sparsetable    Points past last assigned
+//    end() const                                 elt of a reversed sparsetable
+//
+//
+// Other members
+// MEMBER                      WHERE DEFINED  DESCRIPTION
+// sparsetable()               sparsetable    A table of size 0; must resize()
+//                                            before using.
+// sparsetable(size_type size) sparsetable    A table of size size.  All
+//                                            indices are unassigned.
+// sparsetable(
+//    const sparsetable &tbl)  sparsetable    Copy constructor
+// ~sparsetable()              sparsetable    The destructor
+// sparsetable &operator=(     sparsetable    The assignment operator
+//    const sparsetable &tbl)
+//
+// void resize(size_type size) sparsetable    Grow or shrink a table to
+//                                            have size indices [*]
+//
+// void swap(sparsetable &x)   sparsetable    Swap two sparsetables
+// void swap(sparsetable &x,   sparsetable    Swap two sparsetables
+//           sparsetable &y)                  (global, not member, function)
+//
+// size_type size() const      sparsetable    Number of "buckets" in the table
+// size_type max_size() const  sparsetable    Max allowed size of a sparsetable
+// bool empty() const          sparsetable    true if size() == 0
+// size_type num_nonempty() const  sparsetable  Number of assigned "buckets"
+//
+// const_reference get(        sparsetable    Value at index i, or default
+//    size_type i) const                      value if i is unassigned
+// const_reference operator[]( sparsetable    Identical to get(i) [+]
+//    difference_type i) const
+// reference set(size_type i,  sparsetable    Set element at index i to
+//    const_reference val)                    be a copy of val
+// bool test(size_type i)      sparsetable    True if element at index i
+//    const                                   has been assigned to
+// bool test(iterator pos)     sparsetable    True if element pointed to
+//    const                                   by pos has been assigned to
+// void erase(iterator pos)    sparsetable    Set element pointed to by
+//                                            pos to be unassigned [!]
+// void erase(size_type i)     sparsetable    Set element i to be unassigned
+// void erase(iterator start,  sparsetable    Erases all elements between
+//            iterator end)                   start and end
+// void clear()                sparsetable    Erases all elements in the table
+//
+// I/O versions exist for both FILE* and for File* (Google2-style files):
+// bool write_metadata(FILE *fp) sparsetable  Writes a sparsetable to the
+// bool write_metadata(File *fp)              given file.  true if write
+//                                            completes successfully
+// bool read_metadata(FILE *fp) sparsetable   Replaces sparsetable with
+// bool read_metadata(File *fp)               version read from fp.  true
+//                                            if read completes sucessfully
+// bool write_nopointer_data(FILE *fp)        Read/write the data stored in
+// bool read_nopointer_data(FILE*fp)          the table, if it's simple
+//
+// bool operator==(            forward        Tests two tables for equality.
+//    const sparsetable &t1,   container      This is a global function,
+//    const sparsetable &t2)                  not a member function.
+// bool operator<(             forward        Lexicographical comparison.
+//    const sparsetable &t1,   container      This is a global function,
+//    const sparsetable &t2)                  not a member function.
+//
+// [*] If you shrink a sparsetable using resize(), assigned elements
+// past the end of the table are removed using erase().  If you grow
+// a sparsetable, new unassigned indices are created.
+//
+// [+] Note that operator[] returns a const reference.  You must use
+// set() to change the value of a table element.
+//
+// [!] Unassignment also calls the destructor.
+//
+// Iterators are invalidated whenever an item is inserted or
+// deleted (ie set() or erase() is used) or when the size of
+// the table changes (ie resize() or clear() is used).
+//
+// See doc/sparsetable.html for more information about how to use this class.
+
+// Note: this uses STL style for naming, rather than Google naming.
+// That's because this is an STL-y container
+
+#ifndef UTIL_GTL_SPARSETABLE_H_
+#define UTIL_GTL_SPARSETABLE_H_
 
 #include <google/sparsehash/sparseconfig.h>
 #include <stdlib.h>             // for malloc/free
 #include <stdio.h>              // to read/write tables
+#include <string.h>             // for memcpy
 #ifdef HAVE_STDINT_H
-#include <stdint.h>             // the normal place uint16_t is defined
+#include <stdint.h>         // the normal place uint16_t is defined
 #endif
 #ifdef HAVE_SYS_TYPES_H
-#include <sys/types.h>          // the normal place u_int16_t is defined
+#include <sys/types.h>      // the normal place u_int16_t is defined
 #endif
 #ifdef HAVE_INTTYPES_H
-#include <inttypes.h>           // a third place for uint16_t or u_int16_t
+#include <inttypes.h>       // a third place for uint16_t or u_int16_t
 #endif
 #include <assert.h>             // for bounds checking
 #include <iterator>             // to define reverse_iterator for me
 #include <algorithm>            // equal, lexicographical_compare, swap,...
-#include <memory>               // uninitialized_copy
+#include <memory>               // uninitialized_copy, uninitialized_fill
 #include <vector>               // a sparsetable is a vector of groups
+#include <google/type_traits.h>
 #include <google/sparsehash/libc_allocator_with_realloc.h>
-#include <google/type_traits.h> // for true_type, integral_constant, etc.
 
-#if STDC_HEADERS
-#include <string.h>             // for memcpy
-#else
-#if !HAVE_MEMCPY
-#define memcpy(d, s, n)   bcopy ((s), (d), (n))
-#endif
-#endif
-
+// A lot of work to get a type that's guaranteed to be 16 bits...
 #ifndef HAVE_U_INT16_T
 # if defined HAVE_UINT16_T
     typedef uint16_t u_int16_t;    // true on solaris, possibly other C99 libc's
@@ -98,8 +261,15 @@
 
 _START_GOOGLE_NAMESPACE_
 
-using STL_NAMESPACE::vector;
-using STL_NAMESPACE::uninitialized_copy;
+namespace base {   // just to make google->opensource transition easier
+using GOOGLE_NAMESPACE::true_type;
+using GOOGLE_NAMESPACE::false_type;
+using GOOGLE_NAMESPACE::integral_constant;
+using GOOGLE_NAMESPACE::has_trivial_copy;
+using GOOGLE_NAMESPACE::has_trivial_destructor;
+using GOOGLE_NAMESPACE::is_same;
+}
+
 
 // The smaller this is, the faster lookup is (because the group bitmap is
 // smaller) and the faster insert is, because there's less to move.
@@ -108,6 +278,11 @@ using STL_NAMESPACE::uninitialized_copy;
 static const u_int16_t DEFAULT_SPARSEGROUP_SIZE = 48;   // fits in 1.5 words
 
 
+// Our iterator as simple as iterators can be: basically it's just
+// the index into our table.  Dereference, the only complicated
+// thing, we punt to the table class.  This just goes to show how
+// much machinery STL requires to do even the most trivial tasks.
+//
 // A NOTE ON ASSIGNING:
 // A sparse table does not actually allocate memory for entries
 // that are not filled.  Because of this, it becomes complicated
@@ -157,7 +332,7 @@ class table_iterator {
  public:
   typedef table_iterator iterator;
 
-  typedef STL_NAMESPACE::random_access_iterator_tag iterator_category;
+  typedef std::random_access_iterator_tag iterator_category;
   typedef typename tabletype::value_type value_type;
   typedef typename tabletype::difference_type difference_type;
   typedef typename tabletype::size_type size_type;
@@ -240,7 +415,7 @@ class const_table_iterator {
   typedef table_iterator<tabletype> iterator;
   typedef const_table_iterator const_iterator;
 
-  typedef STL_NAMESPACE::random_access_iterator_tag iterator_category;
+  typedef std::random_access_iterator_tag iterator_category;
   typedef typename tabletype::value_type value_type;
   typedef typename tabletype::difference_type difference_type;
   typedef typename tabletype::size_type size_type;
@@ -351,7 +526,7 @@ class two_d_iterator {
  public:
   typedef two_d_iterator iterator;
 
-  typedef STL_NAMESPACE::bidirectional_iterator_tag iterator_category;
+  typedef std::bidirectional_iterator_tag iterator_category;
   // apparently some versions of VC++ have trouble with two ::'s in a typename
   typedef typename containertype::value_type _tmp_vt;
   typedef typename _tmp_vt::value_type value_type;
@@ -442,7 +617,7 @@ class const_two_d_iterator {
  public:
   typedef const_two_d_iterator iterator;
 
-  typedef STL_NAMESPACE::bidirectional_iterator_tag iterator_category;
+  typedef std::bidirectional_iterator_tag iterator_category;
   // apparently some versions of VC++ have trouble with two ::'s in a typename
   typedef typename containertype::value_type _tmp_vt;
   typedef typename _tmp_vt::value_type value_type;
@@ -529,7 +704,7 @@ class destructive_two_d_iterator {
  public:
   typedef destructive_two_d_iterator iterator;
 
-  typedef STL_NAMESPACE::input_iterator_tag iterator_category;
+  typedef std::input_iterator_tag iterator_category;
   // apparently some versions of VC++ have trouble with two ::'s in a typename
   typedef typename containertype::value_type _tmp_vt;
   typedef typename _tmp_vt::value_type value_type;
@@ -660,15 +835,15 @@ class sparsegroup {
       element_adaptor;
   typedef u_int16_t size_type;                  // max # of buckets
   typedef int16_t difference_type;
-  typedef STL_NAMESPACE::reverse_iterator<const_iterator> const_reverse_iterator;
-  typedef STL_NAMESPACE::reverse_iterator<iterator> reverse_iterator;
+  typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
+  typedef std::reverse_iterator<iterator> reverse_iterator;   // from iterator.h
 
   // These are our special iterators, that go over non-empty buckets in a
   // group.  These aren't const-only because you can change non-empty bcks.
   typedef pointer nonempty_iterator;
   typedef const_pointer const_nonempty_iterator;
-  typedef STL_NAMESPACE::reverse_iterator<nonempty_iterator> reverse_nonempty_iterator;
-  typedef STL_NAMESPACE::reverse_iterator<const_nonempty_iterator> const_reverse_nonempty_iterator;
+  typedef std::reverse_iterator<nonempty_iterator> reverse_nonempty_iterator;
+  typedef std::reverse_iterator<const_nonempty_iterator> const_reverse_nonempty_iterator;
 
   // Iterator functions
   iterator begin()                      { return iterator(this, 0); }
@@ -725,8 +900,7 @@ class sparsegroup {
       // We really should use PRIuS here, but I don't want to have to add
       // a whole new configure option, with concomitant macro namespace
       // pollution, just to print this (unlikely) error message.  So I cast.
-      fprintf(stderr, "sparsehash: FATAL ERROR: "
-              "failed to allocate %lu groups\n",
+      fprintf(stderr, "sparsehash FATAL ERROR: failed to allocate %lu groups\n",
               static_cast<unsigned long>(n));
       exit(1);
     }
@@ -795,7 +969,7 @@ class sparsegroup {
   sparsegroup(const sparsegroup& x) : group(0), settings(x.settings) {
     if ( settings.num_buckets ) {
       group = allocate_group(x.settings.num_buckets);
-      uninitialized_copy(x.group, x.group + x.settings.num_buckets, group);
+      std::uninitialized_copy(x.group, x.group + x.settings.num_buckets, group);
     }
     memcpy(bitmap, x.bitmap, sizeof(bitmap));
   }
@@ -810,7 +984,7 @@ class sparsegroup {
       free_group();
     } else {
       pointer p = allocate_group(x.settings.num_buckets);
-      uninitialized_copy(x.group, x.group + x.settings.num_buckets, p);
+      std::uninitialized_copy(x.group, x.group + x.settings.num_buckets, p);
       free_group();
       group = p;
     }
@@ -821,10 +995,10 @@ class sparsegroup {
 
   // Many STL algorithms use swap instead of copy constructors
   void swap(sparsegroup& x) {
-    STL_NAMESPACE::swap(group, x.group);
+    std::swap(group, x.group);                // defined in <algorithm>
     for ( int i = 0; i < sizeof(bitmap) / sizeof(*bitmap); ++i )
-      STL_NAMESPACE::swap(bitmap[i], x.bitmap[i]);  // swap not defined on arrays
-    STL_NAMESPACE::swap(settings.num_buckets, x.settings.num_buckets);
+      std::swap(bitmap[i], x.bitmap[i]);      // swap not defined on arrays
+    std::swap(settings.num_buckets, x.settings.num_buckets);
     // we purposefully don't swap the allocator, which may not be swap-able
   }
 
@@ -886,7 +1060,7 @@ class sparsegroup {
   // But there's no way to capture that using type_traits, so we
   // pretend that move(x, y) is equivalent to "x.~T(); new(x) T(y);"
   // which is pretty much correct, if a bit conservative.)
-  void set_aux(size_type offset, true_type) {
+  void set_aux(size_type offset, base::true_type) {
     group = settings.realloc_or_die(group, settings.num_buckets+1);
     // This is equivalent to memmove(), but faster on my Intel P4,
     // at least with gcc4.1 -O2 / glibc 2.3.6.
@@ -896,12 +1070,12 @@ class sparsegroup {
 
   // Create space at group[offset], without special assumptions about value_type
   // and allocator_type.
-  void set_aux(size_type offset, false_type) {
+  void set_aux(size_type offset, base::false_type) {
     // This is valid because 0 <= offset <= num_buckets
     pointer p = allocate_group(settings.num_buckets + 1);
-    uninitialized_copy(group, group + offset, p);
-    uninitialized_copy(group + offset, group + settings.num_buckets,
-                       p + offset + 1);
+    std::uninitialized_copy(group, group + offset, p);
+    std::uninitialized_copy(group + offset, group + settings.num_buckets,
+                            p + offset + 1);
     free_group();
     group = p;
   }
@@ -916,11 +1090,12 @@ class sparsegroup {
       // Delete the old value, which we're replacing with the new one
       group[offset].~value_type();
     } else {
-      typedef integral_constant<bool,
-          (has_trivial_copy<value_type>::value &&
-           has_trivial_destructor<value_type>::value &&
-           is_same<allocator_type,
-                   libc_allocator_with_realloc<value_type> >::value)>
+      typedef base::integral_constant<bool,
+          (base::has_trivial_copy<value_type>::value &&
+           base::has_trivial_destructor<value_type>::value &&
+           base::is_same<
+               allocator_type,
+               libc_allocator_with_realloc<value_type> >::value)>
           realloc_and_memmove_ok; // we pretend mv(x,y) == "x.~T(); new(x) T(y)"
       set_aux(offset, realloc_and_memmove_ok());
       ++settings.num_buckets;
@@ -948,7 +1123,7 @@ class sparsegroup {
   // there's no way to capture that using type_traits, so we pretend
   // that move(x, y) is equivalent to ""x.~T(); new(x) T(y);"
   // which is pretty much correct, if a bit conservative.)
-  void erase_aux(size_type offset, true_type) {
+  void erase_aux(size_type offset, base::true_type) {
     // This isn't technically necessary, since we know we have a
     // trivial destructor, but is a cheap way to get a bit more safety.
     group[offset].~value_type();
@@ -962,12 +1137,12 @@ class sparsegroup {
 
   // Shrink the array, without any special assumptions about value_type and
   // allocator_type.
-  void erase_aux(size_type offset, false_type) {
+  void erase_aux(size_type offset, base::false_type) {
     // This is valid because 0 <= offset < num_buckets. Note the inequality.
     pointer p = allocate_group(settings.num_buckets - 1);
-    uninitialized_copy(group, group + offset, p);
-    uninitialized_copy(group + offset + 1, group + settings.num_buckets,
-                       p + offset);
+    std::uninitialized_copy(group, group + offset, p);
+    std::uninitialized_copy(group + offset + 1, group + settings.num_buckets,
+                            p + offset);
     free_group();
     group = p;
   }
@@ -984,10 +1159,10 @@ class sparsegroup {
         free_group();
         group = NULL;
       } else {
-        typedef integral_constant<bool,
-            (has_trivial_copy<value_type>::value &&
-             has_trivial_destructor<value_type>::value &&
-             is_same<
+        typedef base::integral_constant<bool,
+            (base::has_trivial_copy<value_type>::value &&
+             base::has_trivial_destructor<value_type>::value &&
+             base::is_same<
                  allocator_type,
                  libc_allocator_with_realloc<value_type> >::value)>
             realloc_and_memmove_ok; // pretend mv(x,y) == "x.~T(); new(x) T(y)"
@@ -1014,7 +1189,8 @@ class sparsegroup {
   // We support reading and writing groups to disk.  We don't store
   // the actual array contents (which we don't know how to store),
   // just the bitmap and size.  Meant to be used with table I/O.
-  // Returns true if all was ok
+
+  // Returns true if all was ok.
   bool write_metadata(FILE *fp) const {
     // we explicitly set to u_int16_t
     assert(sizeof(settings.num_buckets) == 2);
@@ -1025,7 +1201,7 @@ class sparsegroup {
     return true;
   }
 
-  // Reading destroys the old group contents!  Returns true if all was ok
+  // Reading destroys the old group contents!  Returns true if all was ok.
   bool read_metadata(FILE *fp) {
     clear();
 
@@ -1043,7 +1219,7 @@ class sparsegroup {
 
   // If your keys and values are simple enough, we can write them
   // to disk for you.  "simple enough" means POD and no pointers.
-  // However, we don't try to normalize endianness
+  // However, we don't try to normalize endianness.
   bool write_nopointer_data(FILE *fp) const {
     for ( const_nonempty_iterator it = nonempty_begin();
           it != nonempty_end(); ++it ) {
@@ -1063,17 +1239,20 @@ class sparsegroup {
     return true;
   }
 
-  // Comparisons.  Note the comparisons are pretty arbitrary: we
-  // compare values of the first index that isn't equal (using default
+
+  // Comparisons.  We only need to define == and < -- we get
+  // != > <= >= via relops.h (which we happily included above).
+  // Note the comparisons are pretty arbitrary: we compare
+  // values of the first index that isn't equal (using default
   // value for empty buckets).
   bool operator==(const sparsegroup& x) const {
     return ( settings.num_buckets == x.settings.num_buckets &&
              memcmp(bitmap, x.bitmap, sizeof(bitmap)) == 0 &&
-             STL_NAMESPACE::equal(begin(), end(), x.begin()) ); // from algorithm
+             std::equal(begin(), end(), x.begin()) );    // from <algorithm>
   }
-  bool operator<(const sparsegroup& x) const {      // also from algorithm
-    return STL_NAMESPACE::lexicographical_compare(begin(), end(), 
-                                                  x.begin(), x.end());
+
+  bool operator<(const sparsegroup& x) const {      // also from <algorithm>
+    return std::lexicographical_compare(begin(), end(), x.begin(), x.end());
   }
   bool operator!=(const sparsegroup& x) const { return !(*this == x); }
   bool operator<=(const sparsegroup& x) const { return !(x < *this); }
@@ -1094,7 +1273,7 @@ class sparsegroup {
     // allocator (libc_allocator_with_realloc).
     pointer realloc_or_die(pointer /*ptr*/, size_type /*n*/) {
       fprintf(stderr, "realloc_or_die is only supported for "
-                      "libc_allocator_with_realloc");
+                      "libc_allocator_with_realloc\n");
       exit(1);
       return NULL;
     }
@@ -1115,12 +1294,8 @@ class sparsegroup {
     pointer realloc_or_die(pointer ptr, size_type n) {
       pointer retval = this->reallocate(ptr, n);
       if (retval == NULL) {
-        // We really should use PRIuS here, but I don't want to have to add
-        // a whole new configure option, with concomitant macro namespace
-        // pollution, just to print this (unlikely) error message.  So I cast.
         fprintf(stderr, "sparsehash: FATAL ERROR: failed to reallocate "
-                "%lu elements for ptr %p",
-                static_cast<unsigned long>(n), ptr);
+                "%lu elements for ptr %p", static_cast<unsigned long>(n), ptr);
         exit(1);
       }
       return retval;
@@ -1180,26 +1355,26 @@ class sparsetable {
       const_iterator;
   typedef table_element_adaptor<sparsetable<T, GROUP_SIZE, Alloc> >
       element_adaptor;
-  typedef STL_NAMESPACE::reverse_iterator<const_iterator> const_reverse_iterator;
-  typedef STL_NAMESPACE::reverse_iterator<iterator> reverse_iterator;
+  typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
+  typedef std::reverse_iterator<iterator> reverse_iterator;   // from iterator.h
 
   // These are our special iterators, that go over non-empty buckets in a
   // table.  These aren't const only because you can change non-empty bcks.
-  typedef two_d_iterator< vector< sparsegroup<value_type, GROUP_SIZE,
-                                              value_alloc_type>,
+  typedef two_d_iterator< std::vector< sparsegroup<value_type, GROUP_SIZE,
+                                                   value_alloc_type>,
                                   vector_alloc> >
      nonempty_iterator;
-  typedef const_two_d_iterator< vector< sparsegroup<value_type,
-                                                    GROUP_SIZE,
-                                                    value_alloc_type>,
+  typedef const_two_d_iterator< std::vector< sparsegroup<value_type,
+                                                         GROUP_SIZE,
+                                                         value_alloc_type>,
                                         vector_alloc> >
      const_nonempty_iterator;
-  typedef STL_NAMESPACE::reverse_iterator<nonempty_iterator> reverse_nonempty_iterator;
-  typedef STL_NAMESPACE::reverse_iterator<const_nonempty_iterator> const_reverse_nonempty_iterator;
+  typedef std::reverse_iterator<nonempty_iterator> reverse_nonempty_iterator;
+  typedef std::reverse_iterator<const_nonempty_iterator> const_reverse_nonempty_iterator;
   // Another special iterator: it frees memory as it iterates (used to resize)
-  typedef destructive_two_d_iterator< vector< sparsegroup<value_type,
-                                                          GROUP_SIZE,
-                                                          value_alloc_type>,
+  typedef destructive_two_d_iterator< std::vector< sparsegroup<value_type,
+                                                               GROUP_SIZE,
+                                                               value_alloc_type>,
                                               vector_alloc> >
      destructive_iterator;
 
@@ -1246,7 +1421,7 @@ class sparsetable {
   }
 
   typedef sparsegroup<value_type, GROUP_SIZE, allocator_type> group_type;
-  typedef vector<group_type, vector_alloc > group_vector_type;
+  typedef std::vector<group_type, vector_alloc > group_vector_type;
 
   typedef typename group_vector_type::reference GroupsReference;
   typedef typename group_vector_type::const_reference GroupsConstReference;
@@ -1282,9 +1457,9 @@ class sparsetable {
 
   // Many STL algorithms use swap instead of copy constructors
   void swap(sparsetable& x) {
-    STL_NAMESPACE::swap(groups, x.groups);
-    STL_NAMESPACE::swap(settings.table_size, x.settings.table_size);
-    STL_NAMESPACE::swap(settings.num_buckets, x.settings.num_buckets);
+    std::swap(groups, x.groups);              // defined in stl_algobase.h
+    std::swap(settings.table_size, x.settings.table_size);
+    std::swap(settings.num_buckets, x.settings.num_buckets);
   }
 
   // It's always nice to be able to clear a table without deallocating it
@@ -1331,6 +1506,7 @@ class sparsetable {
 
   // We let you see if a bucket is non-empty without retrieving it
   bool test(size_type i) const {
+    assert(i < settings.table_size);
     return which_group(i).test(pos_in_group(i));
   }
   bool test(iterator pos) const {
@@ -1431,7 +1607,8 @@ class sparsetable {
 
  private:
   // Every time the disk format changes, this should probably change too
-  static const unsigned long MAGIC_NUMBER = 0x24687531;
+  typedef unsigned long MagicNumberType;
+  static const MagicNumberType MAGIC_NUMBER = 0x24687531;
 
   // Old versions of this code write all data in 32 bits.  We need to
   // support these files as well as having support for 64-bit systems.
@@ -1441,7 +1618,8 @@ class sparsetable {
   // causes us to mis-read old-version code that stores exactly
   // 0xFFFFFFF, but I don't think that is likely to have happened for
   // these particular values.
-  static bool write_32_or_64(FILE* fp, size_type value) {
+  template <typename IntType>
+  static bool write_32_or_64(FILE* fp, IntType value) {
     if ( value < 0xFFFFFFFFULL ) {        // fits in 4 bytes
       PUT_(value, 24);
       PUT_(value, 16);
@@ -1465,7 +1643,8 @@ class sparsetable {
     return true;
   }
 
-  static bool read_32_or_64(FILE* fp, size_type *value) {  // reads into value
+  template <typename IntType>
+  static bool read_32_or_64(FILE* fp, IntType *value) {  // reads into value
     size_type first4 = 0;
     int x;
     GET_(first4, 24);
@@ -1540,6 +1719,7 @@ class sparsetable {
     return true;
   }
 
+
   // Comparisons.  Note the comparisons are pretty arbitrary: we
   // compare values of the first index that isn't equal (using default
   // value for empty buckets).
@@ -1548,9 +1728,9 @@ class sparsetable {
              settings.num_buckets == x.settings.num_buckets &&
              groups == x.groups );
   }
-  bool operator<(const sparsetable& x) const {      // also from algobase.h
-    return STL_NAMESPACE::lexicographical_compare(begin(), end(), 
-                                                  x.begin(), x.end());
+
+  bool operator<(const sparsetable& x) const {
+    return std::lexicographical_compare(begin(), end(), x.begin(), x.end());
   }
   bool operator!=(const sparsetable& x) const { return !(*this == x); }
   bool operator<=(const sparsetable& x) const { return !(x < *this); }
@@ -1595,4 +1775,4 @@ inline void swap(sparsetable<T,GROUP_SIZE,Alloc> &x,
 
 _END_GOOGLE_NAMESPACE_
 
-#endif
+#endif  // UTIL_GTL_SPARSETABLE_H_

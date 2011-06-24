@@ -51,8 +51,7 @@ ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/acx_pthread.m4 \
 	$(top_srcdir)/m4/google_namespace.m4 \
 	$(top_srcdir)/m4/namespaces.m4 $(top_srcdir)/m4/stl_hash.m4 \
-	$(top_srcdir)/m4/stl_hash_fun.m4 \
-	$(top_srcdir)/m4/stl_namespace.m4 $(top_srcdir)/configure.ac
+	$(top_srcdir)/m4/stl_hash_fun.m4 $(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 am__CONFIG_DISTCLEAN_FILES = config.status config.cache config.log \
@@ -1078,8 +1077,8 @@ lib${PACKAGE}.pc: Makefile packages/rpm/rpm.spec
 	echo '' >> "$@".tmp
 	echo 'Name: $(PACKAGE)' >> "$@".tmp
 	echo 'Version: $(VERSION)' >> "$@".tmp
-	-grep '^Summary:' packages/rpm/rpm.spec | sed s/^Summary:/Description:/ | head -n1 >> "$@".tmp
-	-grep '^URL: ' packages/rpm/rpm.spec >> "$@".tmp
+	-grep '^Summary:' $(top_srcdir)/packages/rpm/rpm.spec | sed s/^Summary:/Description:/ | head -n1 >> "$@".tmp
+	-grep '^URL: ' $(top_srcdir)/packages/rpm/rpm.spec >> "$@".tmp
 	echo 'Requires:' >> "$@".tmp
 	echo 'Libs:' >> "$@".tmp
 	echo 'Cflags: -I$${includedir}' >> "$@".tmp

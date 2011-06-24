@@ -1,10 +1,10 @@
 // Copyright (c) 2005, Google Inc.
 // All rights reserved.
-// 
+//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
-// 
+//
 //     * Redistributions of source code must retain the above copyright
 // notice, this list of conditions and the following disclaimer.
 //     * Redistributions in binary form must reproduce the above
@@ -14,7 +14,7 @@
 //     * Neither the name of Google Inc. nor the names of its
 // contributors may be used to endorse or promote products derived from
 // this software without specific prior written permission.
-// 
+//
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 // "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
 // LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -28,7 +28,6 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // ---
-// Author: Craig Silverstein
 //
 // This is just a very thin wrapper over sparsehashtable.h, just
 // like sgi stl's stl_hash_map is a very thin wrapper over
@@ -86,35 +85,30 @@
 #define _SPARSE_HASH_MAP_H_
 
 #include <google/sparsehash/sparseconfig.h>
-#include <stdio.h>                   // for FILE * in read()/write()
-#include <algorithm>                 // for the default template args
-#include <functional>                // for equal_to
-#include <memory>                    // for alloc<>
-#include <utility>                   // for pair<>
-#include HASH_FUN_H                  // defined in config.h
+#include <algorithm>                        // needed by stl_alloc
+#include <functional>                       // for equal_to<>, select1st<>, etc
+#include <memory>                           // for alloc
+#include <utility>                          // for pair<>
 #include <google/sparsehash/libc_allocator_with_realloc.h>
-#include <google/sparsehash/sparsehashtable.h>
-
-
+#include <google/sparsehash/sparsehashtable.h>       // IWYU pragma: export
+#include HASH_FUN_H                 // for hash<>
 _START_GOOGLE_NAMESPACE_
-
-using STL_NAMESPACE::pair;
 
 template <class Key, class T,
           class HashFcn = SPARSEHASH_HASH<Key>,   // defined in sparseconfig.h
-          class EqualKey = STL_NAMESPACE::equal_to<Key>,
-          class Alloc = libc_allocator_with_realloc<pair<const Key, T> > >
+          class EqualKey = std::equal_to<Key>,
+          class Alloc = libc_allocator_with_realloc<std::pair<const Key, T> > >
 class sparse_hash_map {
  private:
   // Apparently select1st is not stl-standard, so we define our own
   struct SelectKey {
     typedef const Key& result_type;
-    const Key& operator()(const pair<const Key, T>& p) const {
+    const Key& operator()(const std::pair<const Key, T>& p) const {
       return p.first;
     }
   };
   struct SetKey {
-    void operator()(pair<const Key, T>* value, const Key& new_key) const {
+    void operator()(std::pair<const Key, T>* value, const Key& new_key) const {
       *const_cast<Key*>(&value->first) = new_key;
       // It would be nice to clear the rest of value here as well, in
       // case it's taking up a lot of memory.  We do this by clearing
@@ -124,13 +118,13 @@ class sparse_hash_map {
   };
   // For operator[].
   struct DefaultValue {
-    STL_NAMESPACE::pair<const Key, T> operator()(const Key& key) {
-      return STL_NAMESPACE::make_pair(key, T());
+    std::pair<const Key, T> operator()(const Key& key) {
+      return std::make_pair(key, T());
     }
   };
 
   // The actual data
-  typedef sparse_hashtable<pair<const Key, T>, Key, HashFcn, SelectKey,
+  typedef sparse_hashtable<std::pair<const Key, T>, Key, HashFcn, SelectKey,
                            SetKey, EqualKey, Alloc> ht;
   ht rep;
 
@@ -254,21 +248,28 @@ class sparse_hash_map {
 
   size_type count(const key_type& key) const         { return rep.count(key); }
 
-  pair<iterator, iterator> equal_range(const key_type& key) {
+  std::pair<iterator, iterator> equal_range(const key_type& key) {
     return rep.equal_range(key);
   }
-  pair<const_iterator, const_iterator> equal_range(const key_type& key) const {
+  std::pair<const_iterator, const_iterator> equal_range(const key_type& key)
+      const {
     return rep.equal_range(key);
   }
 
   // Insertion routines
-  pair<iterator, bool> insert(const value_type& obj) { return rep.insert(obj); }
-  template <class InputIterator>
-  void insert(InputIterator f, InputIterator l)      { rep.insert(f, l); }
-  void insert(const_iterator f, const_iterator l)    { rep.insert(f, l); }
-  // required for std::insert_iterator; the passed-in iterator is ignored
-  iterator insert(iterator, const value_type& obj)   { return insert(obj).first; }
-
+  std::pair<iterator, bool> insert(const value_type& obj) {
+    return rep.insert(obj);
+  }
+  template <class InputIterator> void insert(InputIterator f, InputIterator l) {
+    rep.insert(f, l);
+  }
+  void insert(const_iterator f, const_iterator l) {
+    rep.insert(f, l);
+  }
+  // Required for std::insert_iterator; the passed-in iterator is ignored.
+  iterator insert(iterator, const value_type& obj) {
+    return insert(obj).first;
+  }
 
   // Deletion routines
   // THESE ARE NON-STANDARD!  I make you specify an "impossible" key
@@ -292,10 +293,21 @@ class sparse_hash_map {
 
 
   // I/O -- this is an add-on for writing metainformation to disk
-  bool write_metadata(FILE *fp)       { return rep.write_metadata(fp); }
-  bool read_metadata(FILE *fp)        { return rep.read_metadata(fp); }
-  bool write_nopointer_data(FILE *fp) { return rep.write_nopointer_data(fp); }
-  bool read_nopointer_data(FILE *fp)  { return rep.read_nopointer_data(fp); }
+  //
+  // For maximum flexibility, this does not assume a particular
+  // file type (though it will probably be a FILE *).  We just pass
+  // the fp through to rep.
+  template <typename OUTPUT>
+  bool write_metadata(OUTPUT *fp)       { return rep.write_metadata(fp); }
+
+  template <typename INPUT>
+  bool read_metadata(INPUT *fp)         { return rep.read_metadata(fp); }
+
+  template <typename OUTPUT>
+  bool write_nopointer_data(OUTPUT *fp) { return rep.write_nopointer_data(fp); }
+
+  template <typename INPUT>
+  bool read_nopointer_data(INPUT *fp)   { return rep.read_nopointer_data(fp); }
 };
 
 // We need a global swap as well
