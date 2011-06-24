@@ -21,7 +21,8 @@ entries being much more verbose (for better or for worse).
 A full list of changes is described in 
 [http://google-sparsehash.googlecode.com/svn/tags/sparsehash-1.11/ChangeLog ChangeLog].
 
-== 21 January 2011 ==
+
+=== 21 January 2011 ===
 
 I've just released sparsehash 1.10.  This fixes a performance
 regression in sparsehash 1.8, where sparse_hash_map would copy
