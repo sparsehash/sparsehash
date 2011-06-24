@@ -7,6 +7,31 @@ Software Foundation, Inc.
 This file is free documentation; the Free Software Foundation gives
 unlimited permission to copy, distribute and modify it.
 
+Sparsehash-Specific Install Notes
+=================================
+
+This code should work on any modern C++ system.  It has been tested on
+the following systems:
+   FreeBSD 6.0
+   FreeBSD 8.1
+   Linux Fedora Core 3
+   Linux Fedora Core 4
+   Linux Fedora Core 5
+   Linux Fedora Core 6
+   Linux RedHat 9
+   Linux Ubuntu 6.06.1
+   Linux Ubuntu 8
+   Linux Ubuntu 10  (both 32-bit and 64-bit)
+   Mac OS X 10.3.9 (Panther)
+   Mac OS X 10.4.8 (Tiger)
+   Mac OS X 10.5.8 (Leopard)
+   Solaris 10 (x86)
+   Windows XP, Visual Studio 2003 (VC++ 7)
+   Windows XP, Visual Studio 2005 (VC++ 8)
+
+See README.windows for installation instructions for Windows.
+
+
 Basic Installation
 ==================
 

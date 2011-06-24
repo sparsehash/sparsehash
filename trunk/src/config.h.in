@@ -121,9 +121,6 @@
 /* Define to 1 if you have the ANSI C header files. */
 #undef STDC_HEADERS
 
-/* the namespace where STL code like vector<> is defined */
-#undef STL_NAMESPACE
-
 /* Version number of package */
 #undef VERSION
 

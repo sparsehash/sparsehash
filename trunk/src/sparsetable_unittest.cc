@@ -1,10 +1,10 @@
 // Copyright (c) 2005, Google Inc.
 // All rights reserved.
-// 
+//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
-// 
+//
 //     * Redistributions of source code must retain the above copyright
 // notice, this list of conditions and the following disclaimer.
 //     * Redistributions in binary form must reproduce the above
@@ -14,7 +14,7 @@
 //     * Neither the name of Google Inc. nor the names of its
 // contributors may be used to endorse or promote products derived from
 // this software without specific prior written permission.
-// 
+//
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 // "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
 // LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -28,31 +28,30 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // ---
-// Author: Craig Silverstein
-//
-// This tests <google/sparsetable>
 //
 // Since sparsetable is templatized, it's important that we test every
 // function in every class in this file -- not just to see if it
 // works, but even if it compiles.
 
-#include "config.h"
-#include <string>
+#include <google/sparsehash/sparseconfig.h>
+#include <config.h>
 #include <stdio.h>
-#include <string.h>         // for memcmp()
+#include <string.h>
+#include <sys/types.h>      // for size_t
 #include <stdlib.h>         // defines unlink() on some windows platforms(?)
 #ifdef HAVE_UNISTD_H
-#include <unistd.h>         // for unlink()
-#endif
-#include <sys/types.h>      // for size_t
-#include <string>
+# include <unistd.h>
+#endif         // for unlink()
 #include <memory>           // for allocator
+#include <string>
 #include <google/sparsetable>
-
-using STL_NAMESPACE::string;
-using STL_NAMESPACE::allocator;
+using std::string;
+using std::allocator;
 using GOOGLE_NAMESPACE::sparsetable;
 using GOOGLE_NAMESPACE::DEFAULT_SPARSEGROUP_SIZE;
+
+typedef u_int16_t uint16;
+string FLAGS_test_tmpdir = "/tmp/";
 
 // Many sparsetable operations return a size_t.  Rather than have to
 // use PRIuS everywhere, we'll just cast to a "big enough" value.
@@ -280,7 +279,7 @@ void TestInt() {
                   UL(x.num_nonempty()), UL(x.size()),
                   UL(y.num_nonempty()), UL(y.size()),
                   UL(z.num_nonempty()), UL(z.size()));
-  
+
   y.resize(48);              // should get rid of 48 and 49
   y.resize(70);              // 48 and 49 should still be gone
   out += snprintf(out, LEFT, "y shrank and grew: it's now %lu/%lu\n",
@@ -323,7 +322,7 @@ void TestInt() {
 
   // ----------------------------------------------------------------------
   // Test I/O
-  string filestr = "/tmp/.sparsetable.test";
+  string filestr = FLAGS_test_tmpdir + "/.sparsetable.test";
   const char *file = filestr.c_str();
   FILE *fp = fopen(file, "wb");
   if ( fp == NULL ) {
@@ -462,7 +461,7 @@ void ResetAllocatorCounters() {
 template <class T> class instrumented_allocator {
  public:
   typedef T value_type;
-  typedef u_int16_t size_type;
+  typedef uint16 size_type;
   typedef ptrdiff_t difference_type;
 
   typedef T* pointer;
@@ -873,7 +872,10 @@ static const char g_expected[] = (
     );
 
 // defined at bottom of file for ease of maintainence
-int main(int /*argc*/, char ** /*argv*/) {
+int main(int argc, char **argv) {          // though we ignore the args
+  (void)argc;
+  (void)argv;
+
   TestInt();
   TestString();
   TestAllocator();

@@ -1,3 +1,13 @@
+Thu Jun 23 21:12:58 2011  Google Inc. <opensource@google.com>
+
+	* sparsehash: version 1.11 release
+	* Improve performance on pointer keys by ignoring always-0 low bits
+	* Fix missing $(top_srcdir) in Makefile.am, which broke some compiles
+	* BUGFIX: Fix a crashing typo-bug in swap()
+	* PORTING: Remove support for old compilers that do not use 'std'
+	* Add some new benchmarks to test for a place dense_hash_* does badly
+	* Some cosmetic changes due to a switch to a new releasing tool
+
 Thu Jan 20 16:07:39 2011  Google Inc. <opensource@google.com>
 
 	* sparsehash: version 1.10 release

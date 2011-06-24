@@ -1,10 +1,10 @@
 // Copyright (c) 2010, Google Inc.
 // All rights reserved.
-// 
+//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
-// 
+//
 //     * Redistributions of source code must retain the above copyright
 // notice, this list of conditions and the following disclaimer.
 //     * Redistributions in binary form must reproduce the above
@@ -14,7 +14,7 @@
 //     * Neither the name of Google Inc. nor the names of its
 // contributors may be used to endorse or promote products derived from
 // this software without specific prior written permission.
-// 
+//
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 // "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
 // LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -28,16 +28,18 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // ---
-// Author: Guilin Chen
 
-#include "config.h"
+#include <google/sparsehash/sparseconfig.h>
+#include <config.h>
 #include <google/sparsehash/libc_allocator_with_realloc.h>
 #include <stdlib.h>
-#include <iostream>
 #include <string>
 #include <vector>
+#include <iostream>
+#include "testutil.h"
 
 using std::cerr;
+using std::cout;
 using std::string;
 using std::basic_string;
 using std::char_traits;
@@ -45,14 +47,6 @@ using std::vector;
 using GOOGLE_NAMESPACE::libc_allocator_with_realloc;
 
 #define arraysize(a)  ( sizeof(a) / sizeof(*(a)) )
-
-#define EXPECT_EQ(a, b)  do {                                           \
-  if ((a) != (b)) {                                                     \
-    cerr << "Check failed: EXPECTED: " << #a << " == " << #b << ", "    \
-         << "ACTUAL: " << a << " != " << b << "\n";                     \
-    exit(1);                                                            \
-  }                                                                     \
-} while (0)
 
 namespace {
 
@@ -64,8 +58,7 @@ typedef basic_string<char, char_traits<char>,
                      libc_allocator_with_realloc<char> > cstring;
 typedef vector<cstring, libc_allocator_with_realloc<cstring> > cstring_vector;
 
-
-void TestAllocate() {
+TEST(LibcAllocatorWithReallocTest, Allocate) {
   int_alloc alloc;
   intp_alloc palloc;
 
@@ -92,7 +85,7 @@ void TestAllocate() {
   alloc.deallocate(p, 1024);
 }
 
-void TestSTL() {
+TEST(LibcAllocatorWithReallocTest, TestSTL) {
   // Test strings copied from base/arena_unittest.cc
   static const char* test_strings[] = {
     "aback", "abaft", "abandon", "abandoned", "abandoning",
@@ -120,10 +113,10 @@ void TestSTL() {
 
 }  // namespace
 
-int main() {
-  TestAllocate();
-  TestSTL();
-
-  cerr << "PASS\n";
+int main(int, char **) {
+  // All the work is done in the static constructors.  If they don't
+  // die, the tests have all passed.
+  cout << "PASS\n";
   return 0;
 }
+

@@ -28,13 +28,14 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // ---
-// Author: Craig Silverstein
 //
 // This tests mostly that we can #include the files correctly
 // and have them work.  This unittest purposefully does not
 // #include <config.h>; it's meant to emulate what a 'regular
 // install' of sparsehash would be able to see.
 
+#include <google/sparsehash/sparseconfig.h>
+#include <config.h>
 #include <stdio.h>
 #include <google/sparse_hash_set>
 #include <google/sparse_hash_map>

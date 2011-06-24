@@ -1,4 +1,4 @@
-// Copyright (c) 2005, Google Inc.
+// Copyright (c) 2010, Google Inc.
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -28,15 +28,25 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // ---
-// Author: Giao Nguyen
 
 #ifndef UTIL_GTL_HASHTABLE_COMMON_H_
 #define UTIL_GTL_HASHTABLE_COMMON_H_
 
+#include <google/sparsehash/sparseconfig.h>
 #include <assert.h>
+#include <stdexcept>                 // For length_error
 
 // Settings contains parameters for growing and shrinking the table.
 // It also packages zero-size functor (ie. hasher).
+//
+// It does some munging of the hash value in cases where we think
+// (fear) the original hash function might not be very good.  In
+// particular, the default hash of pointers is the identity hash,
+// so probably all the low bits are 0.  We identify when we think
+// we're hashing a pointer, and chop off the low bits.  Note this
+// isn't perfect: even when the key is a pointer, we can't tell
+// for sure that the hash is the identity hash.  If it's not, this
+// is needless work (and possibly, though not likely, harmful).
 
 template<typename Key, typename HashFunc,
          typename SizeType, int HT_MIN_BUCKETS>
@@ -62,7 +72,8 @@ class sh_hashtable_settings : public HashFunc {
   }
 
   size_type hash(const key_type& v) const {
-    return hasher::operator()(v);
+    // We munge the hash value when we don't trust hasher::operator().
+    return hash_munger<Key>::MungedHash(hasher::operator()(v));
   }
 
   float enlarge_factor() const {
@@ -163,6 +174,25 @@ class sh_hashtable_settings : public HashFunc {
   }
 
  private:
+  template<class HashKey> class hash_munger {
+   public:
+    static size_t MungedHash(size_t hash) {
+      return hash;
+    }
+  };
+  // This matches when the hashtable key is a pointer.
+  template<class HashKey> class hash_munger<HashKey*> {
+   public:
+    static size_t MungedHash(size_t hash) {
+      // TODO(csilvers): consider rotating instead:
+      //    static const int shift = (sizeof(void *) == 4) ? 2 : 3;
+      //    return (hash << (sizeof(hash) * 8) - shift)) | (hash >> shift);
+      // This matters if we ever change sparse/dense_hash_* to compare
+      // hashes before comparing actual values.  It's speedy on x86.
+      return hash / sizeof(void*);   // get rid of known-0 bits
+    }
+  };
+
   size_type enlarge_threshold_;  // table.size() * enlarge_factor
   size_type shrink_threshold_;   // table.size() * shrink_factor
   float enlarge_factor_;         // how full before resize

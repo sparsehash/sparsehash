@@ -28,7 +28,6 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // ---
-// Author: Craig Silverstein
 
 // This macro mimics a unittest framework, but is a bit less flexible
 // than most.  It requires a superclass to derive from, and does all
@@ -38,8 +37,10 @@
 #ifndef SPARSEHASH_TEST_UTIL_H_
 #define SPARSEHASH_TEST_UTIL_H_
 
+#include <google/sparsehash/sparseconfig.h>
 #include "config.h"
 #include <stdio.h>
+#include <stdexcept>   // for length_error
 
 _START_GOOGLE_NAMESPACE_
 
@@ -54,10 +55,19 @@ namespace testing {
 
 #define EXPECT_FALSE(a)  EXPECT_TRUE(!(a))
 #define EXPECT_EQ(a, b)  EXPECT_TRUE((a) == (b))
+#define EXPECT_NE(a, b)  EXPECT_TRUE((a) != (b))
 #define EXPECT_LT(a, b)  EXPECT_TRUE((a) < (b))
 #define EXPECT_GT(a, b)  EXPECT_TRUE((a) > (b))
 #define EXPECT_LE(a, b)  EXPECT_TRUE((a) <= (b))
 #define EXPECT_GE(a, b)  EXPECT_TRUE((a) >= (b))
+
+#define EXPECT_DEATH(cmd, expected_error_string)                          \
+  try {                                                                   \
+    cmd;                                                                  \
+    EXPECT_FALSE("did not see expected error: " #expected_error_string);  \
+  } catch (const std::length_error&) {                                    \
+    /* Good, the cmd failed. */                                           \
+  }
 
 #define TEST(suitename, testname)                                       \
   class TEST_##suitename##_##testname {                                 \
@@ -243,6 +253,10 @@ template<typename C1, typename C2, typename C3, typename C4, typename C5,
       test_instance_typed_##superclass##_##testname;                    \
   template<class TypeParam>                                             \
   void TEST_onetype_##superclass##_##testname<TypeParam>::Run()
+
+// This is a dummy class just to make converting from internal-google
+// to opensourcing easier.
+class Test { };
 
 } // namespace testing
 
