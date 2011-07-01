@@ -59,8 +59,6 @@
 
 #include <google/sparsehash/sparseconfig.h>
 #include <utility>                  // For pair
-#include <google/sparsehash/sparseconfig.h>
-
 _START_GOOGLE_NAMESPACE_
 
 // integral_constant, defined in tr1, is a wrapper for an integer
