@@ -32,7 +32,6 @@
  */
 
 #include <google/sparsehash/sparseconfig.h>
-#include <config.h>
 #ifndef WIN32
 # error You should only be including windows/port.cc in a windows environment!
 #endif
