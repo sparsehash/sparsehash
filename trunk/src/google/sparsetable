@@ -916,19 +916,10 @@ class sparsegroup {
     group = NULL;
   }
 
- public:                         // get_iter() in sparsetable needs it
-  // We need a small function that tells us how many set bits there are
-  // in positions 0..i-1 of the bitmap.  It uses a big table.
-  // We make it static so templates don't allocate lots of these tables.
-  // There are lots of ways to do this calculation (called 'popcount').
-  // The 8-bit table lookup is one of the fastest, though this
-  // implementation suffers from not doing any loop unrolling.  See, eg,
-  //   http://www.dalkescientific.com/writings/diary/archive/2008/07/03/hakmem_and_other_popcounts.html
-  //   http://gurmeetsingh.wordpress.com/2008/08/05/fast-bit-counting-routines/
-  static size_type pos_to_offset(const unsigned char *bm, size_type pos) {
+  static size_type bits_in_char(unsigned char c) {
     // We could make these ints.  The tradeoff is size (eg does it overwhelm
-    // the cache?) vs efficiency in referencing sub-word-sized array elements
-    static const char bits_in[256] = {      // # of bits set in one char
+    // the cache?) vs efficiency in referencing sub-word-sized array elements.
+    static const char bits_in[256] = {
       0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4,
       1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,
       1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,
@@ -946,23 +937,70 @@ class sparsegroup {
       3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7,
       4, 5, 5, 6, 5, 6, 6, 7, 5, 6, 6, 7, 6, 7, 7, 8,
     };
+    return bits_in[c];
+  }
+
+ public:                         // get_iter() in sparsetable needs it
+  // We need a small function that tells us how many set bits there are
+  // in positions 0..i-1 of the bitmap.  It uses a big table.
+  // We make it static so templates don't allocate lots of these tables.
+  // There are lots of ways to do this calculation (called 'popcount').
+  // The 8-bit table lookup is one of the fastest, though this
+  // implementation suffers from not doing any loop unrolling.  See, eg,
+  //   http://www.dalkescientific.com/writings/diary/archive/2008/07/03/hakmem_and_other_popcounts.html
+  //   http://gurmeetsingh.wordpress.com/2008/08/05/fast-bit-counting-routines/
+  static size_type pos_to_offset(const unsigned char *bm, size_type pos) {
     size_type retval = 0;
 
     // [Note: condition pos > 8 is an optimization; convince yourself we
     // give exactly the same result as if we had pos >= 8 here instead.]
-    for ( ; pos > 8; pos -= 8 )                    // bm[0..pos/8-1]
-      retval += bits_in[*bm++];                    // chars we want *all* bits in
-    return retval + bits_in[*bm & ((1 << pos)-1)]; // the char that includes pos
+    for ( ; pos > 8; pos -= 8 )                   // bm[0..pos/8-1]
+      retval += bits_in_char(*bm++);              // chars we want *all* bits in
+    return retval + bits_in_char(*bm & ((1 << pos)-1));    // char including pos
   }
 
-  size_type pos_to_offset(size_type pos) const {   // not static but still const
+  size_type pos_to_offset(size_type pos) const {  // not static but still const
     return pos_to_offset(bitmap, pos);
+  }
+
+  // Returns the (logical) position in the bm[] array, i, such that
+  // bm[i] is the offset-th set bit in the array.  It is the inverse
+  // of pos_to_offset.  get_pos() uses this function to find the index
+  // of an nonempty_iterator in the table.  Bit-twiddling from
+  // http://hackersdelight.org/basics.pdf
+  static size_type offset_to_pos(const unsigned char *bm, size_type offset) {
+    size_type retval = 0;
+    // This is sizeof(this->bitmap).
+    const size_type group_size = (GROUP_SIZE-1) / 8 + 1;
+    for (size_type i = 0; i < group_size; i++) {   // forward scan
+      unsigned char pop_count = bits_in_char(*bm);
+      if (pop_count > offset) {
+        unsigned char last_bm = *bm;
+        for (; offset > 0; offset--) {
+          last_bm &= (last_bm-1);  // remove right-most set bit
+        }
+        // Clear all bits to the left of the rightmost bit (the &),
+        // and then clear the rightmost bit but set all bits to the
+        // right of it (the -1).
+        last_bm = (last_bm & -last_bm) - 1;
+        retval += bits_in_char(last_bm);
+        return retval;
+      }
+      offset -= pop_count;
+      retval += 8;
+      bm++;
+    }
+    return retval;
+  }
+
+  size_type offset_to_pos(size_type offset) const {
+    return offset_to_pos(bitmap, offset);
   }
 
 
  public:
   // Constructors -- default and copy -- and destructor
-  sparsegroup(allocator_type& a) :
+  explicit sparsegroup(allocator_type& a) :
       group(0), settings(alloc_impl<value_alloc_type>(a)) {
     memset(bitmap, 0, sizeof(bitmap));
   }
@@ -1448,7 +1486,7 @@ class sparsetable {
 
  public:
   // Constructors -- default, normal (when you specify size), and copy
-  sparsetable(size_type sz = 0, Alloc alloc = Alloc())
+  explicit sparsetable(size_type sz = 0, Alloc alloc = Alloc())
       : groups(vector_alloc(alloc)), settings(alloc, sz) {
     groups.resize(num_groups(sz), group_type(settings));
   }
@@ -1567,6 +1605,15 @@ class sparsetable {
       groups.begin() + group_num(i),
       (groups[group_num(i)].nonempty_begin() +
        groups[group_num(i)].pos_to_offset(pos_in_group(i))));
+  }
+
+  // And the reverse transformation.
+  size_type get_pos(const const_nonempty_iterator it) {
+    difference_type current_row = it.row_current - it.row_begin;
+    difference_type current_col = (it.col_current -
+                                   groups[current_row].nonempty_begin());
+    return ((current_row * GROUP_SIZE) +
+            groups[current_row].offset_to_pos(current_col));
   }
 
 
