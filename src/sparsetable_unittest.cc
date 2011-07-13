@@ -273,6 +273,28 @@ void TestInt() {
   TEST(z.begin() != z.end());
 
   // ----------------------------------------------------------------------
+  // Test the non-empty iterators get_pos function
+
+  sparsetable<unsigned int> gp(100);
+  for (int i = 0; i < 100; i += 9) {
+    gp.set(i,i);
+  }
+
+  for (sparsetable<unsigned int>::const_nonempty_iterator
+           it = gp.nonempty_begin(); it != gp.nonempty_end(); ++it) {
+    out += snprintf(out, LEFT,
+                    "get_pos() for const nonempty_iterator: %u == %lu\n",
+                    *it, UL(gp.get_pos(it)));
+  }
+
+  for (sparsetable<unsigned int>::nonempty_iterator
+           it = gp.nonempty_begin(); it != gp.nonempty_end(); ++it) {
+    out += snprintf(out, LEFT,
+                    "get_pos() for nonempty_iterator: %u == %lu\n",
+                    *it, UL(gp.get_pos(it)));
+  }
+
+  // ----------------------------------------------------------------------
   // Test sparsetable functions
   out += snprintf(out, LEFT, "x has %lu/%lu buckets, "
                   "y %lu/%lu, z %lu/%lu\n",
@@ -757,6 +779,30 @@ static const char g_expected[] = (
     "first non-empty x: 10\n"
     "x.begin() == x.begin() + 1 - 1? yes\n"
     "z.begin() != z.end()? no\n"
+    "get_pos() for const nonempty_iterator: 0 == 0\n"
+    "get_pos() for const nonempty_iterator: 9 == 9\n"
+    "get_pos() for const nonempty_iterator: 18 == 18\n"
+    "get_pos() for const nonempty_iterator: 27 == 27\n"
+    "get_pos() for const nonempty_iterator: 36 == 36\n"
+    "get_pos() for const nonempty_iterator: 45 == 45\n"
+    "get_pos() for const nonempty_iterator: 54 == 54\n"
+    "get_pos() for const nonempty_iterator: 63 == 63\n"
+    "get_pos() for const nonempty_iterator: 72 == 72\n"
+    "get_pos() for const nonempty_iterator: 81 == 81\n"
+    "get_pos() for const nonempty_iterator: 90 == 90\n"
+    "get_pos() for const nonempty_iterator: 99 == 99\n"
+    "get_pos() for nonempty_iterator: 0 == 0\n"
+    "get_pos() for nonempty_iterator: 9 == 9\n"
+    "get_pos() for nonempty_iterator: 18 == 18\n"
+    "get_pos() for nonempty_iterator: 27 == 27\n"
+    "get_pos() for nonempty_iterator: 36 == 36\n"
+    "get_pos() for nonempty_iterator: 45 == 45\n"
+    "get_pos() for nonempty_iterator: 54 == 54\n"
+    "get_pos() for nonempty_iterator: 63 == 63\n"
+    "get_pos() for nonempty_iterator: 72 == 72\n"
+    "get_pos() for nonempty_iterator: 81 == 81\n"
+    "get_pos() for nonempty_iterator: 90 == 90\n"
+    "get_pos() for nonempty_iterator: 99 == 99\n"
     "x has 3/7 buckets, y 4/70, z 0/0\n"
     "y shrank and grew: it's now 2/70\n"
     "y[12] = -12, y.get(12) = -12\n"
