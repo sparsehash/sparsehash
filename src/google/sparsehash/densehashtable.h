@@ -397,12 +397,12 @@ class dense_hashtable {
     assert(num_deleted == 0);
   }
 
+  // Test if the given key is the deleted indicator.  Requires
+  // num_deleted > 0, for correctness of read(), and because that
+  // guarantees that key_info.delkey is valid.
   bool test_deleted_key(const key_type& key) const {
-    // The num_deleted test is crucial for read(): after read(), the ht values
-    // are garbage, and we don't want to think some of them are deleted.
-    // Invariant: !use_deleted implies num_deleted is 0.
-    assert(settings.use_deleted() || num_deleted == 0);
-    return num_deleted > 0 && equals(key_info.delkey, key);
+    assert(num_deleted > 0);
+    return equals(key_info.delkey, key);
   }
 
  public:
@@ -429,13 +429,19 @@ class dense_hashtable {
   // These are public so the iterators can use them
   // True if the item at position bucknum is "deleted" marker
   bool test_deleted(size_type bucknum) const {
-    return test_deleted_key(get_key(table[bucknum]));
+    // Invariant: !use_deleted() implies num_deleted is 0.
+    assert(settings.use_deleted() || num_deleted == 0);
+    return num_deleted > 0 && test_deleted_key(get_key(table[bucknum]));
   }
   bool test_deleted(const iterator &it) const {
-    return test_deleted_key(get_key(*it));
+    // Invariant: !use_deleted() implies num_deleted is 0.
+    assert(settings.use_deleted() || num_deleted == 0);
+    return num_deleted > 0 && test_deleted_key(get_key(*it));
   }
   bool test_deleted(const const_iterator &it) const {
-    return test_deleted_key(get_key(*it));
+    // Invariant: !use_deleted() implies num_deleted is 0.
+    assert(settings.use_deleted() || num_deleted == 0);
+    return num_deleted > 0 && test_deleted_key(get_key(*it));
   }
 
  private:
