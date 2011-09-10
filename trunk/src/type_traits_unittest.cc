@@ -57,6 +57,7 @@ using GOOGLE_NAMESPACE::is_enum;
 #endif
 using GOOGLE_NAMESPACE::is_floating_point;
 using GOOGLE_NAMESPACE::is_integral;
+using GOOGLE_NAMESPACE::is_pointer;
 using GOOGLE_NAMESPACE::is_pod;
 using GOOGLE_NAMESPACE::is_reference;
 using GOOGLE_NAMESPACE::is_same;
@@ -188,6 +189,15 @@ TEST(TypeTraitsTest, TestIsInteger) {
   EXPECT_FALSE(is_integral<int*>::value);
   EXPECT_FALSE(is_integral<A>::value);
   EXPECT_FALSE((is_integral<pair<int, int> >::value));
+
+  // Verify that cv-qualified integral types are still integral, and
+  // cv-qualified non-integral types are still non-integral.
+  EXPECT_TRUE(is_integral<const char>::value);
+  EXPECT_TRUE(is_integral<volatile bool>::value);
+  EXPECT_TRUE(is_integral<const volatile unsigned int>::value);
+  EXPECT_FALSE(is_integral<const float>::value);
+  EXPECT_FALSE(is_integral<int* volatile>::value);
+  EXPECT_FALSE(is_integral<const volatile string>::value);
 }
 
 TEST(TypeTraitsTest, TestIsFloating) {
@@ -203,6 +213,46 @@ TEST(TypeTraitsTest, TestIsFloating) {
   EXPECT_FALSE(is_floating_point<float*>::value);
   EXPECT_FALSE(is_floating_point<A>::value);
   EXPECT_FALSE((is_floating_point<pair<int, int> >::value));
+
+  // Verify that cv-qualified floating point types are still floating, and
+  // cv-qualified non-floating types are still non-floating.
+  EXPECT_TRUE(is_floating_point<const float>::value);
+  EXPECT_TRUE(is_floating_point<volatile double>::value);
+  EXPECT_TRUE(is_floating_point<const volatile long double>::value);
+  EXPECT_FALSE(is_floating_point<const int>::value);
+  EXPECT_FALSE(is_floating_point<volatile string>::value);
+  EXPECT_FALSE(is_floating_point<const volatile char>::value);
+}
+
+TEST(TypeTraitsTest, TestIsPointer) {
+  // Verify that is_pointer is true for some pointer types.
+  EXPECT_TRUE(is_pointer<int*>::value);
+  EXPECT_TRUE(is_pointer<void*>::value);
+  EXPECT_TRUE(is_pointer<string*>::value);
+  EXPECT_TRUE(is_pointer<const void*>::value);
+  EXPECT_TRUE(is_pointer<volatile float* const*>::value);
+
+  // Verify that is_pointer is false for some non-pointer types.
+  EXPECT_FALSE(is_pointer<void>::value);
+  EXPECT_FALSE(is_pointer<float&>::value);
+  EXPECT_FALSE(is_pointer<long>::value);
+  EXPECT_FALSE(is_pointer<vector<int*> >::value);
+  EXPECT_FALSE(is_pointer<int[5]>::value);
+
+  // A function pointer is a pointer, but a function type, or a function
+  // reference type, is not.
+  EXPECT_TRUE(is_pointer<int (*)(int x)>::value);
+  EXPECT_FALSE(is_pointer<void(char x)>::value);
+  EXPECT_FALSE(is_pointer<double (&)(string x)>::value);
+
+  // Verify that is_pointer<T> is true for some cv-qualified pointer types,
+  // and false for some cv-qualified non-pointer types.
+  EXPECT_TRUE(is_pointer<int* const>::value);
+  EXPECT_TRUE(is_pointer<const void* volatile>::value);
+  EXPECT_TRUE(is_pointer<char** const volatile>::value);
+  EXPECT_FALSE(is_pointer<const int>::value);
+  EXPECT_FALSE(is_pointer<volatile vector<int*> >::value);
+  EXPECT_FALSE(is_pointer<const volatile double>::value);
 }
 
 TEST(TypeTraitsTest, TestIsEnum) {
@@ -237,13 +287,22 @@ TEST(TypeTraitsTest, TestIsEnum) {
 
 TEST(TypeTraitsTest, TestIsReference) {
   // Verifies that is_reference is true for all reference types.
+  typedef float& RefFloat;
   EXPECT_TRUE(is_reference<float&>::value);
   EXPECT_TRUE(is_reference<const int&>::value);
   EXPECT_TRUE(is_reference<const int*&>::value);
   EXPECT_TRUE(is_reference<int (&)(bool)>::value);
+  EXPECT_TRUE(is_reference<RefFloat>::value);
+  EXPECT_TRUE(is_reference<const RefFloat>::value);
+  EXPECT_TRUE(is_reference<volatile RefFloat>::value);
+  EXPECT_TRUE(is_reference<const volatile RefFloat>::value);
+
 
   // Verifies that is_reference is false for all non-reference types.
   EXPECT_FALSE(is_reference<float>::value);
+  EXPECT_FALSE(is_reference<const float>::value);
+  EXPECT_FALSE(is_reference<volatile float>::value);
+  EXPECT_FALSE(is_reference<const volatile float>::value);
   EXPECT_FALSE(is_reference<const int*>::value);
   EXPECT_FALSE(is_reference<int()>::value);
   EXPECT_FALSE(is_reference<void(*)(const char&)>::value);
@@ -284,9 +343,14 @@ TEST(TypeTraitsTest, TestIsPod) {
   EXPECT_TRUE(is_pod<A*>::value);
   EXPECT_TRUE(is_pod<const B*>::value);
   EXPECT_TRUE(is_pod<C**>::value);
+  EXPECT_TRUE(is_pod<const int>::value);
+  EXPECT_TRUE(is_pod<char* volatile>::value);
+  EXPECT_TRUE(is_pod<const volatile double>::value);
 #if !defined(_MSC_VER) && !(defined(__GNUC__) && __GNUC__ <= 3)
   EXPECT_TRUE(is_pod<G>::value);
   EXPECT_TRUE(is_pod<const G>::value);
+  EXPECT_TRUE(is_pod<volatile G>::value);
+  EXPECT_TRUE(is_pod<const volatile G>::value);
 #endif
 
   // Verify that some non-POD types are not marked as PODs.
@@ -296,6 +360,9 @@ TEST(TypeTraitsTest, TestIsPod) {
   EXPECT_FALSE(is_pod<A>::value);
   EXPECT_FALSE(is_pod<B>::value);
   EXPECT_FALSE(is_pod<C>::value);
+  EXPECT_FALSE(is_pod<const string>::value);
+  EXPECT_FALSE(is_pod<volatile A>::value);
+  EXPECT_FALSE(is_pod<const volatile B>::value);
 }
 
 TEST(TypeTraitsTest, TestHasTrivialConstructor) {

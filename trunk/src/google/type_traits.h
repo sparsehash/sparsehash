@@ -113,7 +113,8 @@ template <class T, class U> struct is_same;
 template <class From, class To> struct is_convertible;
 #endif
 
-// is_integral is false except for the built-in integer types.
+// is_integral is false except for the built-in integer types. A
+// cv-qualified type is integral if and only if the underlying type is.
 template <class T> struct is_integral : false_type { };
 template<> struct is_integral<bool> : true_type { };
 template<> struct is_integral<char> : true_type { };
@@ -137,17 +138,31 @@ template<> struct is_integral<unsigned long> : true_type { };
 template<> struct is_integral<long long> : true_type { };
 template<> struct is_integral<unsigned long long> : true_type { };
 #endif
+template <class T> struct is_integral<const T> : is_integral<T> { };
+template <class T> struct is_integral<volatile T> : is_integral<T> { };
+template <class T> struct is_integral<const volatile T> : is_integral<T> { };
 
 // is_floating_point is false except for the built-in floating-point types.
+// A cv-qualified type is integral if and only if the underlying type is.
 template <class T> struct is_floating_point : false_type { };
 template<> struct is_floating_point<float> : true_type { };
 template<> struct is_floating_point<double> : true_type { };
 template<> struct is_floating_point<long double> : true_type { };
+template <class T> struct is_floating_point<const T>
+    : is_floating_point<T> { };
+template <class T> struct is_floating_point<volatile T>
+    : is_floating_point<T> { };
+template <class T> struct is_floating_point<const volatile T>
+    : is_floating_point<T> { };
 
-
-// is_pointer is false except for pointer types.
+// is_pointer is false except for pointer types. A cv-qualified type (e.g.
+// "int* const", as opposed to "int const*") is cv-qualified if and only if
+// the underlying type is.
 template <class T> struct is_pointer : false_type { };
 template <class T> struct is_pointer<T*> : true_type { };
+template <class T> struct is_pointer<const T> : is_pointer<T> { };
+template <class T> struct is_pointer<volatile T> : is_pointer<T> { };
+template <class T> struct is_pointer<const volatile T> : is_pointer<T> { };
 
 #if !defined(_MSC_VER) && !(defined(__GNUC__) && __GNUC__ <= 3)
 
@@ -177,7 +192,8 @@ template <class T> struct is_enum_impl<true, T> : false_type { };
 // union or class. Out of these, only integral, floating point, reference,
 // class and enum types are potentially convertible to int. Therefore,
 // if a type is not a reference, integral, floating point or class and
-// is convertible to int, it's a enum.
+// is convertible to int, it's a enum. Adding cv-qualification to a type
+// does not change whether it's an enum.
 //
 // Is-convertible-to-int check is done only if all other checks pass,
 // because it can't be used with some types (e.g. void or classes with
@@ -204,7 +220,8 @@ template<typename T> struct is_reference<T&> : true_type {};
 
 // We can't get is_pod right without compiler help, so fail conservatively.
 // We will assume it's false except for arithmetic types, enumerations,
-// pointers and const versions thereof. Note that std::pair is not a POD.
+// pointers and cv-qualified versions thereof. Note that std::pair<T,U>
+// is not a POD even if T and U are PODs.
 template <class T> struct is_pod
  : integral_constant<bool, (is_integral<T>::value ||
                             is_floating_point<T>::value ||
@@ -214,6 +231,8 @@ template <class T> struct is_pod
 #endif
                             is_pointer<T>::value)> { };
 template <class T> struct is_pod<const T> : is_pod<T> { };
+template <class T> struct is_pod<volatile T> : is_pod<T> { };
+template <class T> struct is_pod<const volatile T> : is_pod<T> { };
 
 
 // We can't get has_trivial_constructor right without compiler help, so
