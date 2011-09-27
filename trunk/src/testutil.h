@@ -40,6 +40,7 @@
 #include <google/sparsehash/sparseconfig.h>
 #include "config.h"
 #include <stdio.h>
+#include <stdlib.h>    // for exit
 #include <stdexcept>   // for length_error
 
 _START_GOOGLE_NAMESPACE_
