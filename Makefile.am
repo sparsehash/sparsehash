@@ -20,6 +20,7 @@ googleinclude_HEADERS =				\
    src/google/sparse_hash_map			\
    src/google/sparse_hash_set			\
    src/google/sparsetable                       \
+   src/google/template_util.h			\
    src/google/type_traits.h
 
 docdir = $(prefix)/share/doc/$(PACKAGE)-$(VERSION)
@@ -99,6 +100,14 @@ sparsehashinclude_HEADERS =			\
    src/google/sparsehash/hashtable-common.h     \
    src/google/sparsehash/libc_allocator_with_realloc.h
 nodist_sparsehashinclude_HEADERS = src/google/sparsehash/sparseconfig.h
+
+TESTS += template_util_unittest
+# TODO(csilvers): Update windows projects for template_util_unittest.
+# WINDOWS_PROJECTS += vsprojects/template_util_unittest/template_util_unittest.vcproj
+template_util_unittest_SOURCES =			\
+   src/template_util_unittest.cc		\
+   src/google/template_util.h
+nodist_template_util_unittest_SOURCES = $(nodist_sparsehashinclude_HEADERS)
 
 TESTS += type_traits_unittest
 WINDOWS_PROJECTS += vsprojects/type_traits_unittest/type_traits_unittest.vcproj
