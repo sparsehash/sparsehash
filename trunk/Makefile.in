@@ -35,7 +35,7 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-TESTS = type_traits_unittest$(EXEEXT) \
+TESTS = template_util_unittest$(EXEEXT) type_traits_unittest$(EXEEXT) \
 	libc_allocator_with_realloc_test$(EXEEXT) \
 	sparsetable_unittest$(EXEEXT) hashtable_test$(EXEEXT) \
 	simple_test$(EXEEXT)
@@ -71,7 +71,8 @@ am__installdirs = "$(DESTDIR)$(libdir)" "$(DESTDIR)$(docdir)" \
 	"$(DESTDIR)$(sparsehashincludedir)"
 libLTLIBRARIES_INSTALL = $(INSTALL)
 LTLIBRARIES = $(lib_LTLIBRARIES)
-am__EXEEXT_1 = type_traits_unittest$(EXEEXT) \
+am__EXEEXT_1 = template_util_unittest$(EXEEXT) \
+	type_traits_unittest$(EXEEXT) \
 	libc_allocator_with_realloc_test$(EXEEXT) \
 	sparsetable_unittest$(EXEEXT) hashtable_test$(EXEEXT) \
 	simple_test$(EXEEXT)
@@ -99,6 +100,11 @@ nodist_sparsetable_unittest_OBJECTS = $(am__objects_1)
 sparsetable_unittest_OBJECTS = $(am_sparsetable_unittest_OBJECTS) \
 	$(nodist_sparsetable_unittest_OBJECTS)
 sparsetable_unittest_LDADD = $(LDADD)
+am_template_util_unittest_OBJECTS = template_util_unittest.$(OBJEXT)
+nodist_template_util_unittest_OBJECTS = $(am__objects_1)
+template_util_unittest_OBJECTS = $(am_template_util_unittest_OBJECTS) \
+	$(nodist_template_util_unittest_OBJECTS)
+template_util_unittest_LDADD = $(LDADD)
 am_time_hash_map_OBJECTS = time_hash_map-time_hash_map.$(OBJEXT) \
 	$(am__objects_1) $(am__objects_1)
 nodist_time_hash_map_OBJECTS = $(am__objects_1)
@@ -130,13 +136,16 @@ SOURCES = $(hashtable_test_SOURCES) $(nodist_hashtable_test_SOURCES) \
 	$(simple_test_SOURCES) $(nodist_simple_test_SOURCES) \
 	$(sparsetable_unittest_SOURCES) \
 	$(nodist_sparsetable_unittest_SOURCES) \
+	$(template_util_unittest_SOURCES) \
+	$(nodist_template_util_unittest_SOURCES) \
 	$(time_hash_map_SOURCES) $(nodist_time_hash_map_SOURCES) \
 	$(type_traits_unittest_SOURCES) \
 	$(nodist_type_traits_unittest_SOURCES)
 DIST_SOURCES = $(hashtable_test_SOURCES) \
 	$(libc_allocator_with_realloc_test_SOURCES) \
 	$(simple_test_SOURCES) $(sparsetable_unittest_SOURCES) \
-	$(time_hash_map_SOURCES) $(type_traits_unittest_SOURCES)
+	$(template_util_unittest_SOURCES) $(time_hash_map_SOURCES) \
+	$(type_traits_unittest_SOURCES)
 dist_docDATA_INSTALL = $(INSTALL_DATA)
 pkgconfigDATA_INSTALL = $(INSTALL_DATA)
 DATA = $(dist_doc_DATA) $(pkgconfig_DATA)
@@ -278,6 +287,7 @@ googleinclude_HEADERS = \
    src/google/sparse_hash_map			\
    src/google/sparse_hash_set			\
    src/google/sparsetable                       \
+   src/google/template_util.h			\
    src/google/type_traits.h
 
 dist_doc_DATA = AUTHORS COPYING ChangeLog INSTALL NEWS README README_windows.txt \
@@ -313,6 +323,13 @@ sparsehashinclude_HEADERS = \
    src/google/sparsehash/libc_allocator_with_realloc.h
 
 nodist_sparsehashinclude_HEADERS = src/google/sparsehash/sparseconfig.h
+# TODO(csilvers): Update windows projects for template_util_unittest.
+# WINDOWS_PROJECTS += vsprojects/template_util_unittest/template_util_unittest.vcproj
+template_util_unittest_SOURCES = \
+   src/template_util_unittest.cc		\
+   src/google/template_util.h
+
+nodist_template_util_unittest_SOURCES = $(nodist_sparsehashinclude_HEADERS)
 type_traits_unittest_SOURCES = \
    src/type_traits_unittest.cc			\
    $(sparsehashinclude_HEADERS)			\
@@ -459,6 +476,9 @@ simple_test$(EXEEXT): $(simple_test_OBJECTS) $(simple_test_DEPENDENCIES)
 sparsetable_unittest$(EXEEXT): $(sparsetable_unittest_OBJECTS) $(sparsetable_unittest_DEPENDENCIES) 
 	@rm -f sparsetable_unittest$(EXEEXT)
 	$(CXXLINK) $(sparsetable_unittest_OBJECTS) $(sparsetable_unittest_LDADD) $(LIBS)
+template_util_unittest$(EXEEXT): $(template_util_unittest_OBJECTS) $(template_util_unittest_DEPENDENCIES) 
+	@rm -f template_util_unittest$(EXEEXT)
+	$(CXXLINK) $(template_util_unittest_OBJECTS) $(template_util_unittest_LDADD) $(LIBS)
 time_hash_map$(EXEEXT): $(time_hash_map_OBJECTS) $(time_hash_map_DEPENDENCIES) 
 	@rm -f time_hash_map$(EXEEXT)
 	$(time_hash_map_LINK) $(time_hash_map_OBJECTS) $(time_hash_map_LDADD) $(LIBS)
@@ -476,6 +496,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libc_allocator_with_realloc_test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/simple_test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sparsetable_unittest.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/template_util_unittest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/time_hash_map-time_hash_map.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/type_traits_unittest.Po@am__quote@
 
@@ -548,6 +569,20 @@ sparsetable_unittest.obj: src/sparsetable_unittest.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/sparsetable_unittest.cc' object='sparsetable_unittest.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o sparsetable_unittest.obj `if test -f 'src/sparsetable_unittest.cc'; then $(CYGPATH_W) 'src/sparsetable_unittest.cc'; else $(CYGPATH_W) '$(srcdir)/src/sparsetable_unittest.cc'; fi`
+
+template_util_unittest.o: src/template_util_unittest.cc
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT template_util_unittest.o -MD -MP -MF $(DEPDIR)/template_util_unittest.Tpo -c -o template_util_unittest.o `test -f 'src/template_util_unittest.cc' || echo '$(srcdir)/'`src/template_util_unittest.cc
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/template_util_unittest.Tpo $(DEPDIR)/template_util_unittest.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/template_util_unittest.cc' object='template_util_unittest.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o template_util_unittest.o `test -f 'src/template_util_unittest.cc' || echo '$(srcdir)/'`src/template_util_unittest.cc
+
+template_util_unittest.obj: src/template_util_unittest.cc
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT template_util_unittest.obj -MD -MP -MF $(DEPDIR)/template_util_unittest.Tpo -c -o template_util_unittest.obj `if test -f 'src/template_util_unittest.cc'; then $(CYGPATH_W) 'src/template_util_unittest.cc'; else $(CYGPATH_W) '$(srcdir)/src/template_util_unittest.cc'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/template_util_unittest.Tpo $(DEPDIR)/template_util_unittest.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/template_util_unittest.cc' object='template_util_unittest.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o template_util_unittest.obj `if test -f 'src/template_util_unittest.cc'; then $(CYGPATH_W) 'src/template_util_unittest.cc'; else $(CYGPATH_W) '$(srcdir)/src/template_util_unittest.cc'; fi`
 
 time_hash_map-time_hash_map.o: src/time_hash_map.cc
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(time_hash_map_CXXFLAGS) $(CXXFLAGS) -MT time_hash_map-time_hash_map.o -MD -MP -MF $(DEPDIR)/time_hash_map-time_hash_map.Tpo -c -o time_hash_map-time_hash_map.o `test -f 'src/time_hash_map.cc' || echo '$(srcdir)/'`src/time_hash_map.cc
