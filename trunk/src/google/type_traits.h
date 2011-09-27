@@ -59,34 +59,10 @@
 
 #include <google/sparsehash/sparseconfig.h>
 #include <utility>                  // For pair
+
+#include <google/template_util.h>     // For true_type and false_type
+
 _START_GOOGLE_NAMESPACE_
-
-// integral_constant, defined in tr1, is a wrapper for an integer
-// value. We don't really need this generality; we could get away
-// with hardcoding the integer type to bool. We use the fully
-// general integer_constant for compatibility with tr1.
-
-template<class T, T v>
-struct integral_constant {
-  static const T value = v;
-  typedef T value_type;
-  typedef integral_constant<T, v> type;
-};
-
-template <class T, T v> const T integral_constant<T, v>::value;
-
-// Abbreviations: true_type and false_type are structs that represent
-// boolean true and false values.
-typedef integral_constant<bool, true>  true_type;
-typedef integral_constant<bool, false> false_type;
-
-// Types small_ and big_ are guaranteed such that sizeof(small_) <
-// sizeof(big_)
-typedef char small_;
-
-struct big_ {
-  char dummy[2];
-};
 
 template <class T> struct is_integral;
 template <class T> struct is_floating_point;
