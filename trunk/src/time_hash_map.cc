@@ -580,6 +580,31 @@ static void time_map_toggle(int iters) {
 }
 
 template<class MapType>
+static void time_map_iterate(int iters) {
+  MapType set;
+  Rusage t;
+  int r;
+  int i;
+
+  for (i = 0; i < iters; i++) {
+    set[i] = i+1;
+  }
+
+  r = 1;
+  t.Reset();
+  for (typename MapType::const_iterator it = set.begin(), it_end = set.end();
+       it != it_end;
+       ++it) {
+    r ^= it->second;
+  }
+
+  double ut = t.UserTime();
+
+  srand(r);   // keep compiler from optimizing away r (we never call rand())
+  report("map_iterate", ut, iters, 0, 0);
+}
+
+template<class MapType>
 static void stresshashfunction(int desired_insertions,
                                int map_size,
                                int stride) {
@@ -638,6 +663,7 @@ static void measure_map(const char* label, int obj_size, int iters,
   if (1) time_map_fetch_empty<MapType>(iters);
   if (1) time_map_remove<MapType>(iters);
   if (1) time_map_toggle<MapType>(iters);
+  if (1) time_map_iterate<MapType>(iters);
   // This last test is useful only if the map type uses hashing.
   // And it's slow, so use fewer iterations.
   if (stress_hash_function) {
