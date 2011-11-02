@@ -440,9 +440,9 @@ class HashtableInterface_SparseHashMap
   struct NopointerSerializer {
   };
   template <typename ValueSerializer, typename OUTPUT>
-  bool serialize(ValueSerializer serializer, OUTPUT *fp) { return false; }
+  bool serialize(ValueSerializer, OUTPUT *) { return false; }
   template <typename ValueSerializer, typename INPUT>
-  bool unserialize(ValueSerializer serializer, INPUT *fp) { return false; }
+  bool unserialize(ValueSerializer, INPUT *) { return false; }
 
   int num_table_copies() const { return 0; }
 
@@ -552,9 +552,9 @@ class HashtableInterface_SparseHashSet
   struct NopointerSerializer {
   };
   template <typename ValueSerializer, typename OUTPUT>
-  bool serialize(ValueSerializer serializer, OUTPUT *fp) { return false; }
+  bool serialize(ValueSerializer, OUTPUT *) { return false; }
   template <typename ValueSerializer, typename INPUT>
-  bool unserialize(ValueSerializer serializer, INPUT *fp) { return false; }
+  bool unserialize(ValueSerializer, INPUT *) { return false; }
 
   int num_table_copies() const { return 0; }
 
@@ -673,9 +673,9 @@ class HashtableInterface_SparseHashtable
   struct NopointerSerializer {
   };
   template <typename ValueSerializer, typename OUTPUT>
-  bool serialize(ValueSerializer serializer, OUTPUT *fp) { return false; }
+  bool serialize(ValueSerializer, OUTPUT *) { return false; }
   template <typename ValueSerializer, typename INPUT>
-  bool unserialize(ValueSerializer serializer, INPUT *fp) { return false; }
+  bool unserialize(ValueSerializer, INPUT *) { return false; }
 
   // These tr1 names aren't defined for sparse_hashtable.
   typename p::hasher hash_function() { return this->hash_funct(); }
