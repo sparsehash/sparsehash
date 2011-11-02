@@ -328,25 +328,27 @@ class dense_hash_map {
   // however, we don't try to normalize endianness.
   typedef typename ht::NopointerSerializer NopointerSerializer;
 
-  // ValueSerializer: a class providing operator()(OUTPUT*, const value_type&)
+  // serializer: a class providing operator()(OUTPUT*, const value_type&)
   //    (writing value_type to OUTPUT).  You can specify a
   //    NopointerSerializer object if appropriate (see above).
-  // OUTPUT: either a FILE*, *or* a class providing
-  //    size_t Write(const void*, size_t), which writes a buffer into a
-  //    stream (which the OUTPUT instance presumably owns) and returns
-  //    the number of bytes written.
+  // fp: either a FILE*, OR an ostream*/subclass_of_ostream*, OR a
+  //    pointer to a class providing size_t Write(const void*, size_t),
+  //    which writes a buffer into a stream (which fp presumably
+  //    owns) and returns the number of bytes successfully written.
+  //    Note basic_ostream<not_char> is not currently spuported.
   template <typename ValueSerializer, typename OUTPUT>
   bool serialize(ValueSerializer serializer, OUTPUT* fp) {
     return rep.serialize(serializer, fp);
   }
 
-  // ValueSerializer: a functor providing operator()(INPUT*, value_type*)
+  // serializer: a functor providing operator()(INPUT*, value_type*)
   //    (reading from INPUT and into value_type).  You can specify a
   //    NopointerSerializer object if appropriate (see above).
-  // INPUT: either a FILE*, *or* a class providing
-  //    size_t Read(void*, size_t), which reads into a buffer from a
-  //    stream (which the INPUT instance presumably owns) and returns
-  //    the number of bytes read.
+  // fp: either a FILE*, OR an istream*/subclass_of_istream*, OR a
+  //    pointer to a class providing size_t Read(void*, size_t),
+  //    which reads into a buffer from a stream (which fp presumably
+  //    owns) and returns the number of bytes successfully read.
+  //    Note basic_istream<not_char> is not currently spuported.
   // NOTE: Since value_type is std::pair<const Key, T>, ValueSerializer
   // may need to do a const cast in order to fill in the key.
   template <typename ValueSerializer, typename INPUT>

@@ -44,11 +44,135 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stddef.h>                  // for size_t
+#include <iosfwd>
 #include <stdexcept>                 // For length_error
 
 _START_GOOGLE_NAMESPACE_
 
 namespace sparsehash_internal {
+
+// Adaptor methods for reading/writing data from an INPUT or OUPTUT
+// variable passed to serialize() or unserialize().  For now we
+// have implemented INPUT/OUTPUT for FILE*, istream*/ostream* (note
+// they are pointers, unlike typical use), or else a pointer to
+// something that supports a Read()/Write() method.
+//
+// For technical reasons, we implement read_data/write_data in two
+// stages.  The actual work is done in *_data_internal, which takes
+// the stream argument twice: once as a template type, and once with
+// normal type information.  (We only use the second version.)  We do
+// this because of how C++ picks what function overload to use.  If we
+// implemented this the naive way:
+//    bool read_data(istream* is, const void* data, size_t length);
+//    template<typename T> read_data(T* fp,  const void* data, size_t length);
+// C++ would prefer the second version for every stream type except
+// istream.  However, we want C++ to prefer the first version for
+// streams that are *subclasses* of istream, such as istringstream.
+// This is not possible given the way template types are resolved.  So
+// we split the stream argument in two, one of which is templated and
+// one of which is not.  The specialized functions (like the istream
+// version above) ignore the template arg and use the second, 'type'
+// arg, getting subclass matching as normal.  The 'catch-all'
+// functions (the second version above) use the template arg to deduce
+// the type, and use a second, void* arg to achieve the desired
+// 'catch-all' semantics.
+
+template<typename Ignored>
+inline bool read_data_internal(Ignored*, FILE* fp,
+                               void* data, size_t length) {
+  return fread(data, length, 1, fp) == 1;
+}
+
+template<typename Ignored>
+inline bool write_data_internal(Ignored*, FILE* fp,
+                                const void* data, size_t length) {
+  return fwrite(data, length, 1, fp) == 1;
+}
+
+// Lucky these are inline, because we want the caller to be responsible
+// for #including <iostream>, not us (iostream is a big header!)
+template<typename Ignored>
+inline bool read_data_internal(Ignored*, std::istream* fp,
+                               void* data, size_t length) {
+  return fp->read(reinterpret_cast<char*>(data), length).good();
+}
+
+template<typename Ignored>
+inline bool write_data_internal(Ignored*, std::ostream* fp,
+                                const void* data, size_t length) {
+  return fp->write(reinterpret_cast<const char*>(data), length).good();
+}
+
+// The INPUT type needs to support a Read() method that takes a
+// buffer and a length and returns the number of bytes read.
+template <typename INPUT>
+inline bool read_data_internal(INPUT* fp, void*,
+                               void* data, size_t length) {
+  return static_cast<size_t>(fp->Read(data, length)) == length;
+}
+
+// The OUTPUT type needs to support a Write() operation that takes
+// a buffer and a length and returns the number of bytes written.
+template <typename OUTPUT>
+inline bool write_data_internal(OUTPUT* fp, void*,
+                                const void* data, size_t length) {
+  return static_cast<size_t>(fp->Write(data, length)) == length;
+}
+
+
+template <typename INPUT>
+inline bool read_data(INPUT* fp, void* data, size_t length) {
+  return read_data_internal(fp, fp, data, length);
+}
+
+template <typename OUTPUT>
+inline bool write_data(OUTPUT* fp, const void* data, size_t length) {
+  return write_data_internal(fp, fp, data, length);
+}
+
+// Uses read_data() and write_data() to read/write an integer.
+// length is the number of bytes to read/write (which may differ
+// from sizeof(IntType), allowing us to save on a 32-bit system
+// and load on a 64-bit system).  Excess bytes are taken to be 0.
+// INPUT and OUTPUT must match legal inputs to read/write_data (above).
+template <typename INPUT, typename IntType>
+bool read_bigendian_number(INPUT* fp, IntType* value, size_t length) {
+  *value = 0;
+  unsigned char byte;
+  for (size_t i = 0; i < length; ++i) {
+    if (!read_data(fp, &byte, sizeof(byte))) return false;
+    *value |= static_cast<IntType>(byte) << (i * 8);
+  }
+  return true;
+}
+
+template <typename OUTPUT, typename IntType>
+bool write_bigendian_number(OUTPUT* fp, IntType value, size_t length) {
+  unsigned char byte;
+  for (size_t i = 0; i < length; ++i) {
+    byte = i >= sizeof(value) ? 0 : value >> (i * 8);
+    if (!write_data(fp, &byte, sizeof(byte))) return false;
+  }
+  return true;
+}
+
+// If your keys and values are simple enough, you can pass this
+// serializer to serialize()/unserialize().  "Simple enough" means
+// value_type is a POD type that contains no pointers.  Note,
+// however, we don't try to normalize endianness.
+// This is the type used for NopointerSerializer.
+template <typename value_type> struct pod_serializer {
+  template <typename INPUT>
+  bool operator()(INPUT* fp, value_type* value) const {
+    return read_data(fp, value, sizeof(*value));
+  }
+
+  template <typename OUTPUT>
+  bool operator()(OUTPUT* fp, const value_type& value) const {
+    return write_data(fp, &value, sizeof(value));
+  }
+};
+
 
 // Settings contains parameters for growing and shrinking the table.
 // It also packages zero-size functor (ie. hasher).
@@ -217,78 +341,6 @@ class sh_hashtable_settings : public HashFunc {
   bool use_deleted_;  // false until delkey has been set
   // num_ht_copies is a counter incremented every Copy/Move
   unsigned int num_ht_copies_;
-};
-
-
-// Adaptor methods for reading/writing data from an INPUT or OUPTUT
-// variable passed to serialize() or unserialize().  The rule for
-// these methods is their INPUT/OUTPUT variable must either be a
-// FILE* or else something that supports a Read()/Write() method.
-// The serializer can pass their INPUT/OUTPUT variable here and it
-// will handle both cases.
-inline bool read_data(FILE* fp, void* data, size_t length) {
-  return fread(data, length, 1, fp) == 1;
-}
-
-inline bool write_data(FILE* fp, const void* data, size_t length) {
-  return fwrite(data, length, 1, fp) == 1;
-}
-
-// The INPUT type needs to support a Read() method that takes a
-// buffer and a length and returns the number of bytes read.
-template <typename INPUT>
-inline bool read_data(INPUT* fp, void* data, size_t length) {
-  return static_cast<size_t>(fp->Read(data, length)) == length;
-}
-
-// The OUTPUT type needs to support a Write() operation that takes
-// a buffer and a length and returns the number of bytes written.
-template <typename OUTPUT>
-inline bool write_data(OUTPUT* fp, const void* data, size_t length) {
-  return static_cast<size_t>(fp->Write(data, length)) == length;
-}
-
-// Uses read_data() and write_data() to read/write an integer.
-// length is the number of bytes to read/write (which may differ
-// from sizeof(IntType), allowing us to save on a 32-bit system
-// and load on a 64-bit system).  Excess bytes are taken to be 0.
-// INPUT and OUTPUT must match legal inputs to read/write_data (above).
-template <typename INPUT, typename IntType>
-bool read_bigendian_number(INPUT* fp, IntType* value, size_t length) {
-  *value = 0;
-  unsigned char byte;
-  for (size_t i = 0; i < length; ++i) {
-    if (!read_data(fp, &byte, sizeof(byte))) return false;
-    *value |= static_cast<IntType>(byte) << (i * 8);
-  }
-  return true;
-}
-
-template <typename OUTPUT, typename IntType>
-bool write_bigendian_number(OUTPUT* fp, IntType value, size_t length) {
-  unsigned char byte;
-  for (size_t i = 0; i < length; ++i) {
-    byte = i >= sizeof(value) ? 0 : value >> (i * 8);
-    if (!write_data(fp, &byte, sizeof(byte))) return false;
-  }
-  return true;
-}
-
-// If your keys and values are simple enough, you can pass this
-// serializer to serialize()/unserialize().  "Simple enough" means
-// value_type is a POD type that contains no pointers.  Note,
-// however, we don't try to normalize endianness.
-// This is the type used for NopointerSerializer.
-template <typename value_type> struct pod_serializer {
-  template <typename INPUT>
-  bool operator()(INPUT* fp, value_type* value) const {
-    return read_data(fp, value, sizeof(*value));
-  }
-
-  template <typename OUTPUT>
-  bool operator()(OUTPUT* fp, const value_type& value) const {
-    return write_data(fp, &value, sizeof(value));
-  }
 };
 
 }  // namespace sparsehash_internal

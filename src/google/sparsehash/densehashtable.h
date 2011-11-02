@@ -1090,14 +1090,14 @@ class dense_hashtable {
  public:
   // I/O -- this is an add-on for writing hash table to disk
   //
-  // INPUT and OUTPUT must be either a FILE*, *or* a class providing
+  // INPUT and OUTPUT must be either a FILE, *or* a C++ stream
+  //    (istream, ostream, etc) *or* a class providing
   //    Read(void*, size_t) and Write(const void*, size_t)
   //    (respectively), which writes a buffer into a stream
   //    (which the INPUT/OUTPUT instance presumably owns).
 
   typedef sparsehash_internal::pod_serializer<value_type> NopointerSerializer;
 
-  // OUTPUT: either a FILE*, or an object supporting a Write() method.
   // ValueSerializer: a functor.  operator()(OUTPUT*, const value_type&)
   template <typename ValueSerializer, typename OUTPUT>
   bool serialize(ValueSerializer serializer, OUTPUT *fp) {
@@ -1126,7 +1126,7 @@ class dense_hashtable {
     return true;
   }
 
-  // INPUT: anything we've written an overload of read_data() for (above).
+  // INPUT: anything we've written an overload of read_data() for.
   // ValueSerializer: a functor.  operator()(INPUT*, value_type*)
   template <typename ValueSerializer, typename INPUT>
   bool unserialize(ValueSerializer serializer, INPUT *fp) {
