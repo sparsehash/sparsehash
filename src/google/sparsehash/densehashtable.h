@@ -118,25 +118,6 @@ using GOOGLE_NAMESPACE::remove_const;
 // Quadratic probing
 #define JUMP_(key, num_probes)    ( num_probes )
 
-// The weird mod in the offset is entirely to quiet compiler warnings
-// as is the cast to int after doing the "x mod 256"
-#define PUT_(take_from, offset)  do {                                    \
-    if (putc(static_cast<int>(offset >= sizeof(take_from)*8)             \
-                              ? 0 : ((take_from) >> (offset)) % 256, fp) \
-        == EOF)                                                          \
-    return false;                                                        \
-} while (0)
-
-#define GET_(add_to, offset)  do {                                      \
-  if ((x=getc(fp)) == EOF)                                              \
-    return false;                                                       \
-  else if (offset >= sizeof(add_to) * 8)                                \
-    assert(x == 0);   /* otherwise it's too big for us to represent */  \
-  else                                                                  \
-    add_to |= (static_cast<size_type>(x) << ((offset) % (sizeof(add_to)*8))); \
-} while (0)
-
-
 // Hashtable class, used to implement the hashed associative containers
 // hash_set and hash_map.
 
@@ -1106,107 +1087,110 @@ class dense_hashtable {
   typedef unsigned long MagicNumberType;
   static const MagicNumberType MAGIC_NUMBER = 0x13578642;
 
-  // Could make these faster with built-ins, but no real need.
-  template <typename IntType>
-  static bool write64(FILE *fp, IntType value) {
-    PUT_(value, 56);
-    PUT_(value, 48);
-    PUT_(value, 40);
-    PUT_(value, 32);
-    PUT_(value, 24);
-    PUT_(value, 16);
-    PUT_(value, 8);
-    PUT_(value, 0);
-    return true;
+  static bool read_data(FILE* fp, void* data, size_type length) {
+    return fread(data, length, 1, fp) == 1;
   }
 
-  template <typename IntType>
-  static bool read64(FILE *fp, IntType *value) {  // reads into value
-    int x;   // used by GET_
-    GET_(*value, 56);
-    GET_(*value, 48);
-    GET_(*value, 40);
-    GET_(*value, 32);
-    GET_(*value, 24);
-    GET_(*value, 16);
-    GET_(*value, 8);
-    GET_(*value, 0);
+  static bool write_data(FILE* fp, const void* data, size_type length) {
+    return fwrite(data, length, 1, fp) == 1;
+  }
+
+  template <typename INPUT, typename IntType>
+  static bool read_int_data(INPUT* fp, IntType* value, size_type length) {
+    *value = 0;
+    unsigned char byte;
+    for (size_type i = 0; i < length; ++i) {
+      if (!read_data(fp, &byte, sizeof(byte))) return false;
+      *value |= static_cast<IntType>(byte) << (i * 8);
+    }
+    return true;
+  }
+  template <typename OUTPUT, typename IntType>
+  static bool write_int_data(OUTPUT* fp, IntType value, size_type length) {
+    unsigned char byte;
+    for (size_type i = 0; i < length; ++i) {
+      byte = i >= sizeof(value) ? 0 : value >> (i * 8);
+      if (!write_data(fp, &byte, sizeof(byte))) return false;
+    }
     return true;
   }
 
  public:
-  bool write_metadata(FILE *fp) {
+  // I/O -- this is an add-on for writing hash table to disk
+  //
+  // For maximum flexibility, this does not assume a particular
+  // file type (though it will probably be a FILE *).
+
+  // OUTPUT: anything we've written an overload of write_data() for (above).
+  // ValueSerializer: a functor.  operator()(OUTPUT*, const value_type&)
+  template <typename ValueSerializer, typename OUTPUT>
+  bool serialize(ValueSerializer serializer, OUTPUT *fp) {
     squash_deleted();           // so we don't have to worry about delkey
-    if ( !write64(fp, MAGIC_NUMBER) )  return false;
-    if ( !write64(fp, num_buckets) )  return false;
-    if ( !write64(fp, num_elements) )  return false;
+    if ( !write_int_data(fp, MAGIC_NUMBER, 4) )  return false;
+    if ( !write_int_data(fp, num_buckets, 8) )  return false;
+    if ( !write_int_data(fp, num_elements, 8) )  return false;
     // Now write a bitmap of non-empty buckets.
-    for (int i = 0; i < num_buckets; i += 8) {
+    for ( size_type i = 0; i < num_buckets; i += 8 ) {
       unsigned char bits = 0;
-      for (int bit = 0; bit < 8; ++bit) {
-        if (i + bit < num_buckets && !test_empty(i + bit))
+      for ( int bit = 0; bit < 8; ++bit ) {
+        if ( i + bit < num_buckets && !test_empty(i + bit) )
           bits |= (1 << bit);
       }
-      PUT_(bits, 0);
+      if ( !write_data(fp, &bits, sizeof(bits)) ) return false;
+      for ( int bit = 0; bit < 8; ++bit ) {
+        if ( bits & (1 << bit) ) {
+          if ( !serializer(fp, table[i + bit]) ) return false;
+        }
+      }
     }
     return true;
   }
 
-  bool read_metadata(FILE *fp) {
-    num_deleted = 0;            // since we got rid before writing
-    assert(settings.use_empty() && "empty_key not set for read_metadata");
-    if (table)  val_info.deallocate(table, num_buckets);  // we'll make our own
+  // INPUT: anything we've written an overload of read_data() for (above).
+  // ValueSerializer: a functor.  operator()(INPUT*, value_type*)
+  template <typename ValueSerializer, typename INPUT>
+  bool unserialize(ValueSerializer serializer, INPUT *fp) {
+    assert(settings.use_empty() && "empty_key not set for read");
 
-    size_type magic_read = 0;
-    if ( !read64(fp, &magic_read) )  return false;
+    MagicNumberType magic_read;
+    if ( !read_int_data(fp, &magic_read, 4) )  return false;
     if ( magic_read != MAGIC_NUMBER ) {
       clear();                        // just to be consistent
       return false;
     }
-    if ( !read64(fp, &num_buckets) )  return false;
-    if ( !read64(fp, &num_elements) )  return false;
-
-    settings.reset_thresholds(bucket_count());
-    table = val_info.allocate(num_buckets);
-    assert(table);
-    fill_range_with_empty(table, table + num_buckets);
+    size_type new_num_buckets;
+    if ( !read_int_data(fp, &new_num_buckets, 8) )  return false;
+    clear_to_size(new_num_buckets);
+    if ( !read_int_data(fp, &num_elements, 8) )  return false;
 
     // Read the bitmap of non-empty buckets.
-    for (int i = 0; i < num_buckets; i += 8) {
-      int x;   // used by GET_
+    for (size_type i = 0; i < num_buckets; i += 8) {
       unsigned char bits;
-      GET_(bits, 0);
-      for (int bit = 0; bit < 8; ++bit) {
-        if (i + bit < num_buckets && (bits & (1 << bit)) ) {  // not empty
-          // TODO(csilvers): mark that this bucket is non-empty somehow
-          return false;
+      if ( !read_data(fp, &bits, sizeof(bits)) ) return false;
+      for ( int bit = 0; bit < 8; ++bit ) {
+        if ( i + bit < num_buckets && (bits & (1 << bit)) ) {  // not empty
+          if ( !serializer(fp, &table[i + bit]) ) return false;
         }
       }
     }
-
     return true;
   }
 
-  // If your keys and values are simple enough, we can write them to
-  // disk for you.  "simple enough" means value_type is a POD type
-  // that contains no pointers.  However, we don't try to normalize
-  // endianness
-  bool write_nopointer_data(FILE *fp) const {
-    for ( const_iterator it = begin(); it != end(); ++it ) {
-      if ( !fwrite(&*it, sizeof(*it), 1, fp) )  return false;
+  // If your keys and values are simple enough, you can pass this serializer
+  // to serialize()/unserialize().  "simple enough" means value_type is a POD
+  // type that contains no pointers.  However, we don't try to normalize
+  // endianness.
+  struct NopointerSerializer {
+    template <typename OUTPUT>
+    bool operator()(OUTPUT* fp, const value_type& value) const {
+      return write_data(fp, &value, sizeof(value));
     }
-    return false;
-  }
 
-  // When reading, we have to override the potential const-ness of *it
-  bool read_nopointer_data(FILE *fp) {
-    for ( iterator it = begin(); it != end(); ++it ) {
-      if ( !fread(reinterpret_cast<void*>(&(*it)), sizeof(*it), 1, fp) )
-        return false;
+    template <typename INPUT>
+    bool operator()(INPUT* fp, value_type* value) const {
+      return read_data(fp, value, sizeof(*value));
     }
-    return false;
-  }
-
+  };
 
  private:
   template <class A>
@@ -1339,8 +1323,6 @@ inline void swap(dense_hashtable<V,K,HF,ExK,SetK,EqK,A> &x,
 }
 
 #undef JUMP_
-#undef PUT_
-#undef GET_
 
 template <class V, class K, class HF, class ExK, class SetK, class EqK, class A>
 const typename dense_hashtable<V,K,HF,ExK,SetK,EqK,A>::size_type
@@ -1361,9 +1343,6 @@ template <class V, class K, class HF, class ExK, class SetK, class EqK, class A>
 const int dense_hashtable<V,K,HF,ExK,SetK,EqK,A>::HT_EMPTY_PCT
   = static_cast<int>(0.4 *
                      dense_hashtable<V,K,HF,ExK,SetK,EqK,A>::HT_OCCUPANCY_PCT);
-
-#undef GET_
-#undef PUT_
 
 _END_GOOGLE_NAMESPACE_
 

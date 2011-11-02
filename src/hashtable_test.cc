@@ -347,6 +347,66 @@ template<> pair<const char* const,ValueType> UniqueObjectHelper(int index) {
       UniqueObjectHelper<char*>(index), UniqueObjectHelper<ValueType>(index+1));
 }
 
+class ValueSerializer {
+ public:
+  bool operator()(FILE* fp, const int& value) {
+    return fwrite(&value, sizeof(value), 1, fp) == 1;
+  }
+  bool operator()(FILE* fp, int* value) {
+    return fread(value, sizeof(*value), 1, fp) == 1;
+  }
+  bool operator()(FILE* fp, const string& value) {
+    const int size = value.size();
+    return (*this)(fp, size) && fwrite(value.c_str(), size, 1, fp) == 1;
+  }
+  bool operator()(FILE* fp, string* value) {
+    int size;
+    if (!(*this)(fp, &size)) return false;
+    char* buf = new char[size];
+    if (fread(buf, size, 1, fp) != 1) {
+      delete[] buf;
+      return false;
+    }
+    value->clear();
+    value->append(buf, size);
+    delete[] buf;
+    return true;
+  }
+  template <typename OUTPUT>
+  bool operator()(OUTPUT* fp, const ValueType& v) {
+    return (*this)(fp, string(v.s()));
+  }
+  template <typename INPUT>
+  bool operator()(INPUT* fp, ValueType* v) {
+    string data;
+    if (!(*this)(fp, &data)) return false;
+    v->set_s(data.c_str());
+    return true;
+  }
+  template <typename OUTPUT>
+  bool operator()(OUTPUT* fp, const char* const& value) {
+    // Just store the index.
+    return (*this)(fp, atoi(value));
+  }
+  template <typename INPUT>
+  bool operator()(INPUT* fp, const char** value) {
+    // Look up via index.
+    int index;
+    if (!(*this)(fp, &index)) return false;
+    *value = UniqueObjectHelper<char*>(index);
+    return true;
+  }
+  template <typename OUTPUT, typename First, typename Second>
+  bool operator()(OUTPUT* fp, std::pair<const First, Second>* value) {
+    return (*this)(fp, const_cast<First*>(&value->first))
+        && (*this)(fp, &value->second);
+  }
+  template <typename INPUT, typename First, typename Second>
+  bool operator()(INPUT* fp, const std::pair<const First, Second>& value) {
+    return (*this)(fp, value.first) && (*this)(fp, value.second);
+  }
+};
+
 template <typename HashtableType>
 class HashtableTest : public ::testing::Test {
  public:
@@ -1364,10 +1424,9 @@ TYPED_TEST(HashtableAllTest, Equals) {
 }
 
 TEST(HashtableTest, IntIO) {
-  // Since dense_hash_* doesn't support IO yet, and the set case is
-  // just a special (easier) case than the map case, I just test on
-  // sparse_hash_map.  This handles the easy case where we can use the
-  // standard reader and writer.
+  // Since the set case is just a special (easier) case than the map case, I
+  // just test on sparse_hash_map.  This handles the easy case where we can
+  // use the standard reader and writer.
   sparse_hash_map<int, int> ht_out;
   ht_out.set_deleted_key(0);
   for (int i = 1; i < 1000; i++) {
@@ -1399,10 +1458,9 @@ TEST(HashtableTest, IntIO) {
 }
 
 TEST(HashtableTest, StringIO) {
-  // Since dense_hash_* doesn't support IO yet, and the set case is
-  // just a special (easier) case than the map case, I just test on
-  // sparse_hash_map.  This handles the difficult case where we have
-  // to write our own custom reader/writer for the data.
+  // Since the set case is just a special (easier) case than the map case,
+  // I just test on sparse_hash_map.  This handles the difficult case where
+  // we have to write our own custom reader/writer for the data.
   sparse_hash_map<string, string, Hasher, Hasher> ht_out;
   ht_out.set_deleted_key(string(""));
   for (int i = 32; i < 128; i++) {
@@ -1458,6 +1516,91 @@ TEST(HashtableTest, StringIO) {
   EXPECT_EQ(string(""), ht_in["c"]);    // should not have been saved
   EXPECT_EQ(string(""), ht_in["y"]);
 }
+
+TYPED_TEST(HashtableAllTest, Serialization) {
+  if (!this->ht_.supports_serialization()) return;
+  TypeParam ht_out;
+  ht_out.set_deleted_key(this->UniqueKey(2000));
+  for (int i = 1; i < 100; i++) {
+    ht_out.insert(this->UniqueObject(i));
+  }
+  // just to test having some erased keys when we write.
+  ht_out.erase(this->UniqueKey(56));
+  ht_out.erase(this->UniqueKey(22));
+
+  string file(TmpFile("serialization"));
+  FILE* fp = fopen(file.c_str(), "wb");
+  EXPECT_TRUE(fp != NULL);
+  EXPECT_TRUE(ht_out.serialize(ValueSerializer(), fp));
+  fclose(fp);
+
+  TypeParam ht_in;
+  fp = fopen(file.c_str(), "rb");
+  EXPECT_TRUE(fp != NULL);
+  EXPECT_TRUE(ht_in.unserialize(ValueSerializer(), fp));
+  fclose(fp);
+
+  EXPECT_EQ(this->UniqueObject(1), *ht_in.find(this->UniqueKey(1)));
+  EXPECT_EQ(this->UniqueObject(99), *ht_in.find(this->UniqueKey(99)));
+  EXPECT_FALSE(ht_in.count(this->UniqueKey(100)));
+  EXPECT_EQ(this->UniqueObject(21), *ht_in.find(this->UniqueKey(21)));
+  // should not have been saved
+  EXPECT_FALSE(ht_in.count(this->UniqueKey(22)));
+  EXPECT_FALSE(ht_in.count(this->UniqueKey(56)));
+}
+
+TYPED_TEST(HashtableIntTest, NopointerSerialization) {
+  if (!this->ht_.supports_serialization()) return;
+  TypeParam ht_out;
+  ht_out.set_deleted_key(this->UniqueKey(2000));
+  for (int i = 1; i < 100; i++) {
+    ht_out.insert(this->UniqueObject(i));
+  }
+  // just to test having some erased keys when we write.
+  ht_out.erase(this->UniqueKey(56));
+  ht_out.erase(this->UniqueKey(22));
+
+  string file(TmpFile("nopointer_serialization"));
+  FILE* fp = fopen(file.c_str(), "wb");
+  EXPECT_TRUE(fp != NULL);
+  EXPECT_TRUE(ht_out.serialize(typename TypeParam::NopointerSerializer(), fp));
+  fclose(fp);
+
+  TypeParam ht_in;
+  fp = fopen(file.c_str(), "rb");
+  EXPECT_TRUE(fp != NULL);
+  EXPECT_TRUE(ht_in.unserialize(typename TypeParam::NopointerSerializer(), fp));
+  fclose(fp);
+
+  EXPECT_EQ(this->UniqueObject(1), *ht_in.find(this->UniqueKey(1)));
+  EXPECT_EQ(this->UniqueObject(99), *ht_in.find(this->UniqueKey(99)));
+  EXPECT_FALSE(ht_in.count(this->UniqueKey(100)));
+  EXPECT_EQ(this->UniqueObject(21), *ht_in.find(this->UniqueKey(21)));
+  // should not have been saved
+  EXPECT_FALSE(ht_in.count(this->UniqueKey(22)));
+  EXPECT_FALSE(ht_in.count(this->UniqueKey(56)));
+}
+
+TYPED_TEST(HashtableAllTest, MetadataSerialization) {
+  if (!this->ht_.supports_serialization()) return;
+  // Verify that the metadata serialization is endianness and word size
+  // agnostic.
+  TypeParam ht_out;
+  string file(TmpFile("metadata_serialization"));
+  FILE* fp = fopen(file.c_str(), "wb");
+  EXPECT_TRUE(fp != NULL);
+  EXPECT_TRUE(ht_out.serialize(ValueSerializer(), fp));
+  EXPECT_EQ(24, ftell(fp));
+  fclose(fp);
+  fp = fopen(file.c_str(), "rb");
+
+  char contents[24];
+  EXPECT_TRUE(fread(contents, 24, 1, fp) == 1);
+  fclose(fp);
+  EXPECT_EQ(string("B\x86W\x13 \0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0", 24),
+            string(contents, 24));
+}
+
 
 // ------------------------------------------------------------------------
 // The above tests test the general API for correctness.  These tests

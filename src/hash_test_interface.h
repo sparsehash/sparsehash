@@ -328,6 +328,15 @@ class BaseHashtableInterface {
     return ht_ != other.ht_;
   }
 
+  template <typename ValueSerializer, typename OUTPUT>
+  bool serialize(ValueSerializer serializer, OUTPUT *fp) {
+    return ht_.serialize(serializer, fp);
+  }
+  template <typename ValueSerializer, typename INPUT>
+  bool unserialize(ValueSerializer serializer, INPUT *fp) {
+    return ht_.unserialize(serializer, fp);
+  }
+
   template <typename OUTPUT>
   bool write_metadata(OUTPUT *fp) {
     return ht_.write_metadata(fp);
@@ -364,6 +373,7 @@ class BaseHashtableInterface {
   virtual bool supports_brackets() const = 0;     // has a 'real' operator[]
   virtual bool supports_readwrite() const = 0;
   virtual bool supports_num_table_copies() const = 0;
+  virtual bool supports_serialization() const = 0;
 
  protected:
   HT ht_;
@@ -421,10 +431,19 @@ class HashtableInterface_SparseHashMap
   bool supports_brackets() const { return true; }
   bool supports_readwrite() const { return true; }
   bool supports_num_table_copies() const { return false; }
+  bool supports_serialization() const { return false; }
 
   void set_empty_key(const typename p::key_type& k) { }
   void clear_empty_key() { }
   typename p::key_type empty_key() const { return typename p::key_type(); }
+
+  struct NopointerSerializer {
+  };
+  template <typename ValueSerializer, typename OUTPUT>
+  bool serialize(ValueSerializer serializer, OUTPUT *fp) { return false; }
+  template <typename ValueSerializer, typename INPUT>
+  bool unserialize(ValueSerializer serializer, INPUT *fp) { return false; }
+
   int num_table_copies() const { return 0; }
 
  protected:
@@ -524,10 +543,19 @@ class HashtableInterface_SparseHashSet
   bool supports_brackets() const { return false; }
   bool supports_readwrite() const { return true; }
   bool supports_num_table_copies() const { return false; }
+  bool supports_serialization() const { return false; }
 
   void set_empty_key(const typename p::key_type& k) { }
   void clear_empty_key() { }
   typename p::key_type empty_key() const { return typename p::key_type(); }
+
+  struct NopointerSerializer {
+  };
+  template <typename ValueSerializer, typename OUTPUT>
+  bool serialize(ValueSerializer serializer, OUTPUT *fp) { return false; }
+  template <typename ValueSerializer, typename INPUT>
+  bool unserialize(ValueSerializer serializer, INPUT *fp) { return false; }
+
   int num_table_copies() const { return 0; }
 
  protected:
@@ -636,10 +664,18 @@ class HashtableInterface_SparseHashtable
   bool supports_brackets() const { return false; }
   bool supports_readwrite() const { return true; }
   bool supports_num_table_copies() const { return true; }
+  bool supports_serialization() const { return false; }
 
   void set_empty_key(const typename p::key_type& k) { }
   void clear_empty_key() { }
   typename p::key_type empty_key() const { return typename p::key_type(); }
+
+  struct NopointerSerializer {
+  };
+  template <typename ValueSerializer, typename OUTPUT>
+  bool serialize(ValueSerializer serializer, OUTPUT *fp) { return false; }
+  template <typename ValueSerializer, typename INPUT>
+  bool unserialize(ValueSerializer serializer, INPUT *fp) { return false; }
 
   // These tr1 names aren't defined for sparse_hashtable.
   typename p::hasher hash_function() { return this->hash_funct(); }
@@ -733,7 +769,9 @@ class HashtableInterface_DenseHashMap
   bool supports_brackets() const { return true; }
   bool supports_readwrite() const { return false; }
   bool supports_num_table_copies() const { return false; }
+  bool supports_serialization() const { return true; }
 
+  typedef typename ht::NopointerSerializer NopointerSerializer;
   template <typename OUTPUT> bool write_metadata(OUTPUT *fp) { return false; }
   template <typename INPUT> bool read_metadata(INPUT *fp) { return false; }
   template <typename OUTPUT> bool write_nopointer_data(OUTPUT *) {
@@ -835,7 +873,9 @@ class HashtableInterface_DenseHashSet
   bool supports_brackets() const { return false; }
   bool supports_readwrite() const { return false; }
   bool supports_num_table_copies() const { return false; }
+  bool supports_serialization() const { return true; }
 
+  typedef typename ht::NopointerSerializer NopointerSerializer;
   template <typename OUTPUT> bool write_metadata(OUTPUT *fp) { return false; }
   template <typename INPUT> bool read_metadata(INPUT *fp) { return false; }
   template <typename OUTPUT> bool write_nopointer_data(OUTPUT *) {
@@ -960,7 +1000,9 @@ class HashtableInterface_DenseHashtable
   bool supports_brackets() const { return false; }
   bool supports_readwrite() const { return false; }
   bool supports_num_table_copies() const { return true; }
+  bool supports_serialization() const { return true; }
 
+  typedef typename ht::NopointerSerializer NopointerSerializer;
   template <typename OUTPUT> bool write_metadata(OUTPUT *fp) { return false; }
   template <typename INPUT> bool read_metadata(INPUT *fp) { return false; }
   template <typename OUTPUT> bool write_nopointer_data(OUTPUT *) {

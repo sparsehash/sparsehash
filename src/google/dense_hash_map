@@ -316,22 +316,34 @@ class dense_hash_map {
   bool operator!=(const dense_hash_map& hs) const    { return rep != hs.rep; }
 
 
-  // I/O -- this is an add-on for writing metainformation to disk
+  // I/O -- this is an add-on for writing hash map to disk
   //
   // For maximum flexibility, this does not assume a particular
   // file type (though it will probably be a FILE *).  We just pass
   // the fp through to rep.
-  template <typename OUTPUT>
-  bool write_metadata(OUTPUT *fp)       { return rep.write_metadata(fp); }
 
-  template <typename INPUT>
-  bool read_metadata(INPUT *fp)         { return rep.read_metadata(fp); }
+  // OUTPUT: probably a FILE*, but anything rep knows how to serialize to.
+  // ValueSerializer: a functor.  operator()(OUTPUT*, const value_type&)
+  template <typename ValueSerializer, typename OUTPUT>
+  bool serialize(ValueSerializer serializer, OUTPUT *fp) {
+    return rep.serialize(serializer, fp);
+  }
 
-  template <typename OUTPUT>
-  bool write_nopointer_data(OUTPUT *fp) { return rep.write_nopointer_data(fp); }
+  // INPUT: probably a FILE*, but anything rep knows how to unserialize from.
+  // ValueSerializer: a functor.  operator()(INPUT*, value_type*)
+  //
+  // Since value_type is std::pair<const Key, T>, your ValueSerializer may need
+  // to do a const cast in order to fill in the key.
+  template <typename ValueSerializer, typename INPUT>
+  bool unserialize(ValueSerializer serializer, INPUT *fp) {
+    return rep.unserialize(serializer, fp);
+  }
 
-  template <typename INPUT>
-  bool read_nopointer_data(INPUT *fp)   { return rep.read_nopointer_data(fp); }
+  // If your keys and values are simple enough, you can pass this serializer
+  // to serialize()/unserialize().  "simple enough" means value_type is a POD
+  // type that contains no pointers.  However, we don't try to normalize
+  // endianness.
+  typedef typename ht::NopointerSerializer NopointerSerializer;
 };
 
 // We need a global swap as well
