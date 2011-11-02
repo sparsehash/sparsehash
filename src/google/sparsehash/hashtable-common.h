@@ -28,13 +28,27 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // ---
+//
+// Provides classes shared by both sparse and dense hashtable.
+//
+// sh_hashtable_settings has parameters for growing and shrinking
+// a hashtable.  It also packages zero-size functor (ie. hasher).
+//
+// Other functions and classes provide common code for serializing
+// and deserializing hashtables to a stream (such as a FILE*).
 
 #ifndef UTIL_GTL_HASHTABLE_COMMON_H_
 #define UTIL_GTL_HASHTABLE_COMMON_H_
 
 #include <google/sparsehash/sparseconfig.h>
 #include <assert.h>
+#include <stdio.h>
+#include <stddef.h>                  // for size_t
 #include <stdexcept>                 // For length_error
+
+_START_GOOGLE_NAMESPACE_
+
+namespace sparsehash_internal {
 
 // Settings contains parameters for growing and shrinking the table.
 // It also packages zero-size functor (ie. hasher).
@@ -204,5 +218,81 @@ class sh_hashtable_settings : public HashFunc {
   // num_ht_copies is a counter incremented every Copy/Move
   unsigned int num_ht_copies_;
 };
+
+
+// Adaptor methods for reading/writing data from an INPUT or OUPTUT
+// variable passed to serialize() or unserialize().  The rule for
+// these methods is their INPUT/OUTPUT variable must either be a
+// FILE* or else something that supports a Read()/Write() method.
+// The serializer can pass their INPUT/OUTPUT variable here and it
+// will handle both cases.
+inline bool read_data(FILE* fp, void* data, size_t length) {
+  return fread(data, length, 1, fp) == 1;
+}
+
+inline bool write_data(FILE* fp, const void* data, size_t length) {
+  return fwrite(data, length, 1, fp) == 1;
+}
+
+// The INPUT type needs to support a Read() method that takes a
+// buffer and a length and returns the number of bytes read.
+template <typename INPUT>
+inline bool read_data(INPUT* fp, void* data, size_t length) {
+  return static_cast<size_t>(fp->Read(data, length)) == length;
+}
+
+// The OUTPUT type needs to support a Write() operation that takes
+// a buffer and a length and returns the number of bytes written.
+template <typename OUTPUT>
+inline bool write_data(OUTPUT* fp, const void* data, size_t length) {
+  return static_cast<size_t>(fp->Write(data, length)) == length;
+}
+
+// Uses read_data() and write_data() to read/write an integer.
+// length is the number of bytes to read/write (which may differ
+// from sizeof(IntType), allowing us to save on a 32-bit system
+// and load on a 64-bit system).  Excess bytes are taken to be 0.
+// INPUT and OUTPUT must match legal inputs to read/write_data (above).
+template <typename INPUT, typename IntType>
+bool read_bigendian_number(INPUT* fp, IntType* value, size_t length) {
+  *value = 0;
+  unsigned char byte;
+  for (size_t i = 0; i < length; ++i) {
+    if (!read_data(fp, &byte, sizeof(byte))) return false;
+    *value |= static_cast<IntType>(byte) << (i * 8);
+  }
+  return true;
+}
+
+template <typename OUTPUT, typename IntType>
+bool write_bigendian_number(OUTPUT* fp, IntType value, size_t length) {
+  unsigned char byte;
+  for (size_t i = 0; i < length; ++i) {
+    byte = i >= sizeof(value) ? 0 : value >> (i * 8);
+    if (!write_data(fp, &byte, sizeof(byte))) return false;
+  }
+  return true;
+}
+
+// If your keys and values are simple enough, you can pass this
+// serializer to serialize()/unserialize().  "Simple enough" means
+// value_type is a POD type that contains no pointers.  Note,
+// however, we don't try to normalize endianness.
+// This is the type used for NopointerSerializer.
+template <typename value_type> struct pod_serializer {
+  template <typename INPUT>
+  bool operator()(INPUT* fp, value_type* value) const {
+    return read_data(fp, value, sizeof(*value));
+  }
+
+  template <typename OUTPUT>
+  bool operator()(OUTPUT* fp, const value_type& value) const {
+    return write_data(fp, &value, sizeof(value));
+  }
+};
+
+}  // namespace sparsehash_internal
+
+_END_GOOGLE_NAMESPACE_
 
 #endif  // UTIL_GTL_HASHTABLE_COMMON_H_

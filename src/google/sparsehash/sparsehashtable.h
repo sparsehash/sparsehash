@@ -1137,9 +1137,11 @@ class sparse_hashtable {
   // hasher's operator() might have the same function signature, they
   // must be packaged in different classes.
   struct Settings :
-      sh_hashtable_settings<key_type, hasher, size_type, HT_MIN_BUCKETS> {
+      sparsehash_internal::sh_hashtable_settings<key_type, hasher,
+                                                 size_type, HT_MIN_BUCKETS> {
     explicit Settings(const hasher& hf)
-        : sh_hashtable_settings<key_type, hasher, size_type, HT_MIN_BUCKETS>(
+        : sparsehash_internal::sh_hashtable_settings<key_type, hasher,
+                                                     size_type, HT_MIN_BUCKETS>(
             hf, HT_OCCUPANCY_PCT / 100.0f, HT_EMPTY_PCT / 100.0f) {}
   };
 
