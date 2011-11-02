@@ -55,6 +55,7 @@
 #endif   // for uintptr_t
 #include <iostream>
 #include <set>
+#include <sstream>
 #include <typeinfo>   // for class typeinfo (returned by typeid)
 #include <vector>
 #include <google/type_traits.h>
@@ -1643,6 +1644,35 @@ TYPED_TEST(HashtableIntTest, SerializingToString) {
   TypeParam ht_in;
   EXPECT_TRUE(ht_in.unserialize(typename TypeParam::NopointerSerializer(),
                                 &stringio));
+
+  EXPECT_EQ(this->UniqueObject(1), *ht_in.find(this->UniqueKey(1)));
+  EXPECT_EQ(this->UniqueObject(99), *ht_in.find(this->UniqueKey(99)));
+  EXPECT_FALSE(ht_in.count(this->UniqueKey(100)));
+  EXPECT_EQ(this->UniqueObject(21), *ht_in.find(this->UniqueKey(21)));
+  // should not have been saved
+  EXPECT_FALSE(ht_in.count(this->UniqueKey(22)));
+  EXPECT_FALSE(ht_in.count(this->UniqueKey(56)));
+}
+
+// An easier way to do the above would be to use the existing stream methods.
+TYPED_TEST(HashtableIntTest, SerializingToStringStream) {
+  if (!this->ht_.supports_serialization()) return;
+  TypeParam ht_out;
+  ht_out.set_deleted_key(this->UniqueKey(2000));
+  for (int i = 1; i < 100; i++) {
+    ht_out.insert(this->UniqueObject(i));
+  }
+  // just to test having some erased keys when we write.
+  ht_out.erase(this->UniqueKey(56));
+  ht_out.erase(this->UniqueKey(22));
+
+  std::stringstream string_buffer;
+  EXPECT_TRUE(ht_out.serialize(typename TypeParam::NopointerSerializer(),
+                               &string_buffer));
+
+  TypeParam ht_in;
+  EXPECT_TRUE(ht_in.unserialize(typename TypeParam::NopointerSerializer(),
+                                &string_buffer));
 
   EXPECT_EQ(this->UniqueObject(1), *ht_in.find(this->UniqueKey(1)));
   EXPECT_EQ(this->UniqueObject(99), *ht_in.find(this->UniqueKey(99)));
