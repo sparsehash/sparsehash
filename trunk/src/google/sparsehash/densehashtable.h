@@ -1087,48 +1087,27 @@ class dense_hashtable {
   typedef unsigned long MagicNumberType;
   static const MagicNumberType MAGIC_NUMBER = 0x13578642;
 
-  static bool read_data(FILE* fp, void* data, size_type length) {
-    return fread(data, length, 1, fp) == 1;
-  }
-
-  static bool write_data(FILE* fp, const void* data, size_type length) {
-    return fwrite(data, length, 1, fp) == 1;
-  }
-
-  template <typename INPUT, typename IntType>
-  static bool read_int_data(INPUT* fp, IntType* value, size_type length) {
-    *value = 0;
-    unsigned char byte;
-    for (size_type i = 0; i < length; ++i) {
-      if (!read_data(fp, &byte, sizeof(byte))) return false;
-      *value |= static_cast<IntType>(byte) << (i * 8);
-    }
-    return true;
-  }
-  template <typename OUTPUT, typename IntType>
-  static bool write_int_data(OUTPUT* fp, IntType value, size_type length) {
-    unsigned char byte;
-    for (size_type i = 0; i < length; ++i) {
-      byte = i >= sizeof(value) ? 0 : value >> (i * 8);
-      if (!write_data(fp, &byte, sizeof(byte))) return false;
-    }
-    return true;
-  }
-
  public:
   // I/O -- this is an add-on for writing hash table to disk
   //
-  // For maximum flexibility, this does not assume a particular
-  // file type (though it will probably be a FILE *).
+  // INPUT and OUTPUT must be either a FILE*, *or* a class providing
+  //    Read(void*, size_t) and Write(const void*, size_t)
+  //    (respectively), which writes a buffer into a stream
+  //    (which the INPUT/OUTPUT instance presumably owns).
 
-  // OUTPUT: anything we've written an overload of write_data() for (above).
+  typedef sparsehash_internal::pod_serializer<value_type> NopointerSerializer;
+
+  // OUTPUT: either a FILE*, or an object supporting a Write() method.
   // ValueSerializer: a functor.  operator()(OUTPUT*, const value_type&)
   template <typename ValueSerializer, typename OUTPUT>
   bool serialize(ValueSerializer serializer, OUTPUT *fp) {
     squash_deleted();           // so we don't have to worry about delkey
-    if ( !write_int_data(fp, MAGIC_NUMBER, 4) )  return false;
-    if ( !write_int_data(fp, num_buckets, 8) )  return false;
-    if ( !write_int_data(fp, num_elements, 8) )  return false;
+    if ( !sparsehash_internal::write_bigendian_number(fp, MAGIC_NUMBER, 4) )
+      return false;
+    if ( !sparsehash_internal::write_bigendian_number(fp, num_buckets, 8) )
+      return false;
+    if ( !sparsehash_internal::write_bigendian_number(fp, num_elements, 8) )
+      return false;
     // Now write a bitmap of non-empty buckets.
     for ( size_type i = 0; i < num_buckets; i += 8 ) {
       unsigned char bits = 0;
@@ -1136,7 +1115,8 @@ class dense_hashtable {
         if ( i + bit < num_buckets && !test_empty(i + bit) )
           bits |= (1 << bit);
       }
-      if ( !write_data(fp, &bits, sizeof(bits)) ) return false;
+      if ( !sparsehash_internal::write_data(fp, &bits, sizeof(bits)) )
+        return false;
       for ( int bit = 0; bit < 8; ++bit ) {
         if ( bits & (1 << bit) ) {
           if ( !serializer(fp, table[i + bit]) ) return false;
@@ -1153,20 +1133,24 @@ class dense_hashtable {
     assert(settings.use_empty() && "empty_key not set for read");
 
     MagicNumberType magic_read;
-    if ( !read_int_data(fp, &magic_read, 4) )  return false;
+    if ( !sparsehash_internal::read_bigendian_number(fp, &magic_read, 4) )
+      return false;
     if ( magic_read != MAGIC_NUMBER ) {
       clear();                        // just to be consistent
       return false;
     }
     size_type new_num_buckets;
-    if ( !read_int_data(fp, &new_num_buckets, 8) )  return false;
+    if ( !sparsehash_internal::read_bigendian_number(fp, &new_num_buckets, 8) )
+      return false;
     clear_to_size(new_num_buckets);
-    if ( !read_int_data(fp, &num_elements, 8) )  return false;
+    if ( !sparsehash_internal::read_bigendian_number(fp, &num_elements, 8) )
+      return false;
 
     // Read the bitmap of non-empty buckets.
     for (size_type i = 0; i < num_buckets; i += 8) {
       unsigned char bits;
-      if ( !read_data(fp, &bits, sizeof(bits)) ) return false;
+      if ( !sparsehash_internal::read_data(fp, &bits, sizeof(bits)) )
+        return false;
       for ( int bit = 0; bit < 8; ++bit ) {
         if ( i + bit < num_buckets && (bits & (1 << bit)) ) {  // not empty
           if ( !serializer(fp, &table[i + bit]) ) return false;
@@ -1175,22 +1159,6 @@ class dense_hashtable {
     }
     return true;
   }
-
-  // If your keys and values are simple enough, you can pass this serializer
-  // to serialize()/unserialize().  "simple enough" means value_type is a POD
-  // type that contains no pointers.  However, we don't try to normalize
-  // endianness.
-  struct NopointerSerializer {
-    template <typename OUTPUT>
-    bool operator()(OUTPUT* fp, const value_type& value) const {
-      return write_data(fp, &value, sizeof(value));
-    }
-
-    template <typename INPUT>
-    bool operator()(INPUT* fp, value_type* value) const {
-      return read_data(fp, value, sizeof(*value));
-    }
-  };
 
  private:
   template <class A>
@@ -1257,9 +1225,11 @@ class dense_hashtable {
   // have the same function signature, they must be packaged in
   // different classes.
   struct Settings :
-      sh_hashtable_settings<key_type, hasher, size_type, HT_MIN_BUCKETS> {
+      sparsehash_internal::sh_hashtable_settings<key_type, hasher,
+                                                 size_type, HT_MIN_BUCKETS> {
     explicit Settings(const hasher& hf)
-        : sh_hashtable_settings<key_type, hasher, size_type, HT_MIN_BUCKETS>(
+        : sparsehash_internal::sh_hashtable_settings<key_type, hasher,
+                                                     size_type, HT_MIN_BUCKETS>(
             hf, HT_OCCUPANCY_PCT / 100.0f, HT_EMPTY_PCT / 100.0f) {}
   };
 

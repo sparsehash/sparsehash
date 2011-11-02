@@ -47,6 +47,7 @@
 #include <google/sparsehash/sparseconfig.h>
 #include <config.h>
 #include <math.h>
+#include <stddef.h>   // for size_t
 #include <stdlib.h>
 #include <string.h>
 #ifdef HAVE_STDINT_H
@@ -78,6 +79,7 @@ using GOOGLE_NAMESPACE::HashtableInterface_SparseHashtable;
 using GOOGLE_NAMESPACE::HashtableInterface_DenseHashMap;
 using GOOGLE_NAMESPACE::HashtableInterface_DenseHashSet;
 using GOOGLE_NAMESPACE::HashtableInterface_DenseHashtable;
+namespace sparsehash_internal = GOOGLE_NAMESPACE::sparsehash_internal;
 
 typedef unsigned char uint8;
 
@@ -526,7 +528,7 @@ TEST(HashtableCommonTest, HashMunging) {
 
   // We don't munge the hash value on non-pointer template types.
   {
-    const sh_hashtable_settings<int, Hasher, size_t, 1>
+    const sparsehash_internal::sh_hashtable_settings<int, Hasher, size_t, 1>
         settings(hasher, 0.0, 0.0);
     const int v = 1000;
     EXPECT_EQ(hasher(v), settings.hash(v));
@@ -534,14 +536,15 @@ TEST(HashtableCommonTest, HashMunging) {
 
   {
     // We do munge the hash value on pointer template types.
-    const sh_hashtable_settings<int*, Hasher, size_t, 1>
+    const sparsehash_internal::sh_hashtable_settings<int*, Hasher, size_t, 1>
         settings(hasher, 0.0, 0.0);
     int* v = NULL;
     v += 0x10000;    // get a non-trivial pointer value
     EXPECT_NE(hasher(v), settings.hash(v));
   }
   {
-    const sh_hashtable_settings<const int*, Hasher, size_t, 1>
+    const sparsehash_internal::sh_hashtable_settings<const int*, Hasher,
+                                                     size_t, 1>
         settings(hasher, 0.0, 0.0);
     const int* v = NULL;
     v += 0x10000;    // get a non-trivial pointer value
@@ -1599,6 +1602,55 @@ TYPED_TEST(HashtableAllTest, MetadataSerialization) {
   fclose(fp);
   EXPECT_EQ(string("B\x86W\x13 \0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0", 24),
             string(contents, 24));
+}
+
+// We don't support serializing to a string by default, but you can do
+// it by writing your own custom input/output class.
+class StringIO {
+ public:
+  explicit StringIO(string* s) : s_(s) {}
+  size_t Write(const void* buf, size_t len) {
+    s_->append(reinterpret_cast<const char*>(buf), len);
+    return len;
+  }
+  size_t Read(void* buf, size_t len) {
+    if (s_->length() < len)
+      len = s_->length();
+    memcpy(reinterpret_cast<char*>(buf), s_->data(), len);
+    s_->erase(0, len);
+    return len;
+  }
+ private:
+  string* const s_;
+};
+
+TYPED_TEST(HashtableIntTest, SerializingToString) {
+  if (!this->ht_.supports_serialization()) return;
+  TypeParam ht_out;
+  ht_out.set_deleted_key(this->UniqueKey(2000));
+  for (int i = 1; i < 100; i++) {
+    ht_out.insert(this->UniqueObject(i));
+  }
+  // just to test having some erased keys when we write.
+  ht_out.erase(this->UniqueKey(56));
+  ht_out.erase(this->UniqueKey(22));
+
+  string stringbuf;
+  StringIO stringio(&stringbuf);
+  EXPECT_TRUE(ht_out.serialize(typename TypeParam::NopointerSerializer(),
+                               &stringio));
+
+  TypeParam ht_in;
+  EXPECT_TRUE(ht_in.unserialize(typename TypeParam::NopointerSerializer(),
+                                &stringio));
+
+  EXPECT_EQ(this->UniqueObject(1), *ht_in.find(this->UniqueKey(1)));
+  EXPECT_EQ(this->UniqueObject(99), *ht_in.find(this->UniqueKey(99)));
+  EXPECT_FALSE(ht_in.count(this->UniqueKey(100)));
+  EXPECT_EQ(this->UniqueObject(21), *ht_in.find(this->UniqueKey(21)));
+  // should not have been saved
+  EXPECT_FALSE(ht_in.count(this->UniqueKey(22)));
+  EXPECT_FALSE(ht_in.count(this->UniqueKey(56)));
 }
 
 
