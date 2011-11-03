@@ -243,7 +243,6 @@
 #include <memory>               // uninitialized_copy, uninitialized_fill
 #include <vector>               // a sparsetable is a vector of groups
 #include <google/type_traits.h>
-#include <google/sparsehash/hashtable-common.h>
 #include <google/sparsehash/libc_allocator_with_realloc.h>
 
 // A lot of work to get a type that's guaranteed to be 16 bits...
@@ -277,6 +276,7 @@ using GOOGLE_NAMESPACE::is_same;
 // On the other hand, there are more groups.  Since group::size_type is
 // a short, this number should be of the form 32*x + 16 to avoid waste.
 static const u_int16_t DEFAULT_SPARSEGROUP_SIZE = 48;   // fits in 1.5 words
+
 
 // Our iterator as simple as iterators can be: basically it's just
 // the index into our table.  Dereference, the only complicated
@@ -798,6 +798,22 @@ class destructive_two_d_iterator {
 // the array (from 1 .. # of non-empty buckets in the group) is
 // called its "offset."
 
+// The weird mod in the offset is entirely to quiet compiler warnings
+// as is the cast to int after doing the "x mod 256"
+#define PUT_(take_from, offset)  do {                                          \
+  if (putc(static_cast<int>(((take_from) >> ((offset) % (sizeof(take_from)*8)))\
+                             % 256), fp)                                       \
+      == EOF)                                                                  \
+    return false;                                                              \
+} while (0)
+
+#define GET_(add_to, offset)  do {                                            \
+  if ((x=getc(fp)) == EOF)                                                    \
+    return false;                                                             \
+  else                                                                        \
+    add_to |= (static_cast<size_type>(x) << ((offset) % (sizeof(add_to)*8))); \
+} while (0)
+
 template <class T, u_int16_t GROUP_SIZE, class Alloc>
 class sparsegroup {
  private:
@@ -1212,25 +1228,27 @@ class sparsegroup {
   // the actual array contents (which we don't know how to store),
   // just the bitmap and size.  Meant to be used with table I/O.
 
-  template <typename OUTPUT> bool write_metadata(OUTPUT *fp) const {
+  // Returns true if all was ok.
+  bool write_metadata(FILE *fp) const {
     // we explicitly set to u_int16_t
     assert(sizeof(settings.num_buckets) == 2);
-    if ( !sparsehash_internal::write_bigendian_number(fp, settings.num_buckets,
-                                                      2) )
-      return false;
-    if ( !sparsehash_internal::write_data(fp, bitmap, sizeof(bitmap)) )
+    PUT_(settings.num_buckets, 8);
+    PUT_(settings.num_buckets, 0);
+    if ( !fwrite(bitmap, sizeof(bitmap), 1, fp) )
       return false;
     return true;
   }
 
   // Reading destroys the old group contents!  Returns true if all was ok.
-  template <typename INPUT> bool read_metadata(INPUT *fp) {
+  bool read_metadata(FILE *fp) {
     clear();
-    if ( !sparsehash_internal::read_bigendian_number(fp, &settings.num_buckets,
-                                                     2) )
-      return false;
-    if ( !sparsehash_internal::read_data(fp, bitmap, sizeof(bitmap)) )
-      return false;
+
+    int x;          // the GET_ macro requires an 'int x' to be defined
+    GET_(settings.num_buckets, 8);
+    GET_(settings.num_buckets, 0);
+
+    if ( !fread(bitmap, sizeof(bitmap), 1, fp) )  return false;
+
     // We'll allocate the space, but we won't fill it: it will be
     // left as uninitialized raw memory.
     group = allocate_group(settings.num_buckets);
@@ -1240,24 +1258,25 @@ class sparsegroup {
   // If your keys and values are simple enough, we can write them
   // to disk for you.  "simple enough" means POD and no pointers.
   // However, we don't try to normalize endianness.
-  template <typename OUTPUT> bool write_nopointer_data(OUTPUT *fp) const {
+  bool write_nopointer_data(FILE *fp) const {
     for ( const_nonempty_iterator it = nonempty_begin();
           it != nonempty_end(); ++it ) {
-      if ( !sparsehash_internal::write_data(fp, &(*it), sizeof(*it)) )
+      if ( !fwrite(&*it, sizeof(*it), 1, fp) )  return false;
+    }
+    return true;
+  }
+
+  // When reading, we have to override the potential const-ness of *it.
+  // Again, only meaningful if value_type is a POD.
+  bool read_nopointer_data(FILE *fp) {
+    for ( nonempty_iterator it = nonempty_begin();
+          it != nonempty_end(); ++it ) {
+      if ( !fread(reinterpret_cast<void*>(&(*it)), sizeof(*it), 1, fp) )
         return false;
     }
     return true;
   }
 
-  // Again, only meaningful if value_type is a POD.
-  template <typename INPUT> bool read_nopointer_data(INPUT *fp) {
-    for ( nonempty_iterator it = nonempty_begin();
-          it != nonempty_end(); ++it ) {
-      if ( !sparsehash_internal::read_data(fp, &(*it), sizeof(*it)) )
-        return false;
-    }
-    return true;
-  }
 
   // Comparisons.  We only need to define == and < -- we get
   // != > <= >= via relops.h (which we happily included above).
@@ -1646,36 +1665,56 @@ class sparsetable {
   // causes us to mis-read old-version code that stores exactly
   // 0xFFFFFFF, but I don't think that is likely to have happened for
   // these particular values.
-  template <typename OUTPUT, typename IntType>
-  static bool write_32_or_64(OUTPUT* fp, IntType value) {
+  template <typename IntType>
+  static bool write_32_or_64(FILE* fp, IntType value) {
     if ( value < 0xFFFFFFFFULL ) {        // fits in 4 bytes
-      if ( !sparsehash_internal::write_bigendian_number(fp, value, 4) )
-        return false;
+      PUT_(value, 24);
+      PUT_(value, 16);
+      PUT_(value, 8);
+      PUT_(value, 0);
+    } else if ( value == 0xFFFFFFFFUL ) {   // special case in 32bit systems
+      PUT_(0xFF, 0); PUT_(0xFF, 0); PUT_(0xFF, 0); PUT_(0xFF, 0);  // marker
+      PUT_(0, 0); PUT_(0, 0); PUT_(0, 0); PUT_(0, 0);
+      PUT_(0xFF, 0); PUT_(0xFF, 0); PUT_(0xFF, 0); PUT_(0xFF, 0);
     } else {
-      if ( !sparsehash_internal::write_bigendian_number(fp, 0xFFFFFFFFUL, 4) )
-        return false;
-      if ( !sparsehash_internal::write_bigendian_number(fp, value, 8) )
-        return false;
+      PUT_(0xFF, 0); PUT_(0xFF, 0); PUT_(0xFF, 0); PUT_(0xFF, 0);  // marker
+      PUT_(value, 56);
+      PUT_(value, 48);
+      PUT_(value, 40);
+      PUT_(value, 32);
+      PUT_(value, 24);
+      PUT_(value, 16);
+      PUT_(value, 8);
+      PUT_(value, 0);
     }
     return true;
   }
 
-  template <typename INPUT, typename IntType>
-  static bool read_32_or_64(INPUT* fp, IntType *value) {  // reads into value
-    MagicNumberType first4 = 0;   // a convenient 32-bit unsigned type
-    if ( !sparsehash_internal::read_bigendian_number(fp, &first4, 4) )
-      return false;
+  template <typename IntType>
+  static bool read_32_or_64(FILE* fp, IntType *value) {  // reads into value
+    size_type first4 = 0;
+    int x;
+    GET_(first4, 24);
+    GET_(first4, 16);
+    GET_(first4, 8);
+    GET_(first4, 0);
     if ( first4 < 0xFFFFFFFFULL ) {
       *value = first4;
     } else {
-      if ( !sparsehash_internal::read_bigendian_number(fp, value, 8) )
-        return false;
+      GET_(*value, 56);
+      GET_(*value, 48);
+      GET_(*value, 40);
+      GET_(*value, 32);
+      GET_(*value, 24);
+      GET_(*value, 16);
+      GET_(*value, 8);
+      GET_(*value, 0);
     }
     return true;
   }
 
  public:
-  template <typename OUTPUT> bool write_metadata(OUTPUT *fp) const {
+  bool write_metadata(FILE *fp) const {
     if ( !write_32_or_64(fp, MAGIC_NUMBER) )  return false;
     if ( !write_32_or_64(fp, settings.table_size) )  return false;
     if ( !write_32_or_64(fp, settings.num_buckets) )  return false;
@@ -1687,7 +1726,7 @@ class sparsetable {
   }
 
   // Reading destroys the old table contents!  Returns true if read ok.
-  template <typename INPUT> bool read_metadata(INPUT *fp) {
+  bool read_metadata(FILE *fp) {
     size_type magic_read = 0;
     if ( !read_32_or_64(fp, &magic_read) )  return false;
     if ( magic_read != MAGIC_NUMBER ) {
@@ -1705,27 +1744,28 @@ class sparsetable {
     return true;
   }
 
-  // This code is identical to that for SparseGroup.
+  // This code is identical to that for SparseGroup
   // If your keys and values are simple enough, we can write them
   // to disk for you.  "simple enough" means no pointers.
   // However, we don't try to normalize endianness
-  template <typename OUTPUT> bool write_nopointer_data(OUTPUT *fp) const {
+  bool write_nopointer_data(FILE *fp) const {
     for ( const_nonempty_iterator it = nonempty_begin();
           it != nonempty_end(); ++it ) {
-      if ( !sparsehash_internal::write_data(fp, &(*it), sizeof(*it)) )
+      if ( !fwrite(&*it, sizeof(*it), 1, fp) )  return false;
+    }
+    return true;
+  }
+
+  // When reading, we have to override the potential const-ness of *it
+  bool read_nopointer_data(FILE *fp) {
+    for ( nonempty_iterator it = nonempty_begin();
+          it != nonempty_end(); ++it ) {
+      if ( !fread(reinterpret_cast<void*>(&(*it)), sizeof(*it), 1, fp) )
         return false;
     }
     return true;
   }
 
-  template <typename INPUT> bool read_nopointer_data(INPUT *fp) {
-    for ( nonempty_iterator it = nonempty_begin();
-          it != nonempty_end(); ++it ) {
-      if ( !sparsehash_internal::read_data(fp, &(*it), sizeof(*it)) )
-        return false;
-    }
-    return true;
-  }
 
   // Comparisons.  Note the comparisons are pretty arbitrary: we
   // compare values of the first index that isn't equal (using default
@@ -1776,6 +1816,9 @@ inline void swap(sparsetable<T,GROUP_SIZE,Alloc> &x,
                  sparsetable<T,GROUP_SIZE,Alloc> &y) {
   x.swap(y);
 }
+
+#undef GET_
+#undef PUT_
 
 _END_GOOGLE_NAMESPACE_
 
