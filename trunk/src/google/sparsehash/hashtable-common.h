@@ -49,6 +49,10 @@
 
 _START_GOOGLE_NAMESPACE_
 
+template <bool> struct SparsehashCompileAssert { };
+#define SPARSEHASH_COMPILE_ASSERT(expr, msg) \
+  typedef SparsehashCompileAssert<(bool(expr))> msg[bool(expr) ? 1 : -1]
+
 namespace sparsehash_internal {
 
 // Adaptor methods for reading/writing data from an INPUT or OUPTUT
@@ -139,9 +143,12 @@ template <typename INPUT, typename IntType>
 bool read_bigendian_number(INPUT* fp, IntType* value, size_t length) {
   *value = 0;
   unsigned char byte;
+  // We require IntType to be unsigned or else the shifting gets all screwy.
+  SPARSEHASH_COMPILE_ASSERT(static_cast<IntType>(-1) > static_cast<IntType>(0),
+                            serializing_int_requires_an_unsigned_type);
   for (size_t i = 0; i < length; ++i) {
     if (!read_data(fp, &byte, sizeof(byte))) return false;
-    *value |= static_cast<IntType>(byte) << (i * 8);
+    *value |= static_cast<IntType>(byte) << ((length - 1 - i) * 8);
   }
   return true;
 }
@@ -149,8 +156,11 @@ bool read_bigendian_number(INPUT* fp, IntType* value, size_t length) {
 template <typename OUTPUT, typename IntType>
 bool write_bigendian_number(OUTPUT* fp, IntType value, size_t length) {
   unsigned char byte;
+  // We require IntType to be unsigned or else the shifting gets all screwy.
+  SPARSEHASH_COMPILE_ASSERT(static_cast<IntType>(-1) > static_cast<IntType>(0),
+                            serializing_int_requires_an_unsigned_type);
   for (size_t i = 0; i < length; ++i) {
-    byte = i >= sizeof(value) ? 0 : value >> (i * 8);
+    byte = (sizeof(value) <= length-1 - i) ? 0 : value >> ((length-1 - i) * 8);
     if (!write_data(fp, &byte, sizeof(byte))) return false;
   }
   return true;
@@ -345,6 +355,7 @@ class sh_hashtable_settings : public HashFunc {
 
 }  // namespace sparsehash_internal
 
+#undef SPARSEHASH_COMPILE_ASSERT
 _END_GOOGLE_NAMESPACE_
 
 #endif  // UTIL_GTL_HASHTABLE_COMMON_H_
