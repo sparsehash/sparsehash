@@ -1585,26 +1585,6 @@ TYPED_TEST(HashtableIntTest, NopointerSerialization) {
   EXPECT_FALSE(ht_in.count(this->UniqueKey(56)));
 }
 
-TYPED_TEST(HashtableAllTest, MetadataSerialization) {
-  if (!this->ht_.supports_serialization()) return;
-  // Verify that the metadata serialization is endianness and word size
-  // agnostic.
-  TypeParam ht_out;
-  string file(TmpFile("metadata_serialization"));
-  FILE* fp = fopen(file.c_str(), "wb");
-  EXPECT_TRUE(fp != NULL);
-  EXPECT_TRUE(ht_out.serialize(ValueSerializer(), fp));
-  EXPECT_EQ(24, ftell(fp));
-  fclose(fp);
-  fp = fopen(file.c_str(), "rb");
-
-  char contents[24];
-  EXPECT_TRUE(fread(contents, 24, 1, fp) == 1);
-  fclose(fp);
-  EXPECT_EQ(string("B\x86W\x13 \0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0", 24),
-            string(contents, 24));
-}
-
 // We don't support serializing to a string by default, but you can do
 // it by writing your own custom input/output class.
 class StringIO {
@@ -1681,6 +1661,52 @@ TYPED_TEST(HashtableIntTest, SerializingToStringStream) {
   // should not have been saved
   EXPECT_FALSE(ht_in.count(this->UniqueKey(22)));
   EXPECT_FALSE(ht_in.count(this->UniqueKey(56)));
+}
+
+// Verify that the metadata serialization is endianness and word size
+// agnostic.
+TYPED_TEST(HashtableAllTest, MetadataSerializationAndEndianness) {
+  TypeParam ht_out;
+  string kExpectedDense("\x13W\x86""B\0\0\0\0\0\0\0 \0\0\0\0\0\0\0\0\0\0\0\0",
+                        24);
+  string kExpectedSparse("$hu1\0\0\0 \0\0\0\0\0\0\0\0\0\0\0\0", 20);
+
+  if (ht_out.supports_readwrite()) {
+    string file(TmpFile("metadata_serialization"));
+    FILE* fp = fopen(file.c_str(), "wb");
+    EXPECT_TRUE(fp != NULL);
+
+    EXPECT_TRUE(ht_out.write_metadata(fp));
+    EXPECT_TRUE(ht_out.write_nopointer_data(fp));
+
+    const size_t num_bytes = ftell(fp);
+    fclose(fp);
+    fp = fopen(file.c_str(), "rb");
+    EXPECT_LE(num_bytes, static_cast<size_t>(24));
+    char contents[24];
+    EXPECT_EQ(num_bytes, fread(contents, 1, num_bytes, fp));
+    EXPECT_EQ(EOF, fgetc(fp));       // check we're *exactly* the right size
+    fclose(fp);
+    // TODO(csilvers): check type of ht_out instead of looking at the 1st byte.
+    if (contents[0] == kExpectedDense[0]) {
+      EXPECT_EQ(kExpectedDense, string(contents, num_bytes));
+    } else {
+      EXPECT_EQ(kExpectedSparse, string(contents, num_bytes));
+    }
+  }
+
+  // Do it again with new-style serialization.  Here we can use StringIO.
+  if (ht_out.supports_serialization()) {
+    string stringbuf;
+    StringIO stringio(&stringbuf);
+    EXPECT_TRUE(ht_out.serialize(typename TypeParam::NopointerSerializer(),
+                                 &stringio));
+    if (stringbuf[0] == kExpectedDense[0]) {
+      EXPECT_EQ(kExpectedDense, stringbuf);
+    } else {
+      EXPECT_EQ(kExpectedSparse, stringbuf);
+    }
+  }
 }
 
 
