@@ -71,7 +71,7 @@
 // For enlarge_factor, you can use this chart to try to trade-off
 // expected lookup time to the space taken up.  By default, this
 // code uses quadratic probing, though you can change it to linear
-// via _JUMP below if you really want to.
+// via JUMP_ below if you really want to.
 //
 // From http://www.augustana.ca/~mohrj/courses/1999.fall/csc210/lecture_notes/hashing.html
 // NUMBER OF PROBES / LOOKUP       Successful            Unsuccessful
