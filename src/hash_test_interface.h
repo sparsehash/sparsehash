@@ -772,8 +772,8 @@ class HashtableInterface_DenseHashMap
   bool supports_serialization() const { return true; }
 
   typedef typename ht::NopointerSerializer NopointerSerializer;
-  template <typename OUTPUT> bool write_metadata(OUTPUT *fp) { return false; }
-  template <typename INPUT> bool read_metadata(INPUT *fp) { return false; }
+  template <typename OUTPUT> bool write_metadata(OUTPUT *) { return false; }
+  template <typename INPUT> bool read_metadata(INPUT *) { return false; }
   template <typename OUTPUT> bool write_nopointer_data(OUTPUT *) {
     return false;
   }
@@ -876,8 +876,8 @@ class HashtableInterface_DenseHashSet
   bool supports_serialization() const { return true; }
 
   typedef typename ht::NopointerSerializer NopointerSerializer;
-  template <typename OUTPUT> bool write_metadata(OUTPUT *fp) { return false; }
-  template <typename INPUT> bool read_metadata(INPUT *fp) { return false; }
+  template <typename OUTPUT> bool write_metadata(OUTPUT *) { return false; }
+  template <typename INPUT> bool read_metadata(INPUT *) { return false; }
   template <typename OUTPUT> bool write_nopointer_data(OUTPUT *) {
     return false;
   }
@@ -1003,8 +1003,8 @@ class HashtableInterface_DenseHashtable
   bool supports_serialization() const { return true; }
 
   typedef typename ht::NopointerSerializer NopointerSerializer;
-  template <typename OUTPUT> bool write_metadata(OUTPUT *fp) { return false; }
-  template <typename INPUT> bool read_metadata(INPUT *fp) { return false; }
+  template <typename OUTPUT> bool write_metadata(OUTPUT *) { return false; }
+  template <typename INPUT> bool read_metadata(INPUT *) { return false; }
   template <typename OUTPUT> bool write_nopointer_data(OUTPUT *) {
     return false;
   }
