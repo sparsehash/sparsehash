@@ -81,6 +81,8 @@ namespace sparsehash_internal {
 // the type, and use a second, void* arg to achieve the desired
 // 'catch-all' semantics.
 
+// ----- low-level I/O for FILE* ----
+
 template<typename Ignored>
 inline bool read_data_internal(Ignored*, FILE* fp,
                                void* data, size_t length) {
@@ -93,19 +95,35 @@ inline bool write_data_internal(Ignored*, FILE* fp,
   return fwrite(data, length, 1, fp) == 1;
 }
 
-// Lucky these are inline, because we want the caller to be responsible
-// for #including <iostream>, not us (iostream is a big header!)
+// ----- low-level I/O for iostream ----
+
+// We want the caller to be responsible for #including <iostream>, not
+// us, because iostream is a big header!  According to the standard,
+// it's only legal to delay the instantiation the way we want to if
+// the istream/ostream is a template type.  So we jump through hoops.
+template<typename ISTREAM>
+inline bool read_data_internal_for_istream(ISTREAM* fp,
+                                           void* data, size_t length) {
+  return fp->read(reinterpret_cast<char*>(data), length).good();
+}
 template<typename Ignored>
 inline bool read_data_internal(Ignored*, std::istream* fp,
                                void* data, size_t length) {
-  return fp->read(reinterpret_cast<char*>(data), length).good();
+  return read_data_internal_for_istream(fp, data, length);
 }
 
+template<typename OSTREAM>
+inline bool write_data_internal_for_ostream(OSTREAM* fp,
+                                            const void* data, size_t length) {
+  return fp->write(reinterpret_cast<const char*>(data), length).good();
+}
 template<typename Ignored>
 inline bool write_data_internal(Ignored*, std::ostream* fp,
                                 const void* data, size_t length) {
-  return fp->write(reinterpret_cast<const char*>(data), length).good();
+  return write_data_internal_for_ostream(fp, data, length);
 }
+
+// ----- low-level I/O for custom streams ----
 
 // The INPUT type needs to support a Read() method that takes a
 // buffer and a length and returns the number of bytes read.
@@ -123,6 +141,7 @@ inline bool write_data_internal(OUTPUT* fp, void*,
   return static_cast<size_t>(fp->Write(data, length)) == length;
 }
 
+// ----- low-level I/O: the public API ----
 
 template <typename INPUT>
 inline bool read_data(INPUT* fp, void* data, size_t length) {
