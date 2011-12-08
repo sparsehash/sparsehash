@@ -1629,7 +1629,7 @@ struct StringToIntSerializer {
     if (fwrite(&amp;value.first, sizeof(value.first), 1, fp) != 1)
       return false;
     // Write the value.
-    assert(value.second.length() <= 255);   // we only support writing small strings
+    assert(value.second.length() &lt;= 255);   // we only support writing small strings
     const unsigned char size = value.second.length();
     if (fwrite(&amp;size, 1, 1, fp) != 1)
       return false;
@@ -1640,10 +1640,10 @@ struct StringToIntSerializer {
   bool operator()(FILE* fp, std::pair&lt;const int, std::string&gt;* value) const {
     // Read the key.  Note the need for const_cast to get around
     // the fact hash_map keys are always const.
-    if (fread(const_cast<int*>(&amp;value->first), sizeof(value->first), 1, fp) != 1)
+    if (fread(const_cast&lt;int*&gt;(&amp;value-&gt;first), sizeof(value-&gt;first), 1, fp) != 1)
       return false;
     // Read the value.
-    unsigned char size;    // all strings are <= 255 chars long
+    unsigned char size;    // all strings are &lt;= 255 chars long
     if (fread(&amp;size, 1, 1, fp) != 1)
       return false;
     char* buf = new char[size];
@@ -1651,7 +1651,7 @@ struct StringToIntSerializer {
       delete[] buf;
       return false;
     }
-    value->second.assign(buf, size);
+    value-&gt;second.assign(buf, size);
     delete[] buf;
     return true;
   }
@@ -1717,7 +1717,7 @@ serialize from two threads at once, without synchronization.</p>
 <p>NOTE: older versions of <tt>dense_hash_map</tt> provided a
 different API, consisting of <tt>read_metadata()</tt>,
 <tt>read_nopointer_data()</tt>, <tt>write_metadata()</tt>,
-<tt>write_nopointer_data()</tt>.  These meothds were never implemented
+<tt>write_nopointer_data()</tt>.  These methods were never implemented
 and always did nothing but return <tt>false</tt>.  You should
 exclusively use the new API for serialization.</p>
 

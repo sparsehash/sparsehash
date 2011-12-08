@@ -307,7 +307,7 @@ class dense_hash_set {
   //    pointer to a class providing size_t Write(const void*, size_t),
   //    which writes a buffer into a stream (which fp presumably
   //    owns) and returns the number of bytes successfully written.
-  //    Note basic_ostream<not_char> is not currently spuported.
+  //    Note basic_ostream<not_char> is not currently supported.
   template <typename ValueSerializer, typename OUTPUT>
   bool serialize(ValueSerializer serializer, OUTPUT* fp) {
     return rep.serialize(serializer, fp);
@@ -320,7 +320,7 @@ class dense_hash_set {
   //    pointer to a class providing size_t Read(void*, size_t),
   //    which reads into a buffer from a stream (which fp presumably
   //    owns) and returns the number of bytes successfully read.
-  //    Note basic_istream<not_char> is not currently spuported.
+  //    Note basic_istream<not_char> is not currently supported.
   template <typename ValueSerializer, typename INPUT>
   bool unserialize(ValueSerializer serializer, INPUT* fp) {
     return rep.unserialize(serializer, fp);

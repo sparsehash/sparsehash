@@ -1111,7 +1111,7 @@ class sparse_hashtable {
   template <typename INPUT>
   bool read_metadata(INPUT *fp) {
     num_deleted = 0;            // since we got rid before writing
-    bool result = table.read_metadata(fp);
+    const bool result = table.read_metadata(fp);
     settings.reset_thresholds(bucket_count());
     return result;
   }
@@ -1126,6 +1126,30 @@ class sparse_hashtable {
   template <typename INPUT>
   bool read_nopointer_data(INPUT *fp) {
     return table.read_nopointer_data(fp);
+  }
+
+  // INPUT and OUTPUT must be either a FILE, *or* a C++ stream
+  //    (istream, ostream, etc) *or* a class providing
+  //    Read(void*, size_t) and Write(const void*, size_t)
+  //    (respectively), which writes a buffer into a stream
+  //    (which the INPUT/OUTPUT instance presumably owns).
+
+  typedef sparsehash_internal::pod_serializer<value_type> NopointerSerializer;
+
+  // ValueSerializer: a functor.  operator()(OUTPUT*, const value_type&)
+  template <typename ValueSerializer, typename OUTPUT>
+  bool serialize(ValueSerializer serializer, OUTPUT *fp) {
+    squash_deleted();           // so we don't have to worry about delkey
+    return table.serialize(serializer, fp);
+  }
+
+  // ValueSerializer: a functor.  operator()(INPUT*, value_type*)
+  template <typename ValueSerializer, typename INPUT>
+  bool unserialize(ValueSerializer serializer, INPUT *fp) {
+    num_deleted = 0;            // since we got rid before writing
+    const bool result = table.unserialize(serializer, fp);
+    settings.reset_thresholds(bucket_count());
+    return result;
   }
 
  private:

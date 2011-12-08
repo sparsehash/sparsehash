@@ -370,8 +370,7 @@ class ValueSerializer {
       delete[] buf;
       return false;
     }
-    value->clear();
-    value->append(buf, size);
+    new(value) string(buf, size);
     delete[] buf;
     return true;
   }
@@ -383,7 +382,7 @@ class ValueSerializer {
   bool operator()(INPUT* fp, ValueType* v) {
     string data;
     if (!(*this)(fp, &data)) return false;
-    v->set_s(data.c_str());
+    new(v) ValueType(data.c_str());
     return true;
   }
   template <typename OUTPUT>

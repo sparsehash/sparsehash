@@ -343,7 +343,7 @@ void TestInt() {
     out += snprintf(out, LEFT, "y[??] = %d\n", *--it);
 
   // ----------------------------------------------------------------------
-  // Test I/O
+  // Test I/O using deprecated read/write_metadata
   string filestr = FLAGS_test_tmpdir + "/.sparsetable.test";
   const char *file = filestr.c_str();
   FILE *fp = fopen(file, "wb");
@@ -366,6 +366,31 @@ void TestInt() {
     sparsetable<int> y2;
     y2.read_metadata(fp);
     y2.read_nopointer_data(fp);
+    fclose(fp);
+
+    for ( sparsetable<int>::const_iterator it = y2.begin(); it != y2.end(); ++it ) {
+      if ( y2.test(it) )
+        out += snprintf(out, LEFT, "y2[%lu] is %d\n", UL(it - y2.begin()), *it);
+    }
+    out += snprintf(out, LEFT, "That's %lu set buckets\n", UL(y2.num_nonempty()));
+  }
+  unlink(file);
+
+  // ----------------------------------------------------------------------
+  // Also test I/O using serialize()/unserialize()
+  fp = fopen(file, "wb");
+  if ( fp == NULL ) {
+    out += snprintf(out, LEFT, "Can't open %s, skipping disk write...\n", file);
+  } else {
+    y.serialize(sparsetable<int>::NopointerSerializer(), fp);
+    fclose(fp);
+  }
+  fp = fopen(file, "rb");
+  if ( fp == NULL ) {
+    out += snprintf(out, LEFT, "Can't open %s, skipping disk read...\n", file);
+  } else {
+    sparsetable<int> y2;
+    y2.unserialize(sparsetable<int>::NopointerSerializer(), fp);
     fclose(fp);
 
     for ( sparsetable<int>::const_iterator it = y2.begin(); it != y2.end(); ++it ) {
@@ -835,6 +860,19 @@ static const char g_expected[] = (
     "y[??] = -13\n"
     "y[??] = -11\n"
     "y[??] = -10\n"
+    "y2[10] is -10\n"
+    "y2[11] is -11\n"
+    "y2[13] is -13\n"
+    "y2[14] is -14\n"
+    "y2[30] is -30\n"
+    "y2[31] is -31\n"
+    "y2[32] is -32\n"
+    "y2[33] is -33\n"
+    "y2[35] is -35\n"
+    "y2[36] is -36\n"
+    "y2[37] is -37\n"
+    "y2[9898] is -9898\n"
+    "That's 12 set buckets\n"
     "y2[10] is -10\n"
     "y2[11] is -11\n"
     "y2[13] is -13\n"

@@ -431,20 +431,15 @@ class HashtableInterface_SparseHashMap
   bool supports_brackets() const { return true; }
   bool supports_readwrite() const { return true; }
   bool supports_num_table_copies() const { return false; }
-  bool supports_serialization() const { return false; }
+  bool supports_serialization() const { return true; }
 
   void set_empty_key(const typename p::key_type& k) { }
   void clear_empty_key() { }
   typename p::key_type empty_key() const { return typename p::key_type(); }
 
-  struct NopointerSerializer {
-  };
-  template <typename ValueSerializer, typename OUTPUT>
-  bool serialize(ValueSerializer, OUTPUT *) { return false; }
-  template <typename ValueSerializer, typename INPUT>
-  bool unserialize(ValueSerializer, INPUT *) { return false; }
-
   int num_table_copies() const { return 0; }
+
+  typedef typename ht::NopointerSerializer NopointerSerializer;
 
  protected:
   template <class K2, class T2, class H2, class E2, class A2>
@@ -543,20 +538,15 @@ class HashtableInterface_SparseHashSet
   bool supports_brackets() const { return false; }
   bool supports_readwrite() const { return true; }
   bool supports_num_table_copies() const { return false; }
-  bool supports_serialization() const { return false; }
+  bool supports_serialization() const { return true; }
 
   void set_empty_key(const typename p::key_type& k) { }
   void clear_empty_key() { }
   typename p::key_type empty_key() const { return typename p::key_type(); }
 
-  struct NopointerSerializer {
-  };
-  template <typename ValueSerializer, typename OUTPUT>
-  bool serialize(ValueSerializer, OUTPUT *) { return false; }
-  template <typename ValueSerializer, typename INPUT>
-  bool unserialize(ValueSerializer, INPUT *) { return false; }
-
   int num_table_copies() const { return 0; }
+
+  typedef typename ht::NopointerSerializer NopointerSerializer;
 
  protected:
   template <class K2, class H2, class E2, class A2>
@@ -664,24 +654,19 @@ class HashtableInterface_SparseHashtable
   bool supports_brackets() const { return false; }
   bool supports_readwrite() const { return true; }
   bool supports_num_table_copies() const { return true; }
-  bool supports_serialization() const { return false; }
+  bool supports_serialization() const { return true; }
 
   void set_empty_key(const typename p::key_type& k) { }
   void clear_empty_key() { }
   typename p::key_type empty_key() const { return typename p::key_type(); }
-
-  struct NopointerSerializer {
-  };
-  template <typename ValueSerializer, typename OUTPUT>
-  bool serialize(ValueSerializer, OUTPUT *) { return false; }
-  template <typename ValueSerializer, typename INPUT>
-  bool unserialize(ValueSerializer, INPUT *) { return false; }
 
   // These tr1 names aren't defined for sparse_hashtable.
   typename p::hasher hash_function() { return this->hash_funct(); }
   void rehash(typename p::size_type hint) { this->resize(hint); }
 
   // TODO(csilvers): also support/test destructive_begin()/destructive_end()?
+
+  typedef typename ht::NopointerSerializer NopointerSerializer;
 
  protected:
   template <class V2, class K2, class HF2, class EK2, class SK2, class Eq2,

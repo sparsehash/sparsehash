@@ -1214,13 +1214,51 @@ key_type&amp; k) </pre>
 
 <TR>
 <TD VAlign=top>
-   <tt>bool write_metadata(FILE *fp)</tt>
+   <tt>template &lt;ValueSerializer, OUTPUT&gt;
+       bool serialize(ValueSerializer serializer, OUTPUT *fp)</tt>
 </TD>
 <TD VAlign=top>
    <tt>sparse_hash_map</tt>
 </TD>
 <TD VAlign=top>
    <A HREF="#new">See below</A>.
+</TD>
+</TR>
+
+<TR>
+<TD VAlign=top>
+   <tt>template &lt;ValueSerializer, INPUT&gt;
+       bool unserialize(ValueSerializer serializer, INPUT *fp)</tt>
+</TD>
+<TD VAlign=top>
+   <tt>sparse_hash_map</tt>
+</TD>
+<TD VAlign=top>
+   <A HREF="#new">See below</A>.
+</TD>
+</TR>
+
+<TR>
+<TD VAlign=top>
+   <tt>NopointerSerializer</tt>
+</TD>
+<TD VAlign=top>
+   <tt>sparse_hash_map</tt>
+</TD>
+<TD VAlign=top>
+   <A HREF="#new">See below</A>.
+</TD>
+</TR>
+
+<TR>
+<TD VAlign=top>
+   <tt>bool write_metadata(FILE *fp)</tt>
+</TD>
+<TD VAlign=top>
+   <tt>sparse_hash_map</tt>
+</TD>
+<TD VAlign=top>
+   DEPRECATED.  <A HREF="#new">See below</A>.
 </TD>
 </TR>
 
@@ -1232,7 +1270,7 @@ key_type&amp; k) </pre>
    <tt>sparse_hash_map</tt>
 </TD>
 <TD VAlign=top>
-   <A HREF="#new">See below</A>.
+   DEPRECATED.  <A HREF="#new">See below</A>.
 </TD>
 </TR>
 
@@ -1244,7 +1282,7 @@ key_type&amp; k) </pre>
    <tt>sparse_hash_map</tt>
 </TD>
 <TD VAlign=top>
-   <A HREF="#new">See below</A>.
+   DEPRECATED.  <A HREF="#new">See below</A>.
 </TD>
 </TR>
 
@@ -1256,7 +1294,7 @@ key_type&amp; k) </pre>
    <tt>sparse_hash_map</tt>
 </TD>
 <TD VAlign=top>
-   <A HREF="#new">See below</A>.
+   DEPRECATED.  <A HREF="#new">See below</A>.
 </TD>
 </TR>
 
@@ -1342,10 +1380,33 @@ href="http://www.sgi.com/tech/stl/#3">[3]</A>
 
 <TR>
 <TD VAlign=top>
+   <tt>template &lt;ValueSerializer, OUTPUT&gt;
+       bool serialize(ValueSerializer serializer, OUTPUT *fp)</tt>
+</TD>
+<TD VAlign=top>
+   Emit a serialization of the hash_map to a stream.
+   See <A HREF="#io">below</A>.
+</TD>
+</TR>
+
+<TR>
+<TD VAlign=top>
+   <tt>template &lt;ValueSerializer, INPUT&gt;
+       bool unserialize(ValueSerializer serializer, INPUT *fp)</tt>
+</TD>
+<TD VAlign=top>
+   Read in a serialization of a hash_map from a stream, replacing the
+   existing hash_map contents with the serialized contents.
+   See <A HREF="#io">below</A>.
+</TD>
+</TR>
+
+<TR>
+<TD VAlign=top>
    <tt>bool write_metadata(FILE *fp)</tt>
 </TD>
 <TD VAlign=top>
-   Write hashtable metadata to <tt>fp</tt>.  See <A HREF="#io">below</A>.
+   This function is DEPRECATED.  See <A HREF="#io">below</A>.
 </TD>
 </TR>
 
@@ -1354,7 +1415,7 @@ href="http://www.sgi.com/tech/stl/#3">[3]</A>
    <tt>bool read_metadata(FILE *fp)</tt>
 </TD>
 <TD VAlign=top>
-   Read hashtable metadata from <tt>fp</tt>.  See <A HREF="#io">below</A>.
+   This function is DEPRECATED.  See <A HREF="#io">below</A>.
 </TD>
 </TR>
 
@@ -1363,8 +1424,7 @@ href="http://www.sgi.com/tech/stl/#3">[3]</A>
    <tt>bool write_nopointer_data(FILE *fp)</tt>
 </TD>
 <TD VAlign=top>
-   Write hashtable contents to <tt>fp</tt>.  This is valid only if the
-   hashtable key and value are "plain" data.  See <A HREF="#io">below</A>.
+   This function is DEPRECATED.  See <A HREF="#io">below</A>.
 </TD>
 </TR>
 
@@ -1373,8 +1433,7 @@ href="http://www.sgi.com/tech/stl/#3">[3]</A>
    <tt>bool read_nopointer_data(FILE *fp)</tt>
 </TD>
 <TD VAlign=top>
-   Read hashtable contents to <tt>fp</tt>.  This is valid only if the
-   hashtable key and value are "plain" data.  See <A HREF="#io">below</A>.
+   This function is DEPRECATED.  See <A HREF="#io">below</A>.
 </TD>
 </TR>
 
@@ -1488,58 +1547,131 @@ constructor.
 <h3><A NAME=io>Input/Output</A></h3>
 
 <p>It is possible to save and restore <tt>sparse_hash_map</tt> objects
-to disk.  Storage takes place in two steps.  The first writes the
-hashtable metadata.  The second writes the actual data.</p>
+to an arbitrary stream (such as a disk file) using the
+<tt>serialize()</tt> and <tt>unserialize()</tt> methods.</p>
 
-<p>To write a hashtable to disk, first call <tt>write_metadata()</tt>
-on an open file pointer.  This saves the hashtable information in a
-byte-order-independent format.</p>
+<p>Each of these methods takes two arguments: a <i>serializer</i>,
+which says how to write hashtable items to disk, and a <i>stream</i>,
+which can be a C++ stream (<tt>istream</tt> or its subclasses for
+input, <tt>ostream</tt> or its subclasses for output), a
+<tt>FILE*</tt>, or a user-defined type (as described below).</p>
 
-<p>After the metadata has been written to disk, you must write the
-actual data stored in the hash-map to disk.  If both the key and data
-are "simple" enough, you can do this by calling
-<tt>write_nopointer_data()</tt>.  "Simple" data is data that can be
-safely copied to disk via <tt>fwrite()</tt>.  Native C data types fall
-into this category, as do structs of native C data types.  Pointers
-and STL objects do not.</p>
+<p>The <it>serializer</i> is a functor that takes a stream and a
+single hashtable element (a <tt>value_type</tt>, which is a pair of
+the key and data) and copies the hashtable element to the stream (for
+<tt>serialize()</tt>) or fills the hashtable element contents from the
+stream (for <tt>unserialize()</tt>), and returns true on success or
+false on error.  The copy-in and copy-out functions can be provided in
+a single functor.  Here is a sample serializer that read/writes a hashtable
+element for an int-to-string hash_map to a <tt>FILE*</tt>:</p>
 
-<p>Note that <tt>write_nopointer_data()</tt> does not do any endian
+<pre>
+struct StringToIntSerializer {
+  bool operator()(FILE* fp, const std::pair&lt;const int, std::string&gt;&amp; value) const {
+    // Write the key.  We ignore endianness for this example.
+    if (fwrite(&amp;value.first, sizeof(value.first), 1, fp) != 1)
+      return false;
+    // Write the value.
+    assert(value.second.length() &lt;= 255);   // we only support writing small strings
+    const unsigned char size = value.second.length();
+    if (fwrite(&amp;size, 1, 1, fp) != 1)
+      return false;
+    if (fwrite(value.second.data(), size, 1, fp) != 1)
+      return false;
+    return true;
+  }
+  bool operator()(FILE* fp, std::pair&lt;const int, std::string&gt;* value) const {
+    // Read the key.  Note the need for const_cast to get around
+    // the fact hash_map keys are always const.
+    if (fread(const_cast&lt;int*&gt;(&amp;value-&gt;first), sizeof(value-&gt;first), 1, fp) != 1)
+      return false;
+    // Read the value.
+    unsigned char size;    // all strings are &lt;= 255 chars long
+    if (fread(&amp;size, 1, 1, fp) != 1)
+      return false;
+    char* buf = new char[size];
+    if (fread(buf, size, 1, fp) != 1) {
+      delete[] buf;
+      return false;
+    }
+    new(&value-&gt;second) string(buf, size);
+    delete[] buf;
+    return true;
+  }
+};
+</pre>
+
+<p>Here is the functor being used in code (error checking omitted):</p>
+<pre>
+   sparse_hash_map&lt;string, int&gt; mymap = CreateMap();
+   FILE* fp = fopen("hashtable.data", "w");
+   mymap.serialize(StringToIntSerializer(), fp);
+   fclose(fp);
+
+   sparse_hash_map&lt;string, int&gt; mymap2;
+   FILE* fp_in = fopen("hashtable.data", "r");
+   mymap2.unserialize(StringToIntSerializer(), fp_in);
+   fclose(fp_in);
+   assert(mymap == mymap2);
+</pre>
+
+<p><b>Important note:</b> the code above uses placement-new to
+instantiate the <tt>string</tt>.  This is <i>required</i> for any
+non-POD type (which is why we didn't need to worry about this to read
+in the integer key).  The value_type passed in to the unserializer
+points to garbage memory, so it is not safe to assign to it directly
+if doing so causes a destructor to be called.</p>
+
+<p>Also note that this example serializer can only serialize to a
+FILE*.  If you want to also be able to use this serializer with C++
+streams, you will need to write two more overloads of
+<tt>operator()</tt>'s, one that reads from an <tt>istream</tt>, and
+one that writes to an <tt>ostream</tt>.  Likewise if you want to
+support serializing to a custom class.</p>
+
+<p>If both the key and data are "simple" enough, you can use the
+pre-supplied functor <tt>NopointerSerializer</tt>.  This copies the
+hashtable data using the equivalent of a <tt>memcpy<></tt>.  Native C
+data types can be serialized this way, as can structs of native C data
+types.  Pointers and STL objects cannot.</p>
+
+<p>Note that <tt>NopointerSerializer()</tt> does not do any endian
 conversion.  Thus, it is only appropriate when you intend to read the
 data on the same endian architecture as you write the data.</p>
 
-<p>If you cannot use <tt>write_nopointer_data()</tt> for any reason,
-you can write the data yourself by iterating over the
-<tt>sparse_hash_map</tt> with a <tt>const_iterator</tt> and writing
-the key and data in any manner you wish.</p>
-
-<p>To read the hashtable information from disk, first you must create
-a <tt>sparse_hash_map</tt> object.  Then open a file pointer to point
-to the saved hashtable, and call <tt>read_metadata()</tt>.  If you
-saved the data via <tt>write_nopointer_data()</tt>, you can follow the
-<tt>read_metadata()</tt> call with a call to
-<tt>read_nopointer_data()</tt>.  This is all that is needed.</p>
-
-<p>If you saved the data through a custom write routine, you must call
-a custom read routine to read in the data.  To do this, iterate over
-the <tt>sparse_hash_map</tt> with an <tt>iterator</tt>; this operation
-is sensical because the metadata has already been set up.  For each
-iterator item, you can read the key and value from disk, and set it
-appropriately.  You will need to do a <tt>const_cast</tt> on the
-iterator, since <tt>it-&gt;first</tt> is always <tt>const</tt>.  You
-will also need to use placement-new if the key or value is a C++
-object.  The code might look like this:</p>
+<p>If you wish to serialize to your own stream type, you can do so by
+creating an object which supports two methods:</p>
 <pre>
-   for (sparse_hash_map&lt;int*, ComplicatedClass&gt;::iterator it = ht.begin();
-        it != ht.end(); ++it) {
-       // The key is stored in the sparse_hash_map as a pointer
-       const_cast&lt;int*&gt;(it-&gt;first) = new int;
-       fread(const_cast&lt;int*&gt;(it-&gt;first), sizeof(int), 1, fp);
-       // The value is a complicated C++ class that takes an int to construct
-       int ctor_arg;
-       fread(&ctor_arg, sizeof(int), 1, fp);
-       new (&it-&gt;second) ComplicatedClass(ctor_arg);  // "placement new"
-   }
+   bool Write(const void* data, size_t length);
+   bool Read(void* data, size_t length);
 </pre>
+<p><tt>Write()</tt> writes <tt>length</tt> bytes of <tt>data</tt> to a
+stream (presumably a stream owned by the object), while
+<tt>Read()</tt> reads <tt>data</tt> bytes from the stream into
+<tt>data</tt>.  Both return true on success or false on error.</p>
+
+<p>To unserialize a hashtable from a stream, you wil typically create
+a new <tt>sparse_hash_map</tt> object, then call <tt>unserialize()</tt>
+on it.  <tt>unserialize()</tt> destroys the old contents of the
+object.  You must pass in the appropriate <tt>ValueSerializer</tt> for
+the data being read in.</p>
+
+<p>Both <tt>serialize()</tt> and <tt>unserialize()</tt> return
+<tt>true</tt> on success, or <tt>false</tt> if there was an error
+streaming the data.</p>
+
+<p>Note that <tt>serialize()</tt> is not a const method, since it
+purges deleted elements before serializing.  It is not safe to
+serialize from two threads at once, without synchronization.</p>
+
+<p>NOTE: older versions of <tt>sparse_hash_map</tt> provided a
+different API, consisting of <tt>read_metadata()</tt>,
+<tt>read_nopointer_data()</tt>, <tt>write_metadata()</tt>,
+<tt>write_nopointer_data()</tt>.  Writing to disk consisted of a call
+to <tt>write_metadata()</tt> followed by
+<tt>write_nopointer_data()</tt> (if the hash data was POD) or a custom
+loop over the hashtable buckets to write the data (otherwise).
+Reading from disk was similar.  Prefer the new API for new code.</p>
 
 
 <h3><A NAME=iter>Validity of Iterators</A></h3>
