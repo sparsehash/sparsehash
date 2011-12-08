@@ -1132,11 +1132,11 @@ class dense_hashtable {
   bool unserialize(ValueSerializer serializer, INPUT *fp) {
     assert(settings.use_empty() && "empty_key not set for read");
 
+    clear();                        // just to be consistent
     MagicNumberType magic_read;
     if ( !sparsehash_internal::read_bigendian_number(fp, &magic_read, 4) )
       return false;
     if ( magic_read != MAGIC_NUMBER ) {
-      clear();                        // just to be consistent
       return false;
     }
     size_type new_num_buckets;

@@ -1317,8 +1317,8 @@ Container</tt> requirements, but are specific to
 </TD>
 </TR>
 
- <TR>
- <TD VAlign=top>
+<TR>
+<TD VAlign=top>
    <tt>template &lt;ValueSerializer, OUTPUT&gt;
        bool serialize(ValueSerializer serializer, OUTPUT *fp)</tt>
 </TD>
@@ -1335,7 +1335,7 @@ Container</tt> requirements, but are specific to
 </TD>
 <TD VAlign=top>
    Read in a serialization of a hash_set from a stream, replacing the
-   existing hash_map contents with the serialized contents.
+   existing hash_set contents with the serialized contents.
    See <A HREF="#io">below</A>.
 </TD>
 </TR>
@@ -1471,7 +1471,7 @@ element for a string hash_set to a <tt>FILE*</tt>:</p>
 <pre>
 struct StringSerializer {
   bool operator()(FILE* fp, const std::string&amp; value) const {
-    assert(value.length() <= 255);   // we only support writing small strings
+    assert(value.length() &lt;= 255);   // we only support writing small strings
     const unsigned char size = value.length();
     if (fwrite(&amp;size, 1, 1, fp) != 1)
       return false;
@@ -1480,7 +1480,7 @@ struct StringSerializer {
     return true;
   }
   bool operator()(FILE* fp, std::string* value) const {
-    unsigned char size;    // all strings are <= 255 chars long
+    unsigned char size;    // all strings are &lt;= 255 chars long
     if (fread(&amp;size, 1, 1, fp) != 1)
       return false;
     char* buf = new char[size];
@@ -1488,7 +1488,7 @@ struct StringSerializer {
       delete[] buf;
       return false;
     }
-    value->assign(buf, size);
+    value-&gt;assign(buf, size);
     delete[] buf;
     return true;
   }
@@ -1554,7 +1554,7 @@ serialize from two threads at once, without synchronization.</p>
 <p>NOTE: older versions of <tt>dense_hash_set</tt> provided a
 different API, consisting of <tt>read_metadata()</tt>,
 <tt>read_nopointer_data()</tt>, <tt>write_metadata()</tt>,
-<tt>write_nopointer_data()</tt>.  These meothds were never implemented
+<tt>write_nopointer_data()</tt>.  These methods were never implemented
 and always did nothing but return <tt>false</tt>.  You should
 exclusively use the new API for serialization.</p>
 
