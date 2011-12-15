@@ -1604,7 +1604,7 @@ class sparsetable {
   // The trick is to figure out whether we're replacing or inserting anew
   reference set(size_type i, const_reference val) {
     assert(i < settings.table_size);
-    size_type old_numbuckets = which_group(i).num_nonempty();
+    typename group_type::size_type old_numbuckets = which_group(i).num_nonempty();
     reference retval = which_group(i).set(pos_in_group(i), val);
     settings.num_buckets += which_group(i).num_nonempty() - old_numbuckets;
     return retval;
@@ -1614,7 +1614,7 @@ class sparsetable {
   // "undefining", rather than "clearing".
   void erase(size_type i) {
     assert(i < settings.table_size);
-    size_type old_numbuckets = which_group(i).num_nonempty();
+    typename group_type::size_type old_numbuckets = which_group(i).num_nonempty();
     which_group(i).erase(pos_in_group(i));
     settings.num_buckets += which_group(i).num_nonempty() - old_numbuckets;
   }
