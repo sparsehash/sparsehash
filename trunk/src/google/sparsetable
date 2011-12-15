@@ -958,7 +958,7 @@ class sparsegroup {
     // This is sizeof(this->bitmap).
     const size_type group_size = (GROUP_SIZE-1) / 8 + 1;
     for (size_type i = 0; i < group_size; i++) {   // forward scan
-      unsigned char pop_count = bits_in_char(*bm);
+      const size_type pop_count = bits_in_char(*bm);
       if (pop_count > offset) {
         unsigned char last_bm = *bm;
         for (; offset > 0; offset--) {
@@ -1556,7 +1556,7 @@ class sparsetable {
   // TODO(csilvers): make protected + friend element_adaptor
   reference mutating_get(size_type i) {    // fills bucket i before getting
     assert(i < settings.table_size);
-    size_type old_numbuckets = which_group(i).num_nonempty();
+    typename group_type::size_type old_numbuckets = which_group(i).num_nonempty();
     reference retval = which_group(i).mutating_get(pos_in_group(i));
     settings.num_buckets += which_group(i).num_nonempty() - old_numbuckets;
     return retval;
