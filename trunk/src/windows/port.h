@@ -53,22 +53,12 @@
 
 // 4996: Yes, we're ok using the "unsafe" functions like _vsnprintf and fopen
 // 4127: We use "while (1)" sometimes: yes, we know it's a constant
-#pragma warning(disable:4996 4127)
+// 4181: type_traits_test is explicitly testing 'qualifier applied to reference'
+#pragma warning(disable:4996 4127 4181)
 
 
 // file I/O
-#define PATH_MAX 1024
-#define access  _access
-#define getcwd  _getcwd
-#define open    _open
-#define read    _read
-#define write   _write
-#define lseek   _lseek
-#define close   _close
 #define unlink  _unlink
-#define popen   _popen
-#define pclose  _pclose
-
 #define strdup  _strdup
 
 // We can't just use _snprintf as a drop-in replacement, because it
