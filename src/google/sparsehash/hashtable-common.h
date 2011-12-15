@@ -179,7 +179,8 @@ bool write_bigendian_number(OUTPUT* fp, IntType value, size_t length) {
   SPARSEHASH_COMPILE_ASSERT(static_cast<IntType>(-1) > static_cast<IntType>(0),
                             serializing_int_requires_an_unsigned_type);
   for (size_t i = 0; i < length; ++i) {
-    byte = (sizeof(value) <= length-1 - i) ? 0 : value >> ((length-1 - i) * 8);
+    byte = (sizeof(value) <= length-1 - i)
+        ? 0 : static_cast<unsigned char>((value >> ((length-1 - i) * 8)) & 255);
     if (!write_data(fp, &byte, sizeof(byte))) return false;
   }
   return true;
