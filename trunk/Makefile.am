@@ -102,8 +102,7 @@ sparsehashinclude_HEADERS =			\
 nodist_sparsehashinclude_HEADERS = src/google/sparsehash/sparseconfig.h
 
 TESTS += template_util_unittest
-# TODO(csilvers): Update windows projects for template_util_unittest.
-# WINDOWS_PROJECTS += vsprojects/template_util_unittest/template_util_unittest.vcproj
+WINDOWS_PROJECTS += vsprojects/template_util_unittest/template_util_unittest.vcproj
 template_util_unittest_SOURCES =			\
    src/template_util_unittest.cc		\
    src/google/template_util.h
