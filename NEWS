@@ -1,4 +1,22 @@
-== 23 June 2011 ==
+== 20 December 2011 ==
+
+I've just released sparsehash 1.12.  This release features improved
+I/O (serialization) support.  Support is finally added to serialize
+and unserialize `dense_hash_map`/`set`, paralleling the existing code
+for `sparse_hash_map`/`set`.  In addition, the serialization API has
+gotten simpler, with a single `serialize()` method to write to disk,
+and an `unserialize()` method to read from disk.  Finally, support has
+gotten more generic, with built-in support for both C `FILE*`s and C++
+streams, and an extension mechanism to support arbitrary sources and
+sinks.
+
+There are also more minor changes, including minor bugfixes, an
+improved deleted-key test, and a minor addition to the `sparsetable`
+API.  See the [http://google-sparsehash.googlecode.com/svn/tags/sparsehash-1.12/ChangeLog ChangeLog]
+for full details.
+
+
+=== 23 June 2011 ===
 
 I've just released sparsehash 1.11.  The major user-visible change is
 that the default behavior is improved -- using the hash_map/set is
@@ -20,7 +38,6 @@ entries being much more verbose (for better or for worse).
 
 A full list of changes is described in 
 [http://google-sparsehash.googlecode.com/svn/tags/sparsehash-1.11/ChangeLog ChangeLog].
-
 
 === 21 January 2011 ===
 
