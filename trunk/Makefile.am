@@ -3,25 +3,13 @@
 # Make sure that when we re-make ./configure, we get the macros we need
 ACLOCAL_AMFLAGS = -I m4
 
-# This is so we can #include <google/foo>
+# This is so we can #include <sparsehash/foo>
 AM_CPPFLAGS = -I$(top_srcdir)/src
 
 # These are good warnings to turn on by default
 if GCC
 AM_CXXFLAGS = -Wall -W -Wwrite-strings -Woverloaded-virtual -Wshadow
 endif
-
-googleincludedir = $(includedir)/google
-## The .h files you want to install (that is, .h files that people
-## who install this package can include in their own applications.)
-googleinclude_HEADERS =				\
-   src/google/dense_hash_map			\
-   src/google/dense_hash_set			\
-   src/google/sparse_hash_map			\
-   src/google/sparse_hash_set			\
-   src/google/sparsetable                       \
-   src/google/template_util.h			\
-   src/google/type_traits.h
 
 docdir = $(prefix)/share/doc/$(PACKAGE)-$(VERSION)
 ## This is for HTML and other documentation you want to install.
@@ -42,7 +30,7 @@ dist_doc_DATA = AUTHORS COPYING ChangeLog INSTALL NEWS README README_windows.txt
 ## The libraries (.so's) you want to install
 lib_LTLIBRARIES =
 ## The location of the windows project file for each binary we make
-WINDOWS_PROJECTS = google-sparsehash.sln
+WINDOWS_PROJECTS = sparsehash.sln
 
 ## unittests you want to run when people type 'make check'.
 ## TESTS is for binary unittests, check_SCRIPTS for script-based unittests.
@@ -70,8 +58,8 @@ WINDOWS_PROJECTS += vsprojects/time_hash_map/time_hash_map.vcproj
 #  | fgrep -vx -e -- > _sparsehash_config
 # For correctness, it depends on the fact config.h.include does not have
 # any lines starting with #.
-src/google/sparsehash/sparseconfig.h: $(top_builddir)/src/config.h \
-                                      $(top_srcdir)/src/config.h.include
+src/sparsehash/internal/sparseconfig.h: $(top_builddir)/src/config.h \
+                                        $(top_srcdir)/src/config.h.include
 	[ -d $(@D) ] || mkdir -p $(@D)
 	echo "/*" > $(@D)/_sparsehash_config
 	echo " * NOTE: This file is for internal use only." >> $(@D)/_sparsehash_config
@@ -90,47 +78,75 @@ src/google/sparsehash/sparseconfig.h: $(top_builddir)/src/config.h \
 	>> $(@D)/_sparsehash_config
 	mv -f $(@D)/_sparsehash_config $@
 # This is how we tell automake about auto-generated .h files
-BUILT_SOURCES = src/google/sparsehash/sparseconfig.h
-CLEANFILES = src/google/sparsehash/sparseconfig.h
+BUILT_SOURCES = src/sparsehash/internal/sparseconfig.h
+CLEANFILES = src/sparsehash/internal/sparseconfig.h
 
-sparsehashincludedir = $(googleincludedir)/sparsehash
+sparsehashincludedir = $(includedir)/sparsehash
+## The .h files you want to install (that is, .h files that people
+## who install this package can include in their own applications.)
 sparsehashinclude_HEADERS =			\
-   src/google/sparsehash/densehashtable.h	\
-   src/google/sparsehash/sparsehashtable.h      \
-   src/google/sparsehash/hashtable-common.h     \
+   src/sparsehash/dense_hash_map		\
+   src/sparsehash/dense_hash_set		\
+   src/sparsehash/sparse_hash_map		\
+   src/sparsehash/sparse_hash_set		\
+   src/sparsehash/sparsetable			\
+   src/sparsehash/template_util.h		\
+   src/sparsehash/type_traits.h
+
+internalincludedir = $(sparsehashincludedir)/internal
+internalinclude_HEADERS =					\
+   src/sparsehash/internal/densehashtable.h			\
+   src/sparsehash/internal/sparsehashtable.h			\
+   src/sparsehash/internal/hashtable-common.h			\
+   src/sparsehash/internal/libc_allocator_with_realloc.h
+nodist_internalinclude_HEADERS = src/sparsehash/internal/sparseconfig.h
+
+# This is for backwards compatibility only.
+googleincludedir = $(includedir)/google
+googleinclude_HEADERS =					\
+   src/google/dense_hash_map				\
+   src/google/dense_hash_set				\
+   src/google/sparse_hash_map				\
+   src/google/sparse_hash_set				\
+   src/google/sparsetable				\
+   src/google/template_util.h				\
+   src/google/type_traits.h				\
+   src/google/sparsehash/densehashtable.h		\
+   src/google/sparsehash/sparsehashtable.h		\
+   src/google/sparsehash/hashtable-common.h		\
    src/google/sparsehash/libc_allocator_with_realloc.h
-nodist_sparsehashinclude_HEADERS = src/google/sparsehash/sparseconfig.h
 
 TESTS += template_util_unittest
-WINDOWS_PROJECTS += vsprojects/template_util_unittest/template_util_unittest.vcproj
+# TODO(csilvers): Update windows projects for template_util_unittest.
+# WINDOWS_PROJECTS += vsprojects/template_util_unittest/template_util_unittest.vcproj
 template_util_unittest_SOURCES =			\
    src/template_util_unittest.cc		\
-   src/google/template_util.h
-nodist_template_util_unittest_SOURCES = $(nodist_sparsehashinclude_HEADERS)
+   src/sparsehash/template_util.h
+nodist_template_util_unittest_SOURCES = $(nodist_internalinclude_HEADERS)
 
 TESTS += type_traits_unittest
 WINDOWS_PROJECTS += vsprojects/type_traits_unittest/type_traits_unittest.vcproj
 type_traits_unittest_SOURCES =			\
    src/type_traits_unittest.cc			\
-   $(sparsehashinclude_HEADERS)			\
-   src/google/type_traits.h
-nodist_type_traits_unittest_SOURCES = $(nodist_sparsehashinclude_HEADERS)
+   $(internalinclude_HEADERS)			\
+   src/sparsehash/type_traits.h
+nodist_type_traits_unittest_SOURCES = $(nodist_internalinclude_HEADERS)
 
 TESTS += libc_allocator_with_realloc_test
 WINDOWS_PROJECTS += vsprojects/libc_allocator_with_realloc_test/libc_allocator_with_realloc_test.vcproj
 libc_allocator_with_realloc_test_SOURCES =	\
    src/libc_allocator_with_realloc_test.cc	\
-   $(sparsehashinclude_HEADERS)			\
-   src/google/sparsehash/libc_allocator_with_realloc.h
+   $(internalinclude_HEADERS)			\
+   src/sparsehash/internal/libc_allocator_with_realloc.h
 
 
 TESTS += sparsetable_unittest
 WINDOWS_PROJECTS += vsprojects/sparsetable_unittest/sparsetable_unittest.vcproj
 sparsetable_unittest_SOURCES =			\
    src/sparsetable_unittest.cc			\
-   $(sparsehashinclude_HEADERS)			\
-   src/google/sparsetable
-nodist_sparsetable_unittest_SOURCES = $(nodist_sparsehashinclude_HEADERS)
+   $(internalinclude_HEADERS)			\
+   src/sparsehash/sparsetable
+nodist_sparsetable_unittest_SOURCES = $(nodist_internalinclude_HEADERS)
 
 TESTS += hashtable_test
 WINDOWS_PROJECTS += vsprojects/hashtable_test/hashtable_test.vcproj
@@ -138,23 +154,29 @@ hashtable_test_SOURCES =			\
    src/hashtable_test.cc			\
    src/hash_test_interface.h			\
    src/testutil.h				\
-   $(googleinclude_HEADERS)			\
-   $(sparsehashinclude_HEADERS)
-nodist_hashtable_test_SOURCES = $(nodist_sparsehashinclude_HEADERS)
+   $(sparsehashinclude_HEADERS)			\
+   $(internalinclude_HEADERS)
+nodist_hashtable_test_SOURCES = $(nodist_internalinclude_HEADERS)
 
 TESTS += simple_test
 WINDOWS_PROJECTS += vsprojects/simple_test/simple_test.vcproj
 simple_test_SOURCES =	   		        \
    src/simple_test.cc				\
-   $(sparsehashinclude_HEADERS)
-nodist_simple_test_SOURCES = $(nodist_sparsehashinclude_HEADERS)
+   $(internalinclude_HEADERS)
+nodist_simple_test_SOURCES = $(nodist_internalinclude_HEADERS)
 
+TESTS += simple_compat_test
+simple_compat_test_SOURCES =   		        \
+   src/simple_compat_test.cc			\
+   $(internalinclude_HEADERS)                   \
+   $(googleinclude_HEADERS)
+nodist_simple_compat_test_SOURCES = $(nodist_internalinclude_HEADERS)
 
 time_hash_map_SOURCES =				\
    src/time_hash_map.cc				\
-   $(sparsehashinclude_HEADERS)			\
-   $(googleinclude_HEADERS)
-nodist_time_hash_map_SOURCES = $(nodist_sparsehashinclude_HEADERS)
+   $(internalinclude_HEADERS)			\
+   $(sparsehashinclude_HEADERS)
+nodist_time_hash_map_SOURCES = $(nodist_internalinclude_HEADERS)
 
 # If tcmalloc is installed, use it with time_hash_map; it gives us
 # heap-usage statistics for the hash_map routines, which is very nice

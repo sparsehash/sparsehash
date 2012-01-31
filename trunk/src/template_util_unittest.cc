@@ -34,9 +34,9 @@
 // you will not see any evaluations, merely that
 // value is assigned true or false sequentially.
 
-#include <google/sparsehash/sparseconfig.h>
+#include <sparsehash/internal/sparseconfig.h>
 #include <config.h>
-#include <google/template_util.h>
+#include <sparsehash/template_util.h>
 
 #include "testutil.h"
 

@@ -7,10 +7,10 @@ Summary: hash_map and hash_set classes with minimal space overhead
 Version: %VERSION
 Release: %rel
 Group: Development/Libraries
-URL: http://code.google.com/p/google-sparsehash
+URL: http://code.google.com/p/sparsehash
 License: BSD
-Vendor: Google
-Packager: Google <google-sparsehash@googlegroups.com>
+Vendor: Google Inc. and others
+Packager: Google Inc. and others <google-sparsehash@googlegroups.com>
 Source: http://%{NAME}.googlecode.com/files/%{NAME}-%{VERSION}.tar.gz
 Distribution: Redhat 7 and above.
 Buildroot: %{_tmppath}/%{name}-root
@@ -59,4 +59,5 @@ rm -rf $RPM_BUILD_ROOT
 %{prefix}/share/doc/%{NAME}-%{VERSION}/*
 
 %{_includedir}/google
+%{_includedir}/sparsehash
 %{_libdir}/pkgconfig/*.pc

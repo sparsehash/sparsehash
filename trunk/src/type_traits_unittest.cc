@@ -29,9 +29,9 @@
 
 // ----
 
-#include <google/sparsehash/sparseconfig.h>
+#include <sparsehash/internal/sparseconfig.h>
 #include <config.h>
-#include <google/type_traits.h>
+#include <sparsehash/type_traits.h>
 
 #include <stdlib.h>   // for exit()
 #include <stdio.h>

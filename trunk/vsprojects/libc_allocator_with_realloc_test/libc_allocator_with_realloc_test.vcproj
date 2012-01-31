@@ -152,7 +152,7 @@
 				RelativePath="..\..\src\windows\port.h">
 			</File>
 			<File
-				RelativePath="..\..\src\google\sparsehash\libc_allocator_with_realloc.h">
+				RelativePath="..\..\src\sparsehash\internal\libc_allocator_with_realloc.h">
 			</File>
 		</Filter>
 	</Files>

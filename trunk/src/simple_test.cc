@@ -34,13 +34,15 @@
 // #include <config.h>; it's meant to emulate what a 'regular
 // install' of sparsehash would be able to see.
 
-#include <google/sparsehash/sparseconfig.h>
+#include <sparsehash/internal/sparseconfig.h>
 #include <config.h>
 #include <stdio.h>
-#include <google/sparse_hash_set>
-#include <google/sparse_hash_map>
-#include <google/dense_hash_set>
-#include <google/dense_hash_map>
+#include <sparsehash/sparse_hash_set>
+#include <sparsehash/sparse_hash_map>
+#include <sparsehash/dense_hash_set>
+#include <sparsehash/dense_hash_map>
+#include <sparsehash/template_util.h>
+#include <sparsehash/type_traits.h>
 
 #define CHECK_IFF(cond, when) do {                                      \
   if (when) {                                                           \

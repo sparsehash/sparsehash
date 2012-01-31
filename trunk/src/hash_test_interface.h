@@ -45,14 +45,14 @@
 #ifndef UTIL_GTL_HASH_TEST_INTERFACE_H_
 #define UTIL_GTL_HASH_TEST_INTERFACE_H_
 
-#include <google/sparsehash/sparseconfig.h>
+#include <sparsehash/internal/sparseconfig.h>
 #include <functional>          // for equal_to<>
-#include <google/sparsehash/sparsehashtable.h>
-#include <google/sparse_hash_map>
-#include <google/sparse_hash_set>
-#include <google/sparsehash/densehashtable.h>
-#include <google/dense_hash_map>
-#include <google/dense_hash_set>
+#include <sparsehash/internal/sparsehashtable.h>
+#include <sparsehash/sparse_hash_map>
+#include <sparsehash/sparse_hash_set>
+#include <sparsehash/internal/densehashtable.h>
+#include <sparsehash/dense_hash_map>
+#include <sparsehash/dense_hash_set>
 #include HASH_FUN_H    // for hash<>
 
 _START_GOOGLE_NAMESPACE_

@@ -29,9 +29,9 @@
 
 // ---
 
-#include <google/sparsehash/sparseconfig.h>
+#include <sparsehash/internal/sparseconfig.h>
 #include <config.h>
-#include <google/sparsehash/libc_allocator_with_realloc.h>
+#include <sparsehash/internal/libc_allocator_with_realloc.h>
 #include <stdlib.h>
 #include <string>
 #include <vector>
