@@ -141,7 +141,7 @@
 
 // This makes sure the definitions in config.h and sparseconfig.h match
 // up.  If they don't, the compiler will complain about redefinition.
-#include <google/sparsehash/sparseconfig.h>
+#include <sparsehash/internal/sparseconfig.h>
 
 // TODO(csilvers): include windows/port.h in every relevant source file instead?
 #include "windows/port.h"

@@ -26,7 +26,7 @@ USING
 See the html files in the doc directory for small example programs
 that use these classes.  It's enough to just include the header file:
 
-   #include <google/sparse_hash_map> // or sparse_hash_set, dense_hash_map, ...
+   #include <sparsehash/sparse_hash_map> // or sparse_hash_set, dense_hash_map, ...
    google::sparse_hash_set<int, int> number_mapper;
 
 and use the class the way you would other hash-map implementations.

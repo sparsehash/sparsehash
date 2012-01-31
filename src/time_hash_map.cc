@@ -54,7 +54,7 @@
 //
 // See PERFORMANCE for the output of one example run.
 
-#include <google/sparsehash/sparseconfig.h>
+#include <sparsehash/internal/sparseconfig.h>
 #include <config.h>
 #ifdef HAVE_INTTYPES_H
 # include <inttypes.h>
@@ -82,9 +82,9 @@ extern "C" {
 #include HASH_MAP_H
 #include <algorithm>
 #include <vector>
-#include <google/type_traits.h>
-#include <google/dense_hash_map>
-#include <google/sparse_hash_map>
+#include <sparsehash/type_traits.h>
+#include <sparsehash/dense_hash_map>
+#include <sparsehash/sparse_hash_map>
 
 using std::map;
 using std::swap;
@@ -388,7 +388,7 @@ static void stamp_run(int iters) {
 // STL tries to do on its own.
 
 #ifdef HAVE_GOOGLE_MALLOC_EXTENSION_H
-#include <google/malloc_extension.h>
+#include <sparsehash/malloc_extension.h>
 
 static size_t CurrentMemoryUsage() {
   size_t result;

@@ -33,7 +33,7 @@
 // function in every class in this file -- not just to see if it
 // works, but even if it compiles.
 
-#include <google/sparsehash/sparseconfig.h>
+#include <sparsehash/internal/sparseconfig.h>
 #include <config.h>
 #include <stdio.h>
 #include <string.h>
@@ -44,7 +44,7 @@
 #endif         // for unlink()
 #include <memory>           // for allocator
 #include <string>
-#include <google/sparsetable>
+#include <sparsehash/sparsetable>
 using std::string;
 using std::allocator;
 using GOOGLE_NAMESPACE::sparsetable;

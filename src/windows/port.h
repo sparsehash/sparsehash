@@ -32,7 +32,7 @@
  *
  * These are some portability typedefs and defines to make it a bit
  * easier to compile this code -- in particular, unittests -- under VC++.
- * Other portability code is found in windows/google/sparsehash/sparseconfig.h.
+ * Other portability code is found in windows/sparsehash/internal/sparseconfig.h.
  *
  * Several of these are taken from glib:
  *    http://developer.gnome.org/doc/API/glib/glib-windows-compatability-functions.html
@@ -41,7 +41,7 @@
 #ifndef SPARSEHASH_WINDOWS_PORT_H_
 #define SPARSEHASH_WINDOWS_PORT_H_
 
-#include <google/sparsehash/sparseconfig.h>
+#include <sparsehash/internal/sparseconfig.h>
 #include "config.h"
 
 #ifdef WIN32
