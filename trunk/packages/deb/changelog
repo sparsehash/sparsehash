@@ -1,3 +1,9 @@
+sparsehash (2.0.1-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Google Inc. and others <google-sparsehash@googlegroups.com>  Wed, 01 Feb 2012 02:57:48 +0000
+
 sparsehash (2.0-1) unstable; urgency=low
 
   * New upstream release.
