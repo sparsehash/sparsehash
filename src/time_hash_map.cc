@@ -388,7 +388,7 @@ static void stamp_run(int iters) {
 // STL tries to do on its own.
 
 #ifdef HAVE_GOOGLE_MALLOC_EXTENSION_H
-#include <sparsehash/malloc_extension.h>
+#include <google/malloc_extension.h>
 
 static size_t CurrentMemoryUsage() {
   size_t result;
