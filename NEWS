@@ -3,7 +3,7 @@
 A minor bug related to the namespace switch from google to sparsehash
 stopped the build from working when perftools is also installed.
 
-This is now fixed in 2.01. You only need to upgrade if you have perftools
+This is now fixed in 2.0.1. You only need to upgrade if you have perftools
 installed.  
 
 == 31 January 2012 ==
