@@ -1,3 +1,8 @@
+Wed Feb 01 02:57:48 2012 Google Inc. <google-sparsehash@googlegroups.com>
+
+	* sparsehash: version 2.0.1
+	* BUGFIX: Fix path to malloc_extension.h in time_hash_map.cc
+
 Tue Jan 31 11:33:04 2012  Google Inc. <google-sparsehash@googlegroups.com>
 
 	* sparsehash: version 2.0

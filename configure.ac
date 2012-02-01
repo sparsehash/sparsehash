@@ -4,7 +4,7 @@
 # make sure we're interpreted by some minimal autoconf
 AC_PREREQ(2.57)
 
-AC_INIT(sparsehash, 2.0, google-sparsehash@googlegroups.com)
+AC_INIT(sparsehash, 2.0.1, google-sparsehash@googlegroups.com)
 # The argument here is just something that should be in the current directory
 # (for sanity checking)
 AC_CONFIG_SRCDIR(README)
