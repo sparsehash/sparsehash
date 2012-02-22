@@ -110,7 +110,10 @@ googleinclude_HEADERS =					\
    src/google/sparse_hash_set				\
    src/google/sparsetable				\
    src/google/template_util.h				\
-   src/google/type_traits.h				\
+   src/google/type_traits.h
+
+googleinternalincludedir = $(includedir)/google/sparsehash
+googleinternalinclude_HEADERS=		\
    src/google/sparsehash/densehashtable.h		\
    src/google/sparsehash/sparsehashtable.h		\
    src/google/sparsehash/hashtable-common.h		\
@@ -169,7 +172,8 @@ TESTS += simple_compat_test
 simple_compat_test_SOURCES =   		        \
    src/simple_compat_test.cc			\
    $(internalinclude_HEADERS)                   \
-   $(googleinclude_HEADERS)
+   $(googleinclude_HEADERS)	\
+   $(googleinternalinclude_HEADERS)
 nodist_simple_compat_test_SOURCES = $(nodist_internalinclude_HEADERS)
 
 time_hash_map_SOURCES =				\
