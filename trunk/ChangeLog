@@ -1,3 +1,8 @@
+Thu Feb 23 23:47:18 2012 Google Inc. <google-sparsehash@googlegroups.com>
+
+	* sparsehash: version 2.0.2
+	* BUGFIX: Fix backwards compatibility for <google> include folders
+
 Wed Feb 01 02:57:48 2012 Google Inc. <google-sparsehash@googlegroups.com>
 
 	* sparsehash: version 2.0.1

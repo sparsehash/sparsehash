@@ -1,3 +1,11 @@
+== 23 Ferbruary 2012 ==
+
+A backwards incompatibility arose from flattening the include headers
+structure for the <google> folder. 
+
+This is now fixed in 2.0.2. You only need to upgrade if you had previously
+included files from the <google/sparsehash> folder.
+
 == 1 February 2012 ==
 
 A minor bug related to the namespace switch from google to sparsehash
