@@ -901,7 +901,7 @@ TYPED_TEST(HashtableAllTest, Swap) {
 #ifdef _MSC_VER
   other_ht.swap(this->ht_);
 #else
-  swap(this->ht_, other_ht);
+  std::swap(this->ht_, other_ht);
 #endif
 
   EXPECT_EQ(this->UniqueKey(1), this->ht_.deleted_key());
