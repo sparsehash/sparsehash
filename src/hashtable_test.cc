@@ -586,8 +586,8 @@ TYPED_TEST(HashtableIntTest, Typedefs) {
   typename TypeParam::const_pointer cp;
   // I can't declare variables of reference-type, since I have nothing
   // to point them to, so I just make sure that these types exist.
-  typedef typename TypeParam::reference r;
-  typedef typename TypeParam::const_reference cf;
+  __attribute__((unused)) typedef typename TypeParam::reference r;
+  __attribute__((unused)) typedef typename TypeParam::const_reference cf;
 
   typename TypeParam::iterator i;
   typename TypeParam::const_iterator ci;
