@@ -1,4 +1,4 @@
-Mon Oct 12 21:00:00 2012 Google Inc. <google-sparsehash@googlegroups.com>
+Mon Oct 12 21:00:00 2015 Google Inc. <google-sparsehash@googlegroups.com>
 
 	* sparsehash: version 2.0.3
 	* Fix compilation on modern compilers and operating systems
