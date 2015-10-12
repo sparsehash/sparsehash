@@ -1,4 +1,9 @@
-== 23 Ferbruary 2012 ==
+== 12 October 2015 ==
+
+Various small fixes to ensure compilation on modern compilers and operating 
+systems. Tagged as 2.0.3
+
+== 23 February 2012 ==
 
 A backwards incompatibility arose from flattening the include headers
 structure for the <google> folder. 
