@@ -66,7 +66,7 @@ since M is a constant.</p>
 replaces vector[3] with the new value.  If the lookup fails, then the
 code must insert a new entry into the middle of the vector.  Again, to
 insert at position i, the code must count all the bitmap entries &lt;= i
-that are set to i.  This indicates the position to insert into the
+that are set to 1.  This indicates the position to insert into the
 vector.  All vector entries above that position must be moved to make
 room for the new entry.  This takes time, but still constant time
 since the vector has size at most M.</p>
