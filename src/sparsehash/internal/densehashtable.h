@@ -588,13 +588,14 @@ class dense_hashtable {
     // are currently taking up room).  But later, when we decide what
     // size to resize to, *don't* count deleted buckets, since they
     // get discarded during the resize.
-    const size_type needed_size = settings.min_buckets(num_elements + delta, 0);
+    size_type needed_size = settings.min_buckets(num_elements + delta, 0);
     if ( needed_size <= bucket_count() )      // we have enough buckets
       return did_resize;
 
     size_type resize_to =
       settings.min_buckets(num_elements - num_deleted + delta, bucket_count());
 
+    needed_size = settings.min_buckets(num_elements - num_deleted / 4 + delta, 0);
     if (resize_to < needed_size &&    // may double resize_to
         resize_to < (std::numeric_limits<size_type>::max)() / 2) {
       // This situation means that we have enough deleted elements,
