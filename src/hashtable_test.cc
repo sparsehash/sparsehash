@@ -1908,6 +1908,36 @@ TEST(HashtableTest, NestedHashtables) {
   dense_hash_map<int, DenseIntMap<int>, Hasher, Hasher> ht3copy = ht3;
 }
 
+TEST(HashtableTest, ResizeWithoutShrink) {
+  const size_t N = 1000000L;
+  const size_t max_entries = 40;
+#define KEY(i, j)  (i * 4 + j) * 28 + 11
+
+  dense_hash_map<size_t, int> ht;
+  ht.set_empty_key(0);
+  ht.set_deleted_key(1);
+  ht.min_load_factor(0);
+  ht.max_load_factor(0.2);
+
+  for (size_t i = 0; i < N; ++i) {
+    for (size_t j = 0; j < max_entries; ++j) {
+      size_t key = KEY(i, j);
+      ht[key] = 0;
+    }
+    for (size_t j = 0; j < max_entries / 2; ++j) {
+      size_t key = KEY(i, j);
+      ht.erase(key);
+      ht[key + 1] = 0;
+    }
+    for (size_t j = 0; j < max_entries; ++j) {
+      size_t key = KEY(i, j);
+      ht.erase(key);
+      ht.erase(key + (j < max_entries / 2));
+    }
+    EXPECT_LT(ht.bucket_count(), 4096);
+  }
+}
+
 TEST(HashtableDeathTest, ResizeOverflow) {
   dense_hash_map<int, int> ht;
   EXPECT_DEATH(ht.resize(static_cast<size_t>(-1)),
