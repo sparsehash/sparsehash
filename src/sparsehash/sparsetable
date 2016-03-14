@@ -1591,7 +1591,7 @@ class sparsetable {
   }
 
   // And the reverse transformation.
-  size_type get_pos(const const_nonempty_iterator it) const {
+  size_type get_pos(const const_nonempty_iterator& it) const {
     difference_type current_row = it.row_current - it.row_begin;
     difference_type current_col = (it.col_current -
                                    groups[current_row].nonempty_begin());
