@@ -1202,7 +1202,8 @@ class dense_hashtable {
       pointer retval = this->reallocate(ptr, n);
       if (retval == NULL) {
         fprintf(stderr, "sparsehash: FATAL ERROR: failed to reallocate "
-                "%lu elements for ptr %p", static_cast<unsigned long>(n), ptr);
+                "%lu elements for ptr %p", static_cast<unsigned long>(n),
+                (void*)ptr);
         exit(1);
       }
       return retval;
