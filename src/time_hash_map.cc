@@ -222,14 +222,7 @@ template<int Size, int Hashsize> class HashObject {
   size_t Hash() const {
     g_num_hashes++;
     int hashval = i_;
-
-    // ridiculously slow hash for 256 byte objects when hashing byte by byte 
-    // all 252 bytes - hash time overwhelms any reasonable comparison between 
-    // implementations.
-    size_t num_bytes_to_hash = Hashsize - sizeof(i_);
-    if (num_bytes_to_hash > 4)
-        num_bytes_to_hash = 4;
-    for (size_t i = 0; i < num_bytes_to_hash; ++i) {
+    for (size_t i = 0; i < Hashsize - sizeof(i_); ++i) {
       hashval += buffer_[i];
     }
     return SPARSEHASH_HASH<int>()(hashval);
@@ -730,7 +723,7 @@ int main(int argc, char** argv) {
   if (FLAGS_test_4_bytes)  test_all_maps< HashObject<4,4> >(4, iters/1);
   if (FLAGS_test_8_bytes)  test_all_maps< HashObject<8,8> >(8, iters/2);
   if (FLAGS_test_16_bytes)  test_all_maps< HashObject<16,16> >(16, iters/4);
-  if (FLAGS_test_256_bytes)  test_all_maps< HashObject<256,256> >(256, iters/32);
+  if (FLAGS_test_256_bytes)  test_all_maps< HashObject<256,32> >(256, iters/32);
 
   return 0;
 }
