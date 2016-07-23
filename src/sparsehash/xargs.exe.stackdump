@@ -1,9 +1,0 @@
-Exception: STATUS_ACCESS_VIOLATION at eip=610CA055
-eax=00A0CE64 ebx=FFFFFFD9 ecx=0A225F69 edx=198ACC28 esi=61169220 edi=00000000
-ebp=198ACD28 esp=198ACC50 program=c:\cygwin\bin\xargs.exe, pid 14016, thread sig
-cs=0023 ds=002B es=002B fs=0053 gs=002B ss=002B
-Stack trace:
-Frame     Function  Args
-198ACD28  610CA055  (61169220, 00000000, 00000000, 00000000)
-198ACD58  61003F51  (00000000, 00000000, 00000000, 61004A63)
-End of stack trace
