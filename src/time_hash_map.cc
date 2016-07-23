@@ -222,7 +222,14 @@ template<int Size, int Hashsize> class HashObject {
   size_t Hash() const {
     g_num_hashes++;
     int hashval = i_;
-    for (size_t i = 0; i < Hashsize - sizeof(i_); ++i) {
+
+    // ridiculously slow hash for 256 byte objects when hashing byte by byte 
+    // all 252 bytes - hash time overwhelms any reasonable comparison between 
+    // implementations.
+    size_t num_bytes_to_hash = Hashsize - sizeof(i_);
+    if (num_bytes_to_hash > 4)
+        num_bytes_to_hash = 4;
+    for (size_t i = 0; i < num_bytes_to_hash; ++i) {
       hashval += buffer_[i];
     }
     return SPARSEHASH_HASH<int>()(hashval);
@@ -331,6 +338,8 @@ class Rusage {
 };
 
 inline void Rusage::Reset() {
+  g_num_copies = 0;
+  g_num_hashes = 0;
 #if defined HAVE_SYS_RESOURCE_H
   getrusage(RUSAGE_SELF, &start);
 #elif defined HAVE_WINDOWS_H
