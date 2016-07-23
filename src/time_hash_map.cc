@@ -331,6 +331,8 @@ class Rusage {
 };
 
 inline void Rusage::Reset() {
+  g_num_copies = 0;
+  g_num_hashes = 0;
 #if defined HAVE_SYS_RESOURCE_H
   getrusage(RUSAGE_SELF, &start);
 #elif defined HAVE_WINDOWS_H
