@@ -723,7 +723,7 @@ int main(int argc, char** argv) {
   if (FLAGS_test_4_bytes)  test_all_maps< HashObject<4,4> >(4, iters/1);
   if (FLAGS_test_8_bytes)  test_all_maps< HashObject<8,8> >(8, iters/2);
   if (FLAGS_test_16_bytes)  test_all_maps< HashObject<16,16> >(16, iters/4);
-  if (FLAGS_test_256_bytes)  test_all_maps< HashObject<256,256> >(256, iters/32);
+  if (FLAGS_test_256_bytes)  test_all_maps< HashObject<256,32> >(256, iters/32);
 
   return 0;
 }
