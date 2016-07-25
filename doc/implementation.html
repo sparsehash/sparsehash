@@ -131,6 +131,12 @@ A larger M would use less overhead -- approaching 1 bit per array
 entry -- but take longer for inserts, deletes, and lookups.  A smaller
 M would use more overhead but make operations somewhat faster.</p>
 
+The numbers above assume that the allocator used doesn't require extra 
+memory. The default allocator (using malloc/free) typically has some overhead 
+for each allocation. If we assume 16 byte overhead per allocation, the 
+overhead becomes 4.6 bit per array entry (32 bit pointers) or 5 bit per 
+array entry (64 bit pointers) 
+
 <p>You can also look at some specific <A
 HREF="performance.html">performance numbers</A>.</p>
 
