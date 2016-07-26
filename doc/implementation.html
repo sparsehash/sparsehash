@@ -131,6 +131,66 @@ A larger M would use less overhead -- approaching 1 bit per array
 entry -- but take longer for inserts, deletes, and lookups.  A smaller
 M would use more overhead but make operations somewhat faster.</p>
 
+The numbers above assume that the allocator used doesn't require extra 
+memory. The default allocator (using malloc/free) typically has some overhead 
+for each allocation. If we assume 16 byte overhead per allocation, the 
+overhead becomes 4.6 bit per array entry (32 bit pointers) or 5.3 bit per 
+array entry (64 bit pointers) 
+
+<p>Each sparsegroup has:</p>
+
+<table>
+<thead>
+<tr>
+<th>member</th>
+<th>32 bit</th>
+<th>64 bit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>pointer</td>
+<td>4 bytes</td>
+<td>8 bytes</td>
+</tr>
+<tr>
+<td>num_buckets</td>
+<td>2 bytes</td>
+<td>2 bytes</td>
+</tr>
+<tr>
+<td>bitmap</td>
+<td>6 bytes</td>
+<td>6 bytes</td>
+</tr>
+<tr>
+<td>total</td>
+<td>12 bytes = 96 bits</td>
+<td>16 bytes = 128 bits</td>
+</tr>
+<tr>
+<td>because this is the overhead for each sparsegroup (48 entries), we divide by 48</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>overhead / entry</td>
+<td>96 / 48 = 2  bits</td>
+<td>128 / 48 = 2.67  bits</td>
+</tr>
+<tr>
+<td rowspan=3>additional overhead per allocation up to 16 bytes =  128 bits</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>max overhead / entry</td>
+<td>(96 + 128) / 48 = 4.67 bits</td>
+<td>(128 + 128) / 48 = 5.33 bits</td>
+</tr>
+</tbody>
+</table>
+
 <p>You can also look at some specific <A
 HREF="performance.html">performance numbers</A>.</p>
 
