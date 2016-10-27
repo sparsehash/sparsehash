@@ -59,13 +59,13 @@ class libc_allocator_with_realloc {
   const_pointer address(const_reference r) const  { return &r; }
 
   pointer allocate(size_type n, const_pointer = 0) {
-    return static_cast<pointer>(malloc(n * sizeof(value_type)));
+    return static_cast<pointer>(::malloc(n * sizeof(value_type)));
   }
   void deallocate(pointer p, size_type) {
-    free(p);
+    ::free(p);
   }
   pointer reallocate(pointer p, size_type n) {
-    return static_cast<pointer>(realloc(p, n * sizeof(value_type)));
+    return static_cast<pointer>(::realloc(p, n * sizeof(value_type)));
   }
 
   size_type max_size() const  {
