@@ -249,10 +249,10 @@ struct Alloc {
     typedef Alloc<U, SizeT, MAX_SIZE> other;
   };
 
-  bool operator==(const Alloc<T,SizeT,MAX_SIZE>& that) {
+  bool operator==(const Alloc& that) const {
     return this->id_ == that.id_ && this->count_ == that.count_;
   }
-  bool operator!=(const Alloc<T,SizeT,MAX_SIZE>& that) {
+  bool operator!=(const Alloc& that) const {
     return !this->operator==(that);
   }
 
