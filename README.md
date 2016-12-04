@@ -75,17 +75,20 @@ There are also some smaller differences:
 2) `erase()` does not immediately reclaim memory.  As a consequence,
    `erase()` does not invalidate any iterators, making loops like this
    correct:
-    ```cpp
+
+    ```c++
     for (it = ht.begin(); it != ht.end(); ++it)
       if (...) ht.erase(it);
     ```
+
    As another consequence, a series of `erase()` calls can leave your
    hashtable using more memory than it needs to.  The hashtable will
    automatically compact at the next call to insert(), but to
    manually compact a hashtable, you can call
-      ```c++
-      ht.resize(0);
-      ```
+
+    ```c++
+    ht.resize(0);
+    ```
 
 I/O
 ---
@@ -95,12 +98,15 @@ but it has not yet been implemented, and writes will always fail.)
 
 In the simplest case, writing a hashtable is as easy as calling two
 methods on the hashtable:
-```cpp
+
+```c++
 ht.write_metadata(fp);
 ht.write_nopointer_data(fp);
 ```
+
 Reading in this data is equally simple:
-```cpp
+
+```c++
 google::sparse_hash_map<...> ht;
 ht.read_metadata(fp);
 ht.read_nopointer_data(fp);
@@ -109,48 +115,51 @@ ht.read_nopointer_data(fp);
 The above is sufficient if the key and value do not contain any
 pointers: they are basic C types or agglomorations of basic C types.
 If the key and/or value do contain pointers, you can still store the
-hashtable by replacing write_nopointer_data() with a custom writing
-routine.  See sparse_hash_map.html et al. for more information.
+hashtable by replacing `write_nopointer_data()` with a custom writing
+routine.  See [sparse_hash_map's documentation](./doc/sparse_hash_map.html) et al. for more information.
 
 SPARSETABLE
 -----------
-In addition to the hash-map and hash-set classes, this package also
-provides sparsetable.h, an array implementation that uses space
+In addition to the `hash-map` and `hash-set` classes, this package also
+provides `sparsetable.h`, an array implementation that uses space
 proportional to the number of elements in the array, rather than the
 maximum element index.  It uses very little space overhead: 2 to 5
-bits per entry.  See doc/sparsetable.html for the API.
+bits per entry.  See [sparsetable's documentation](./doc/sparsetable.html) for the API.
 
 RESOURCE USAGE
 --------------
-* sparse_hash_map has memory overhead of about 4 to 10 bits per 
+* `sparse_hash_map` has memory overhead of about 4 to 10 bits per 
   hash-map entry, assuming a typical average occupancy of 50%.
-* dense_hash_map has a factor of 2-3 memory overhead: if your
-  hashtable data takes X bytes, dense_hash_map will use 3X-4X memory
+* `dense_hash_map` has a factor of 2-3 memory overhead: if your
+  hashtable data takes X bytes, `dense_hash_map` will use 3X-4X memory
   total.
 
 Hashtables tend to double in size when resizing, creating an
-additional 50% space overhead.  dense_hash_map does in fact have a
+additional 50% space overhead. `dense_hash_map` does in fact have a
 significant "high water mark" memory use requirement, which is 6 times
 the size of hash entries in the table when resizing (when reaching 
 50% occupancy, the table resizes to double the previous size, and the 
 old table (2x) is copied to the new table (4x)).
 
-sparse_hash_map, however, is written to need very little space
+`sparse_hash_map`, however, is written to need very little space
 overhead when resizing: only a few bits per hashtable entry.
 
 PERFORMANCE
 -----------
-You can compile and run the included file time_hash_map.cc to examine
-the performance of sparse_hash_map, dense_hash_map, and your native
-hash_map implementation on your system.  One test against the
-SGI hash_map implementation gave the following timing information for
-a simple find() call:
-   SGI hash_map:     22 ns
-   dense_hash_map:   13 ns
-   sparse_hash_map: 117 ns
-   SGI map:         113 ns
+You can compile and run the included `file time_hash_map.cc` to examine
+the performance of `sparse_hash_map`, `dense_hash_map`, and your native
+`hash_map` implementation on your system.  One test against the
+SGI `hash_map` implementation gave the following timing information for
+a simple `find()` call:
 
-See doc/performance.html for more detailed charts on resource usage
+```shell   
+SGI hash_map:     22 ns
+dense_hash_map:   13 ns
+sparse_hash_map: 117 ns
+SGI map:         113 ns
+```
+
+See the [Performance page](./doc/performance.html) for more detailed charts on resource usage
 and performance data.
 
 ---
