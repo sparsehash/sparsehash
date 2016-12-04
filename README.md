@@ -76,19 +76,19 @@ There are also some smaller differences:
    `erase()` does not invalidate any iterators, making loops like this
    correct:
 
-    ```c++
-    for (it = ht.begin(); it != ht.end(); ++it)
-      if (...) ht.erase(it);
-    ```
+```c++
+for (it = ht.begin(); it != ht.end(); ++it)
+  if (...) ht.erase(it);
+```
 
    As another consequence, a series of `erase()` calls can leave your
    hashtable using more memory than it needs to.  The hashtable will
    automatically compact at the next call to insert(), but to
    manually compact a hashtable, you can call
-
-    ```c++
-    ht.resize(0);
-    ```
+        
+```c++
+ht.resize(0);
+```
 
 I/O
 ---
