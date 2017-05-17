@@ -63,6 +63,69 @@ map_fetch                 113 ns
 map_remove                238 ns
 memory used in map_grow   236.8081 Mbytes
 </pre>
+  
+<p>These figures are from a Intel Core i7-4790K with 16G of memory. 
+  Compiled on Ubuntu 14.04 with <tt>gcc4.8.5 -O3</tt>
+</p>
+
+<pre>
+Average over 200000000 iterations
+Current time (GMT): Wed May 17 13:57:50 2017
+
+*** WARNING ***: sys/resources.h was not found, so all times
+                 reported are wall-clock time, not user time
+
+SPARSE_HASH_MAP (4 byte objects, 200000000 iterations):
+map_grow               76.4 ns  (414748356 hashes, 814748425 copies)
+map_predict/grow       40.8 ns  (200000000 hashes, 600000000 copies)
+map_replace            20.3 ns  (200000000 hashes,        0 copies)
+map_fetch_random      197.3 ns  (200000000 hashes,        0 copies)
+map_fetch_sequential   37.1 ns  (200000000 hashes,        0 copies)
+map_fetch_empty        13.1 ns  (       0 hashes,        0 copies)
+map_remove             42.2 ns  (200000000 hashes, 200000000 copies)
+map_toggle            103.2 ns  (407999999 hashes, 831999996 copies)
+map_iterate             2.3 ns  (       0 hashes,        0 copies)
+memory used in map_grow    1.7 GB
+
+stresshashfunction map_size=256 stride=1: 147.2ns/insertion
+stresshashfunction map_size=256 stride=256: 99.1ns/insertion
+stresshashfunction map_size=1024 stride=1: 263.9ns/insertion
+stresshashfunction map_size=1024 stride=1024: 247.4ns/insertion
+
+DENSE_HASH_MAP (4 byte objects, 200000000 iterations):
+map_grow               33.4 ns  (468435464 hashes, 1542177392 copies)
+map_predict/grow        8.5 ns  (200000000 hashes, 200000000 copies)
+map_replace             4.0 ns  (200000000 hashes,        0 copies)
+map_fetch_random       23.9 ns  (200000000 hashes,        0 copies)
+map_fetch_sequential    4.1 ns  (200000000 hashes,        0 copies)
+map_fetch_empty         3.3 ns  (       0 hashes,        0 copies)
+map_remove              7.3 ns  (200000000 hashes, 200000000 copies)
+map_toggle             26.6 ns  (412499999 hashes, 899999960 copies)
+map_iterate             2.0 ns  (       0 hashes,        0 copies)
+memory used in map_grow    6.2 GB
+
+stresshashfunction map_size=256 stride=1: 16.5ns/insertion
+stresshashfunction map_size=256 stride=256: 7.2ns/insertion
+stresshashfunction map_size=1024 stride=1: 25.3ns/insertion
+stresshashfunction map_size=1024 stride=1024: 16.1ns/insertion
+
+STANDARD HASH_MAP (4 byte objects, 200000000 iterations):
+map_grow               53.2 ns  (200000000 hashes, 200000000 copies)
+map_predict/grow       31.1 ns  (200000000 hashes, 200000000 copies)
+map_replace             8.5 ns  (200000000 hashes,        0 copies)
+map_fetch_random       92.3 ns  (200000000 hashes,        0 copies)
+map_fetch_sequential    7.8 ns  (200000000 hashes,        0 copies)
+map_fetch_empty         6.4 ns  (200000000 hashes,        0 copies)
+map_remove             20.7 ns  (200000000 hashes,        0 copies)
+map_toggle             36.8 ns  (400000000 hashes, 200000000 copies)
+map_iterate             2.4 ns  (       0 hashes,        0 copies)
+memory used in map_grow    8.0 GB
+
+stresshashfunction map_size=256 stride=1: 24.4ns/insertion
+stresshashfunction map_size=256 stride=256: 24.5ns/insertion
+stresshashfunction map_size=1024 stride=1: 24.5ns/insertion
+stresshashfunction map_size=1024 stride=1024: 24.5ns/insertion
+</pre>
 
 
 <H2><A name="hashfn">A Note on Hash Functions</A></H2>
