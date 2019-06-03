@@ -65,7 +65,10 @@ class libc_allocator_with_realloc {
     free(p);
   }
   pointer reallocate(pointer p, size_type n) {
-    return static_cast<pointer>(realloc(p, n * sizeof(value_type)));
+    // p points to a storage array whose objects have already been destroyed
+    // cast to void* to prevent compiler warnings about calling realloc() on
+    // an object which cannot be relocated in memory
+    return static_cast<pointer>(realloc(static_cast<void*>(p), n * sizeof(value_type)));
   }
 
   size_type max_size() const  {
