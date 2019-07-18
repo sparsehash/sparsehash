@@ -1,0 +1,31 @@
+language: generic
+matrix:
+  include:
+  - os: linux
+    dist: xenial
+    sudo: required
+    language: cpp
+    compiler: gcc
+    addons:
+      apt:
+        sources:
+          - ubuntu-toolchain-r-test
+        packages:
+          - g++-8
+          - libatlas-base-dev
+          - libblas-dev
+  - os: osx
+    osx_image: xcode10.2
+    language: c++
+    compiler: clang
+
+before_install:
+  - |
+    [[ "${TRAVIS_OS_NAME}" == "linux" ]] && sudo ln -fs /usr/bin/gcc-8 /usr/local/bin/gcc; sudo ln -fs /usr/bin/g++-8 /usr/local/bin/g++;
+
+
+script:
+  - set -e
+  - |
+    ./configure --prefix=$PWD CXXFLAGS="-Werror"
+    make

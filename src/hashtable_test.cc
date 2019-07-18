@@ -602,6 +602,7 @@ TYPED_TEST(HashtableIntTest, Typedefs) {
   // the type isn't used at all, and there's no good way to use the
   // variable.
   kt = this->ht_.deleted_key();
+  (void)kt;   // set but unused
   (void)vt;   // value_type may not be copyable.  Easiest not to try.
   h = this->ht_.hash_funct();
   ke = this->ht_.key_eq();
