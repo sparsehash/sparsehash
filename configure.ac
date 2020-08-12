@@ -8,7 +8,7 @@ AC_INIT(sparsehash, 2.0.5, google-sparsehash@googlegroups.com)
 # The argument here is just something that should be in the current directory
 # (for sanity checking)
 AC_CONFIG_SRCDIR(README)
-AM_INIT_AUTOMAKE([dist-zip])
+AM_INIT_AUTOMAKE([dist-zip subdir-objects])
 AM_CONFIG_HEADER(src/config.h)
 
 # Checks for programs.
