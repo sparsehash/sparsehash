@@ -7,7 +7,7 @@ routines.)  On the other hand, these classes have requirements that
 may not make them appropriate for all applications.
 
 All these implementation use a hashtable with internal quadratic
-probing.  This method is space-efficient -- there is no pointer
+probing.This method is space-efficient -- there is no pointer
 overhead -- and time-efficient for good hash functions.
 
 COMPILING
@@ -105,9 +105,9 @@ SPARSETABLE
 -----------
 In addition to the hash-map and hash-set classes, this package also
 provides sparsetable.h, an array implementation that uses space
-proportional to the number of elements in the array, rather than the
+proportional to the number of elements in the array rather than the
 maximum element index.  It uses very little space overhead: 2 to 5
-bits per entry.  See doc/sparsetable.html for the API.
+bits per entry. See doc/sparsetable.html for the API.
 
 RESOURCE USAGE
 --------------
