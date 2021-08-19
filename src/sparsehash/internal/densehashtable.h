@@ -827,7 +827,8 @@ class dense_hashtable {
   // if object is not found; 2nd is ILLEGAL_BUCKET if it is.
   // Note: because of deletions where-to-insert is not trivial: it's the
   // first deleted bucket we see, as long as we don't find the key later
-  std::pair<size_type, size_type> find_position(const key_type &key) const {
+  template <typename KeyT>
+  std::pair<size_type, size_type> find_position(const KeyT &key) const {
     size_type num_probes = 0;              // how many times we've probed
     const size_type bucket_count_minus_one = bucket_count() - 1;
     size_type bucknum = hash(key) & bucket_count_minus_one;
@@ -855,7 +856,8 @@ class dense_hashtable {
 
  public:
 
-  iterator find(const key_type& key) {
+  template <typename KeyT>
+  iterator find(const KeyT& key) {
     if ( size() == 0 ) return end();
     std::pair<size_type, size_type> pos = find_position(key);
     if ( pos.first == ILLEGAL_BUCKET )     // alas, not there
@@ -864,7 +866,8 @@ class dense_hashtable {
       return iterator(this, table + pos.first, table + num_buckets, false);
   }
 
-  const_iterator find(const key_type& key) const {
+  template <typename KeyT>
+  const_iterator find(const KeyT& key) const {
     if ( size() == 0 ) return end();
     std::pair<size_type, size_type> pos = find_position(key);
     if ( pos.first == ILLEGAL_BUCKET )     // alas, not there
@@ -875,19 +878,22 @@ class dense_hashtable {
 
   // This is a tr1 method: the bucket a given key is in, or what bucket
   // it would be put in, if it were to be inserted.  Shrug.
-  size_type bucket(const key_type& key) const {
+  template <typename KeyT>
+  size_type bucket(const KeyT& key) const {
     std::pair<size_type, size_type> pos = find_position(key);
     return pos.first == ILLEGAL_BUCKET ? pos.second : pos.first;
   }
 
   // Counts how many elements have key key.  For maps, it's either 0 or 1.
-  size_type count(const key_type &key) const {
+  template <typename KeyT>
+  size_type count(const KeyT& key) const {
     std::pair<size_type, size_type> pos = find_position(key);
     return pos.first == ILLEGAL_BUCKET ? 0 : 1;
   }
 
   // Likewise, equal_range doesn't really make sense for us.  Oh well.
-  std::pair<iterator,iterator> equal_range(const key_type& key) {
+  template <typename KeyT>
+  std::pair<iterator,iterator> equal_range(const KeyT& key) {
     iterator pos = find(key);      // either an iterator or end
     if (pos == end()) {
       return std::pair<iterator,iterator>(pos, pos);
@@ -896,7 +902,8 @@ class dense_hashtable {
       return std::pair<iterator,iterator>(startpos, pos);
     }
   }
-  std::pair<const_iterator,const_iterator> equal_range(const key_type& key)
+  template <typename KeyT>
+  std::pair<const_iterator,const_iterator> equal_range(const KeyT& key)
       const {
     const_iterator pos = find(key);      // either an iterator or end
     if (pos == end()) {
@@ -1257,7 +1264,8 @@ class dense_hashtable {
     void set_key(pointer v, const key_type& k) const {
       SetKey::operator()(v, k);
     }
-    bool equals(const key_type& a, const key_type& b) const {
+    template <typename KeyTA, typename KeyTB>
+    bool equals(const KeyTA& a, const KeyTB& b) const {
       return EqualKey::operator()(a, b);
     }
 
@@ -1267,10 +1275,12 @@ class dense_hashtable {
   };
 
   // Utility functions to access the templated operators
-  size_type hash(const key_type& v) const {
+  template <typename KeyT>
+  size_type hash(const KeyT& v) const {
     return settings.hash(v);
   }
-  bool equals(const key_type& a, const key_type& b) const {
+  template <typename KeyTA, typename KeyTB>
+  bool equals(const KeyTA& a, const KeyTB& b) const {
     return key_info.equals(a, b);
   }
   typename ExtractKey::result_type get_key(const_reference v) const {
