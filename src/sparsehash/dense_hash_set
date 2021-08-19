@@ -241,11 +241,14 @@ class dense_hash_set {
   void rehash(size_type hint)         { resize(hint); }     // the tr1 name
 
   // Lookup routines
-  iterator find(const key_type& key) const           { return rep.find(key); }
+  template <typename KeyT>
+  iterator find(const KeyT& key) const           { return rep.find(key); }
 
-  size_type count(const key_type& key) const         { return rep.count(key); }
+  template <typename KeyT>
+  size_type count(const KeyT& key) const         { return rep.count(key); }
 
-  std::pair<iterator, iterator> equal_range(const key_type& key) const {
+  template <typename KeyT>
+  std::pair<iterator, iterator> equal_range(const KeyT& key) const {
     return rep.equal_range(key);
   }
 
