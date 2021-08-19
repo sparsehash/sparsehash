@@ -344,7 +344,7 @@ class table_iterator {
   table_iterator(tabletype *tbl, size_type p)
     : table(tbl), pos(p) { }
   // The default constructor, used when I define vars of type table::iterator
-  table_iterator() : table(NULL), pos(0) { }
+  table_iterator() : table(nullptr), pos(0) { }
   // The copy constructor, for when I say table::iterator foo = tbl.begin()
   // The default destructor is fine; we don't define one
   // The default operator= is fine; we don't define one
@@ -427,7 +427,7 @@ class const_table_iterator {
   const_table_iterator(const tabletype *tbl, size_type p)
     : table(tbl), pos(p) { }
   // The default constructor, used when I define vars of type table::iterator
-  const_table_iterator() : table(NULL), pos(0) { }
+  const_table_iterator() : table(nullptr), pos(0) { }
   // The copy constructor, for when I say table::iterator foo = tbl.begin()
   // Also converts normal iterators to const iterators
   const_table_iterator(const iterator &from)
@@ -881,7 +881,7 @@ class sparsegroup {
 
   pointer allocate_group(size_type n) {
     pointer retval = settings.allocate(n);
-    if (retval == NULL) {
+    if (retval == nullptr) {
       // We really should use PRIuS here, but I don't want to have to add
       // a whole new configure option, with concomitant macro namespace
       // pollution, just to print this (unlikely) error message.  So I cast.
@@ -898,7 +898,7 @@ class sparsegroup {
     for (pointer p = group; p != end_it; ++p)
       p->~value_type();
     settings.deallocate(group, settings.num_buckets);
-    group = NULL;
+    group = nullptr;
   }
 
   static size_type bits_in_char(unsigned char c) {
@@ -1185,7 +1185,7 @@ class sparsegroup {
       size_type offset = pos_to_offset(bitmap,i); // where we'll find (or insert)
       if ( settings.num_buckets == 1 ) {
         free_group();
-        group = NULL;
+        group = nullptr;
       } else {
         typedef base::integral_constant<bool,
             (base::has_trivial_copy<value_type>::value &&
@@ -1301,7 +1301,7 @@ class sparsegroup {
       fprintf(stderr, "realloc_or_die is only supported for "
                       "libc_allocator_with_realloc\n");
       exit(1);
-      return NULL;
+      return nullptr;
     }
   };
 
@@ -1319,7 +1319,7 @@ class sparsegroup {
 
     pointer realloc_or_die(pointer ptr, size_type n) {
       pointer retval = this->reallocate(ptr, n);
-      if (retval == NULL) {
+      if (retval == nullptr) {
         fprintf(stderr, "sparsehash: FATAL ERROR: failed to reallocate "
                 "%lu elements for ptr %p", static_cast<unsigned long>(n), ptr);
         exit(1);

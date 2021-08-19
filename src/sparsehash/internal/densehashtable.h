@@ -223,7 +223,7 @@ struct dense_hashtable_const_iterator {
     if (advance)  advance_past_empty_and_deleted();
   }
   dense_hashtable_const_iterator()
-    : ht(NULL), pos(pointer()), end(pointer()) { }
+    : ht(nullptr), pos(pointer()), end(pointer()) { }
   // This lets us convert regular iterators to const iterators
   dense_hashtable_const_iterator(const iterator &it)
     : ht(it.ht), pos(it.pos), end(it.end) { }
@@ -504,7 +504,7 @@ class dense_hashtable {
     set_value(&val_info.emptyval, val);
 
     assert(!table);                  // must set before first use
-    // num_buckets was set in constructor even though table was NULL
+    // num_buckets was set in constructor even though table was nullptr
     table = val_info.allocate(num_buckets);
     assert(table);
     fill_range_with_empty(table, table + num_buckets);
@@ -622,7 +622,7 @@ class dense_hashtable {
     return true;
   }
 
-  // We require table be not-NULL and empty before calling this.
+  // We require table be not-nullptr and empty before calling this.
   void resize_table(size_type /*old_size*/, size_type new_size,
                     base::true_type) {
     table = val_info.realloc_or_die(table, new_size);
@@ -701,8 +701,8 @@ class dense_hashtable {
                     ? HT_DEFAULT_STARTING_BUCKETS
                     : settings.min_buckets(expected_max_items_in_table, 0)),
         val_info(alloc_impl<value_alloc_type>(alloc)),
-        table(NULL) {
-    // table is NULL until emptyval is set.  However, we set num_buckets
+        table(nullptr) {
+    // table is nullptr until emptyval is set.  However, we set num_buckets
     // here so we know how much space to allocate once emptyval is set
     settings.reset_thresholds(bucket_count());
   }
@@ -717,7 +717,7 @@ class dense_hashtable {
         num_elements(0),
         num_buckets(0),
         val_info(ht.val_info),
-        table(NULL) {
+        table(nullptr) {
     if (!ht.settings.use_empty()) {
       // If use_empty isn't set, copy_from will crash, so we do our own copying.
       assert(ht.empty());
@@ -1182,7 +1182,7 @@ class dense_hashtable {
       fprintf(stderr, "realloc_or_die is only supported for "
                       "libc_allocator_with_realloc\n");
       exit(1);
-      return NULL;
+      return nullptr;
     }
   };
 
@@ -1200,7 +1200,7 @@ class dense_hashtable {
 
     pointer realloc_or_die(pointer ptr, size_type n) {
       pointer retval = this->reallocate(ptr, n);
-      if (retval == NULL) {
+      if (retval == nullptr) {
         fprintf(stderr,
                 "sparsehash: FATAL ERROR: failed to reallocate "
                 "%lu elements for ptr %p",

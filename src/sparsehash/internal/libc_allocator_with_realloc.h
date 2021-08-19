@@ -58,7 +58,7 @@ class libc_allocator_with_realloc {
   pointer address(reference r) const  { return &r; }
   const_pointer address(const_reference r) const  { return &r; }
 
-  pointer allocate(size_type n, const_pointer = 0) {
+  pointer allocate(size_type n, const_pointer = nullptr) {
     return static_cast<pointer>(malloc(n * sizeof(value_type)));
   }
   void deallocate(pointer p, size_type) {
