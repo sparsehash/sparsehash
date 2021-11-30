@@ -149,7 +149,8 @@ struct dense_hashtable_const_iterator;
 template <class V, class K, class HF, class ExK, class SetK, class EqK, class A>
 struct dense_hashtable_iterator {
  private:
-  typedef typename A::template rebind<V>::other value_alloc_type;
+  typedef typename std::allocator_traits<A>::template rebind_alloc<V> value_alloc_type;
+  typedef std::allocator_traits<value_alloc_type> value_alloc_traits;
 
  public:
   typedef dense_hashtable_iterator<V,K,HF,ExK,SetK,EqK,A>       iterator;
@@ -157,10 +158,10 @@ struct dense_hashtable_iterator {
 
   typedef std::forward_iterator_tag iterator_category;  // very little defined!
   typedef V value_type;
-  typedef typename value_alloc_type::difference_type difference_type;
-  typedef typename value_alloc_type::size_type size_type;
-  typedef typename value_alloc_type::reference reference;
-  typedef typename value_alloc_type::pointer pointer;
+  typedef typename value_alloc_traits::difference_type difference_type;
+  typedef typename value_alloc_traits::size_type size_type;
+  typedef value_type& reference;
+  typedef typename value_alloc_traits::pointer pointer;
 
   // "Real" constructor and default constructor
   dense_hashtable_iterator(const dense_hashtable<V,K,HF,ExK,SetK,EqK,A> *h,
@@ -202,7 +203,8 @@ struct dense_hashtable_iterator {
 template <class V, class K, class HF, class ExK, class SetK, class EqK, class A>
 struct dense_hashtable_const_iterator {
  private:
-  typedef typename A::template rebind<V>::other value_alloc_type;
+  typedef typename std::allocator_traits<A>::template rebind_alloc<V> value_alloc_type;
+  typedef std::allocator_traits<value_alloc_type> value_alloc_traits;
 
  public:
   typedef dense_hashtable_iterator<V,K,HF,ExK,SetK,EqK,A>       iterator;
@@ -210,10 +212,10 @@ struct dense_hashtable_const_iterator {
 
   typedef std::forward_iterator_tag iterator_category;  // very little defined!
   typedef V value_type;
-  typedef typename value_alloc_type::difference_type difference_type;
-  typedef typename value_alloc_type::size_type size_type;
-  typedef typename value_alloc_type::const_reference reference;
-  typedef typename value_alloc_type::const_pointer pointer;
+  typedef typename value_alloc_traits::difference_type difference_type;
+  typedef typename value_alloc_traits::size_type size_type;
+  typedef const value_type& reference;
+  typedef typename value_alloc_traits::const_pointer pointer;
 
   // "Real" constructor and default constructor
   dense_hashtable_const_iterator(
@@ -259,7 +261,8 @@ template <class Value, class Key, class HashFcn,
           class ExtractKey, class SetKey, class EqualKey, class Alloc>
 class dense_hashtable {
  private:
-  typedef typename Alloc::template rebind<Value>::other value_alloc_type;
+  typedef typename std::allocator_traits<Alloc>::template rebind_alloc<Value> value_alloc_type;
+  typedef std::allocator_traits<value_alloc_type> value_alloc_traits;
 
  public:
   typedef Key key_type;
@@ -268,12 +271,12 @@ class dense_hashtable {
   typedef EqualKey key_equal;
   typedef Alloc allocator_type;
 
-  typedef typename value_alloc_type::size_type size_type;
-  typedef typename value_alloc_type::difference_type difference_type;
-  typedef typename value_alloc_type::reference reference;
-  typedef typename value_alloc_type::const_reference const_reference;
-  typedef typename value_alloc_type::pointer pointer;
-  typedef typename value_alloc_type::const_pointer const_pointer;
+  typedef typename value_alloc_traits::size_type size_type;
+  typedef typename value_alloc_traits::difference_type difference_type;
+  typedef value_type& reference;
+  typedef const value_type& const_reference;
+  typedef typename value_alloc_traits::pointer pointer;
+  typedef typename value_alloc_traits::const_pointer const_pointer;
   typedef dense_hashtable_iterator<Value, Key, HashFcn,
                                    ExtractKey, SetKey, EqualKey, Alloc>
   iterator;
@@ -518,7 +521,9 @@ class dense_hashtable {
   // FUNCTIONS CONCERNING SIZE
  public:
   size_type size() const      { return num_elements - num_deleted; }
-  size_type max_size() const  { return val_info.max_size(); }
+  size_type max_size() const  {
+      return std::allocator_traits<ValInfo>::max_size(val_info);
+  }
   bool empty() const          { return size() == 0; }
   size_type bucket_count() const      { return num_buckets; }
   size_type max_bucket_count() const  { return max_size(); }
@@ -1170,8 +1175,9 @@ class dense_hashtable {
   template <class A>
   class alloc_impl : public A {
    public:
-    typedef typename A::pointer pointer;
-    typedef typename A::size_type size_type;
+    typedef std::allocator_traits<A> alloc_traits;
+    typedef typename alloc_traits::pointer pointer;
+    typedef typename alloc_traits::size_type size_type;
 
     // Convert a normal allocator to one that has realloc_or_die()
     alloc_impl(const A& a) : A(a) { }
